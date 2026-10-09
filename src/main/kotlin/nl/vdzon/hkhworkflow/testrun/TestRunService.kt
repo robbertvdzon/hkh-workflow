@@ -2,6 +2,7 @@ package nl.vdzon.hkhworkflow.testrun
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import kotlin.io.path.extension
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
@@ -131,11 +132,12 @@ class TestRunService(
         val inputDir = if (imagesSubfolder) exeDir.resolve("images") else exeDir
         Files.createDirectories(inputDir)
         val target = inputDir.resolve(step.file.newName)
-        check(!Files.exists(target)) { "${target.fileName} staat al in $inputDir; ruim die eerst op." }
-        Files.copy(source, target)
+        // Bij opnieuw proberen staat het bestand er vaak nog van de vorige poging: overschrijven.
+        val replaced = Files.exists(target)
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
 
         step.status = StepStatus.RUNNING
-        step.message = "Gekopieerd naar $inputDir"
+        step.message = (if (replaced) "Overschreven in " else "Gekopieerd naar ") + inputDir
         val env = if (perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
         exeRunner.start(exe, exeDir, "${step.type.label} – ${step.file.newName}", mode, env) { code ->
             synchronized(this) {
