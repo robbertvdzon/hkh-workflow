@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Test')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div class="head">
+            <div>
+                <h1>Test</h1>
+                <p class="sub">Verwerk de pdf's uit de testmap stap voor stap: hernoemen → pdf2zcbs.exe → images.exe → archiveren.</p>
+            </div>
+            <form th:if="${run != null}" method="post" th:action="@{/test/reset}">
+                <button class="btn btn-s" type="submit" th:disabled="${console != null and console.running}">Nieuwe test</button>
+            </form>
+        </div>
+
+        <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
+
+        <div class="alert alert-info" th:if="${!problems.isEmpty()}">
+            Niet alles is ingesteld:
+            <span th:each="p, s : ${problems}"><b th:text="${p.key}"></b>: <span th:text="${p.value}"></span><span th:unless="${s.last}">; </span></span>
+            — <a th:href="@{/instellingen}">naar Instellingen</a>.
+        </div>
+
+        <!-- Nog geen testrun: volgnummer vragen -->
+        <section th:if="${run == null}" class="card pad" style="display:flex;flex-direction:column;gap:18px;max-width:820px">
+            <h2>Nieuwe test starten</h2>
+            <div>
+                <div class="hint">Testmap: <span class="mono" th:text="${settings.testFolder != '' ? settings.testFolder : '(niet ingesteld)'}"></span></div>
+                <div th:if="${pdfs.isEmpty()}" class="warn" style="margin-top:6px">Er staan geen pdf's in de testmap.</div>
+                <ul th:unless="${pdfs.isEmpty()}" style="margin:10px 0 0;padding-left:20px">
+                    <li th:each="p : ${pdfs}" th:text="${p}"></li>
+                </ul>
+            </div>
+            <form method="post" th:action="@{/test/start}" style="display:flex;gap:12px;align-items:flex-end">
+                <div class="field" style="width:240px">
+                    <label class="f" for="startNumber">Eerste volgnummer</label>
+                    <input type="text" id="startNumber" name="startNumber" inputmode="numeric" pattern="\d+" required placeholder="bijv. 1711">
+                </div>
+                <button type="submit" class="btn btn-p" th:disabled="${pdfs.isEmpty()}">Start</button>
+            </form>
+            <p class="hint" style="margin:0">Elk bestand krijgt een volgnummer (steeds één hoger, voorloopnullen blijven staan). Het origineel blijft staan; "hernoemen" maakt een kopie met het nieuwe nummer in de submap <span class="mono">werk</span>.</p>
+        </section>
+
+        <th:block th:if="${run != null}">
+            <!-- Volgende stap -->
+            <section class="next" th:if="${run.next != null}">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                    <span class="hint" th:text="'Stap ' + (${run.doneCount} + 1) + ' van ' + ${run.totalCount}"></span>
+                    <span class="q" th:text="${run.next.question}"></span>
+                    <span class="hint" th:if="${run.next.status == 'FAILED'}" style="color:var(--err)" th:text="${run.next.message}"></span>
+                    <span class="hint" th:if="${run.next.status == 'RUNNING'}">Bezig… beantwoord de vragen hieronder.</span>
+                </div>
+                <div class="row-actions" th:if="${run.next.status == 'PENDING'}">
+                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit">Overslaan</button></form>
+                    <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id},mode='WINDOW')}"><button class="btn btn-s" type="submit" title="Opent het programma in een eigen cmd-venster">In eigen venster</button></form>
+                    <form method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id},mode='IN_APP')}"><button class="btn btn-p" type="submit">Uitvoeren</button></form>
+                </div>
+                <div class="row-actions" th:if="${run.next.status == 'FAILED'}">
+                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit">Overslaan</button></form>
+                    <form method="post" th:action="@{/test/steps/{id}/done(id=${run.next.id})}"><button class="btn btn-s" type="submit">Toch klaar</button></form>
+                    <form method="post" th:action="@{/test/steps/{id}/retry(id=${run.next.id})}"><button class="btn btn-p" type="submit">Opnieuw</button></form>
+                </div>
+            </section>
+            <div class="alert alert-ok" th:if="${run.next == null}">Alle stappen zijn klaar of overgeslagen.</div>
+
+            <!-- Console -->
+            <section th:if="${console != null}" style="display:flex;flex-direction:column;gap:10px">
+                <div th:fragment="console" id="console"
+                     th:attr="hx-get=${console != null and console.running} ? @{/test/console} : null,
+                              hx-trigger=${console != null and console.running} ? 'every 1s' : null"
+                     hx-swap="outerHTML">
+                    <th:block th:if="${console != null}">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                            <span style="font-weight:600" th:text="${console.label} + ' (' + ${console.mode.label} + ')'"></span>
+                            <span th:if="${console.running}" class="chip c-busy">Draait</span>
+                            <span th:if="${!console.running and console.exitCode == 0}" class="chip c-ok">Gestopt (exitcode 0)</span>
+                            <span th:if="${!console.running and console.exitCode != 0}" class="chip c-err" th:text="'Gestopt (exitcode ' + ${console.exitCode} + ')'"></span>
+                        </div>
+                        <pre class="console" id="console-out" th:text="${console.output.isEmpty() ? (console.mode.name() == 'WINDOW' ? 'Het programma draait in een eigen venster. Beantwoord de vragen daar; sluit het venster als het klaar is.' : '(nog geen uitvoer)') : console.output}"></pre>
+                    </th:block>
+                </div>
+                <div th:if="${console.running and console.mode.name() == 'IN_APP'}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <form hx-post="/test/console/input" hx-swap="none" hx-on::after-request="this.reset()" style="display:flex;gap:8px;flex-grow:1">
+                        <label for="line" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Antwoord</label>
+                        <input type="text" id="line" name="line" autocomplete="off" placeholder="Typ een antwoord en druk op Enter" autofocus>
+                        <button class="btn btn-p" type="submit">Verstuur</button>
+                    </form>
+                    <button class="btn btn-s" hx-post="/test/console/input" hx-vals='{"line":""}' hx-swap="none">Enter</button>
+                    <button class="btn btn-s" hx-post="/test/console/input" hx-vals='{"line":"j"}' hx-swap="none">J</button>
+                    <button class="btn btn-s" hx-post="/test/console/input" hx-vals='{"line":"n"}' hx-swap="none">N</button>
+                    <form method="post" th:action="@{/test/console/stop}"><button class="btn btn-s" type="submit" style="color:var(--err)">Stop programma</button></form>
+                </div>
+            </section>
+
+            <!-- Overzicht -->
+            <section class="table">
+                <div class="tr th" style="grid-template-columns:minmax(0,1.3fr) 90px repeat(4,minmax(0,1fr))">
+                    <span>Origineel</span><span>Nummer</span>
+                    <span th:each="t : ${run.stepTypes}" th:text="${t}"></span>
+                </div>
+                <div class="tr" th:each="row : ${run.rows}" style="grid-template-columns:minmax(0,1.3fr) 90px repeat(4,minmax(0,1fr))">
+                    <span th:text="${row.originalName}"></span>
+                    <span class="mono" th:text="${row.newName}"></span>
+                    <span th:each="c : ${row.cells}" th:title="${c.message}">
+                        <span class="chip"
+                              th:classappend="${c.status == 'DONE'} ? 'c-ok' : (${c.status == 'RUNNING'} ? 'c-busy' : (${c.status == 'FAILED'} ? 'c-err' : 'c-neutral'))"
+                              th:style="${c.current} ? 'outline:2px solid var(--accent);outline-offset:1px'"
+                              th:text="${c.statusLabel}"></span>
+                    </span>
+                </div>
+            </section>
+            <p class="hint" style="margin:0">Werkmap: <span class="mono" th:text="${run.workDir}"></span> · beginnummer <span class="mono" th:text="${run.startNumber}"></span></p>
+        </th:block>
+    </main>
+</div>
+<script>
+    // Console automatisch naar beneden scrollen.
+    function scrollConsole() { var el = document.getElementById('console-out'); if (el) el.scrollTop = el.scrollHeight; }
+    document.addEventListener('DOMContentLoaded', scrollConsole);
+    document.addEventListener('htmx:afterSwap', scrollConsole);
+</script>
+</body>
+</html>

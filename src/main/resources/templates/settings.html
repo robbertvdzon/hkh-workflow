@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Instellingen')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div>
+            <h1>Instellingen</h1>
+            <p class="sub">Mappen en programma's op deze computer. Gebruik volledige paden, bijvoorbeeld <span class="mono">C:\zcbs\images-werk\images.exe</span>.</p>
+        </div>
+        <div class="alert alert-ok" th:if="${saved}">Instellingen opgeslagen.</div>
+        <form class="card pad" method="post" th:action="@{/instellingen}" style="display:flex;flex-direction:column;gap:22px;max-width:820px">
+            <div class="field">
+                <label class="f" for="testFolder">Testmap</label>
+                <input type="text" id="testFolder" name="testFolder" th:value="${settings.testFolder}" placeholder="C:\zcbs\test">
+                <span class="hint">Hier zet je de pdf's neer die je op de testpagina wilt verwerken.</span>
+                <span class="warn" th:if="${problems['testFolder']}" th:text="${problems['testFolder']}"></span>
+            </div>
+            <div class="field">
+                <label class="f" for="archivedFolder">Archived-map</label>
+                <input type="text" id="archivedFolder" name="archivedFolder" th:value="${settings.archivedFolder}" placeholder="C:\zcbs\archived">
+                <span class="hint">Hier gaan de originele bestanden naartoe als ze klaar zijn.</span>
+                <span class="warn" th:if="${problems['archivedFolder']}" th:text="${problems['archivedFolder']}"></span>
+            </div>
+            <div class="field">
+                <label class="f" for="pdf2zcbsExe">pdf2zcbs.exe</label>
+                <input type="text" id="pdf2zcbsExe" name="pdf2zcbsExe" th:value="${settings.pdf2zcbsExe}" placeholder="C:\zcbs\pdf2zcbs\pdf2zcbs.exe">
+                <span class="hint">De pdf wordt in dezelfde map als pdf2zcbs.exe gezet; de uitvoer komt in de submap <span class="mono">output</span>.</span>
+                <span class="warn" th:if="${problems['pdf2zcbsExe']}" th:text="${problems['pdf2zcbsExe']}"></span>
+            </div>
+            <div class="field">
+                <label class="f" for="imagesExe">images.exe</label>
+                <input type="text" id="imagesExe" name="imagesExe" th:value="${settings.imagesExe}" placeholder="C:\zcbs\images-werk\images.exe">
+                <span class="hint">De pdf wordt in de submap <span class="mono">images</span> naast images.exe gezet.</span>
+                <span class="warn" th:if="${problems['imagesExe']}" th:text="${problems['imagesExe']}"></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+                <span class="hint">Opgeslagen in <span class="mono" th:text="${settingsFile}"></span></span>
+                <button type="submit" class="btn btn-p">Opslaan</button>
+            </div>
+        </form>
+    </main>
+</div>
+</body>
+</html>

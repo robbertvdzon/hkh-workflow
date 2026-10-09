@@ -1,0 +1,95 @@
+package nl.vdzon.hkhworkflow.testrun.api
+
+import jakarta.servlet.http.HttpServletResponse
+import nl.vdzon.hkhworkflow.exerunner.ExeRunner
+import nl.vdzon.hkhworkflow.exerunner.RunMode
+import nl.vdzon.hkhworkflow.settings.SettingsService
+import nl.vdzon.hkhworkflow.testrun.TestRunService
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Controller
+import org.springframework.ui.Model
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.servlet.mvc.support.RedirectAttributes
+
+@Controller
+class TestController(
+    private val testRunService: TestRunService,
+    private val exeRunner: ExeRunner,
+    private val settingsService: SettingsService,
+) {
+
+    @GetMapping("/test")
+    fun page(model: Model): String {
+        val settings = settingsService.get()
+        model.addAttribute("active", "test")
+        model.addAttribute("settings", settings)
+        model.addAttribute("problems", settingsService.check(settings))
+        model.addAttribute("pdfs", testRunService.pdfsInTestFolder().map { it.fileName.toString() })
+        model.addAttribute("run", testRunService.view())
+        model.addAttribute("console", exeRunner.snapshot())
+        return "test"
+    }
+
+    /** Fragment dat elke seconde wordt opgehaald zolang er een programma draait. */
+    @GetMapping("/test/console")
+    fun console(model: Model, response: HttpServletResponse): String {
+        val snapshot = exeRunner.snapshot()
+        if (snapshot == null || !snapshot.running) {
+            // Programma is klaar: laat de hele pagina verversen zodat de stappen bijgewerkt worden.
+            response.setHeader("HX-Refresh", "true")
+        }
+        model.addAttribute("console", snapshot)
+        return "test :: console"
+    }
+
+    @PostMapping("/test/console/input")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun input(@RequestParam("line", defaultValue = "") line: String) {
+        exeRunner.sendInput(line)
+    }
+
+    @PostMapping("/test/console/stop")
+    fun stop(): String {
+        exeRunner.kill()
+        return "redirect:/test"
+    }
+
+    @PostMapping("/test/start")
+    fun start(@RequestParam("startNumber") startNumber: String, redirect: RedirectAttributes): String =
+        attempt(redirect) { testRunService.start(startNumber) }
+
+    @PostMapping("/test/reset")
+    fun reset(redirect: RedirectAttributes): String = attempt(redirect) { testRunService.reset() }
+
+    @PostMapping("/test/steps/{id}/run")
+    fun run(
+        @PathVariable("id") id: Int,
+        @RequestParam("mode", defaultValue = "IN_APP") mode: RunMode,
+        redirect: RedirectAttributes,
+    ): String = attempt(redirect) { testRunService.execute(id, mode) }
+
+    @PostMapping("/test/steps/{id}/skip")
+    fun skip(@PathVariable("id") id: Int, redirect: RedirectAttributes): String =
+        attempt(redirect) { testRunService.skip(id) }
+
+    @PostMapping("/test/steps/{id}/done")
+    fun done(@PathVariable("id") id: Int, redirect: RedirectAttributes): String =
+        attempt(redirect) { testRunService.markDone(id) }
+
+    @PostMapping("/test/steps/{id}/retry")
+    fun retry(@PathVariable("id") id: Int, redirect: RedirectAttributes): String =
+        attempt(redirect) { testRunService.retry(id) }
+
+    private fun attempt(redirect: RedirectAttributes, action: () -> Unit): String {
+        try {
+            action()
+        } catch (e: Exception) {
+            redirect.addFlashAttribute("error", e.message ?: e.javaClass.simpleName)
+        }
+        return "redirect:/test"
+    }
+}

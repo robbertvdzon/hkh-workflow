@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Te verwerken')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div class="head">
+            <div>
+                <h1>Te verwerken <span class="demo">Demo-gegevens</span></h1>
+                <p class="sub">Scans in <span class="mono">K:\scabslelly</span> die nog niet in ZCBS staan.</p>
+            </div>
+            <span class="hint">Map gecontroleerd om 14:32 · elke minuut</span>
+        </div>
+        <form id="sel" method="get" th:action="@{/batch/controleren}">
+            <div class="table">
+                <div class="tr th" style="grid-template-columns:44px minmax(0,1fr) 90px 150px 170px">
+                    <span></span><span>Bestand</span><span>Pagina's</span><span>Gescand</span><span>Tekstlaag</span>
+                </div>
+                <th:block th:each="folder : ${folders}">
+                    <div class="tr grouphead" style="grid-template-columns:44px minmax(0,1fr) auto">
+                        <input type="checkbox" class="group" th:data-group="${folder.id}" th:aria-label="'Selecteer alle bestanden van ' + ${folder.person}">
+                        <span style="display:flex;gap:10px;align-items:center"><b th:text="${folder.person}"></b><span class="mono hint" th:text="${folder.path}"></span></span>
+                        <span class="hint" th:text="${folder.files.size()} + ' bestanden'"></span>
+                    </div>
+                    <div class="tr" th:each="f : ${folder.files}" style="grid-template-columns:44px minmax(0,1fr) 90px 150px 170px">
+                        <input type="checkbox" name="files" th:value="${f.id}" th:data-group="${folder.id}" th:checked="${preselected.contains(f.id)}" th:aria-label="'Selecteer ' + ${f.name}">
+                        <span style="display:flex;gap:12px;align-items:center;padding:8px 0">
+                            <span class="pdf">PDF</span>
+                            <span style="display:flex;flex-direction:column;gap:2px">
+                                <span style="font-weight:500" th:text="${f.name}"></span>
+                                <span th:if="${f.error}" style="font-size:12px;color:var(--err)" th:text="${f.error}"></span>
+                            </span>
+                        </span>
+                        <span th:text="${f.pages}"></span>
+                        <span th:text="${f.scanned}"></span>
+                        <span><span class="chip" th:classappend="${f.hasText} ? 'c-ok' : 'c-neutral'" th:text="${f.hasText} ? 'Tekst gevonden' : 'Server doet OCR'"></span></span>
+                    </div>
+                </th:block>
+            </div>
+            <div class="selbar">
+                <div style="display:flex;gap:16px;align-items:center">
+                    <b id="count">0 bestanden geselecteerd</b>
+                    <button type="button" class="linkbtn" id="clear">Selectie wissen</button>
+                </div>
+                <div style="display:flex;gap:12px;align-items:center">
+                    <label for="collectie" style="font-weight:600">Collectie</label>
+                    <select id="collectie" name="collectie" required>
+                        <option value="">Kies een collectie…</option>
+                        <option th:each="c : ${collections}" th:value="${c.first}" th:text="${c.second}" th:selected="${c.first == 'archief'}"></option>
+                    </select>
+                    <button type="submit" class="btn btn-p" id="go">Verwerken →</button>
+                </div>
+            </div>
+        </form>
+    </main>
+</div>
+<script>
+    (function () {
+        var form = document.getElementById('sel');
+        var files = function () { return Array.prototype.slice.call(form.querySelectorAll('input[name=files]')); };
+        function refresh() {
+            var n = files().filter(function (c) { return c.checked; }).length;
+            document.getElementById('count').textContent = n === 1 ? '1 bestand geselecteerd' : n + ' bestanden geselecteerd';
+            document.getElementById('go').disabled = n === 0;
+            form.querySelectorAll('input.group').forEach(function (g) {
+                var mine = files().filter(function (c) { return c.dataset.group === g.dataset.group; });
+                g.checked = mine.length > 0 && mine.every(function (c) { return c.checked; });
+            });
+        }
+        form.addEventListener('change', function (e) {
+            if (e.target.classList.contains('group')) {
+                files().filter(function (c) { return c.dataset.group === e.target.dataset.group; })
+                    .forEach(function (c) { c.checked = e.target.checked; });
+            }
+            refresh();
+        });
+        document.getElementById('clear').addEventListener('click', function () { files().forEach(function (c) { c.checked = false; }); refresh(); });
+        refresh();
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Batches')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div>
+            <h1>Batches <span class="demo">Demo-gegevens</span></h1>
+            <p class="sub">Alle verwerkingen, nieuwste eerst. Klik een batch voor de links naar ZCBS.</p>
+        </div>
+        <div style="display:flex;gap:20px;align-items:center">
+            <label for="fc" style="font-weight:600">Collectie</label>
+            <select id="fc" style="width:200px"><option>Alle collecties</option><option th:each="c : ${collections}" th:text="${c.second}"></option></select>
+            <label style="display:flex;gap:8px;align-items:center"><input type="checkbox"> Alleen batches met onbeschreven records</label>
+        </div>
+        <section class="table">
+            <div class="tr th" style="grid-template-columns:minmax(0,1fr) 90px 120px 90px 150px 170px 80px"><span>Batch</span><span>Door</span><span>Collectie</span><span>Bestanden</span><span>Resultaat</span><span>Beschreven</span><span></span></div>
+            <div class="tr" th:each="b : ${batches}" style="grid-template-columns:minmax(0,1fr) 90px 120px 90px 150px 170px 80px;min-height:64px">
+                <span style="display:flex;flex-direction:column;gap:2px"><b th:text="${b.startedAt}"></b><span class="mono hint" th:text="${b.id}"></span></span>
+                <span th:text="${b.by}"></span>
+                <span th:text="${b.collection}"></span>
+                <span th:text="${b.files}"></span>
+                <span><span class="chip" th:classappend="${b.statusKind == 'ok'} ? 'c-ok' : (${b.statusKind == 'busy'} ? 'c-busy' : 'c-err')" th:text="${b.status}"></span></span>
+                <span>
+                    <span th:if="${b.described == null}" class="hint">—</span>
+                    <span th:if="${b.described != null}" style="display:flex;flex-direction:column;gap:6px">
+                        <span style="font-size:13px" th:text="${b.described} + ' van ' + ${b.describable}"></span>
+                        <span class="bar"><span th:style="'width:' + ${b.described * 100 / b.describable} + '%'"></span></span>
+                    </span>
+                </span>
+                <a th:href="@{${b.link}}" style="font-weight:600">Bekijk</a>
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

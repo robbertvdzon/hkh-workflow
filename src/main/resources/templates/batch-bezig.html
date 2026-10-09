@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Batch bezig')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <a class="back" th:href="@{/batches}">← Alle batches</a>
+        <div>
+            <h1>Batch 25 sep 2026, 14:41 <span class="chip c-busy">Bezig</span> <span class="demo">Demo-gegevens</span></h1>
+            <p class="sub"><span class="mono">B-20260925-1441</span> · Archief · 6 bestanden · gestart door Carla</p>
+        </div>
+        <section class="card pad" style="display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;justify-content:space-between"><b>Stap 3 van 5: uploaden naar de website</b><span class="muted">Nog ongeveer 2 minuten</span></div>
+            <div class="tracker">
+                <div class="tk"><div class="tkc" style="background:#2f6b3a;color:#fff">✓</div><b>Tekstherkenning</b><span class="muted">6 / 6</span></div>
+                <div class="tkl" style="background:#2f6b3a"></div>
+                <div class="tk"><div class="tkc" style="background:#2f6b3a;color:#fff">✓</div><b>Afbeeldingen</b><span class="muted">6 / 6</span></div>
+                <div class="tkl" style="background:#d9a066"></div>
+                <div class="tk"><div class="tkc" style="border:2px solid #b45309;color:#b45309;background:var(--busy-bg)">3</div><b>Uploaden</b><span style="color:var(--busy);font-weight:600">3 / 6</span></div>
+                <div class="tkl"></div>
+                <div class="tk"><div class="tkc" style="border:2px solid #d6cfbf;color:#8a8475">4</div><b class="muted">Records in ZCBS</b><span class="muted">0 / 6</span></div>
+                <div class="tkl"></div>
+                <div class="tk"><div class="tkc" style="border:2px solid #d6cfbf;color:#8a8475">5</div><b class="muted">Back-up</b><span class="muted">0 / 6</span></div>
+            </div>
+        </section>
+        <section class="table">
+            <div class="tr th" style="grid-template-columns:minmax(0,1fr) 100px 150px 150px 150px"><span>Bestand</span><span>Record</span><span>Tekst</span><span>Afbeeldingen</span><span>Upload</span></div>
+            <div class="tr" th:each="i : ${#numbers.sequence(1,6)}" style="grid-template-columns:minmax(0,1fr) 100px 150px 150px 150px">
+                <span th:text="'xx0' + ${i} + '.pdf'"></span>
+                <span class="mono" th:text="${1710 + i}"></span>
+                <span><span class="chip c-ok">Klaar</span></span>
+                <span><span class="chip c-ok">Klaar</span></span>
+                <span><span class="chip" th:classappend="${i <= 3} ? 'c-ok' : (${i == 4} ? 'c-busy' : 'c-neutral')" th:text="${i <= 3} ? 'Klaar' : (${i == 4} ? 'Bezig' : 'Wacht')"></span></span>
+            </div>
+        </section>
+        <div class="alert alert-info" style="display:flex;justify-content:space-between;gap:16px">
+            <span>Je kunt deze pagina gerust sluiten. De batch loopt door op de server en staat daarna onder Batches.</span>
+            <a th:href="@{/batches/demo-klaar}" style="font-weight:600;white-space:nowrap">Voorbeeld: batch klaar</a>
+        </div>
+    </main>
+</div>
+</body>
+</html>
