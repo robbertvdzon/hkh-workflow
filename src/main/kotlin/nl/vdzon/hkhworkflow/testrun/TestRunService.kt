@@ -66,7 +66,7 @@ class TestRunService(
     }
 
     @Synchronized
-    fun execute(stepId: Int, mode: RunMode) {
+    fun execute(stepId: Int, mode: RunMode, perlioUnbuffered: Boolean = false) {
         val current = run ?: error("Er is geen testrun gestart.")
         val step = current.steps.firstOrNull { it.id == stepId } ?: error("Onbekende stap $stepId.")
         check(current.nextStep()?.id == step.id) { "Deze stap is nog niet aan de beurt." }
@@ -76,8 +76,8 @@ class TestRunService(
         try {
             when (step.type) {
                 StepType.RENAME -> rename(current, step)
-                StepType.PDF2ZCBS -> runExe(current, step, settingsService.get().pdf2zcbsExe, mode, imagesSubfolder = false)
-                StepType.IMAGES -> runExe(current, step, settingsService.get().imagesExe, mode, imagesSubfolder = true)
+                StepType.PDF2ZCBS -> runExe(current, step, settingsService.get().pdf2zcbsExe, mode, perlioUnbuffered, imagesSubfolder = false)
+                StepType.IMAGES -> runExe(current, step, settingsService.get().imagesExe, mode, perlioUnbuffered, imagesSubfolder = true)
                 StepType.ARCHIVE -> archive(step)
             }
         } catch (e: Exception) {
@@ -112,7 +112,14 @@ class TestRunService(
         step.message = "Kopie gemaakt: werk\\${step.file.newName}"
     }
 
-    private fun runExe(current: TestRun, step: Step, exeSetting: String, mode: RunMode, imagesSubfolder: Boolean) {
+    private fun runExe(
+        current: TestRun,
+        step: Step,
+        exeSetting: String,
+        mode: RunMode,
+        perlioUnbuffered: Boolean,
+        imagesSubfolder: Boolean,
+    ) {
         require(exeSetting.isNotBlank()) { "Stel eerst het pad naar ${step.type.label} in." }
         val exe = Path.of(exeSetting)
         require(Files.isRegularFile(exe)) { "${step.type.label} niet gevonden: $exe" }
@@ -129,7 +136,8 @@ class TestRunService(
 
         step.status = StepStatus.RUNNING
         step.message = "Gekopieerd naar $inputDir"
-        exeRunner.start(exe, exeDir, "${step.type.label} – ${step.file.newName}", mode) { code ->
+        val env = if (perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
+        exeRunner.start(exe, exeDir, "${step.type.label} – ${step.file.newName}", mode, env) { code ->
             synchronized(this) {
                 if (code == 0) {
                     step.status = StepStatus.DONE

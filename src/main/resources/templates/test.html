@@ -52,10 +52,16 @@
                     <span class="hint" th:if="${run.next.status == 'FAILED'}" style="color:var(--err)" th:text="${run.next.message}"></span>
                     <span class="hint" th:if="${run.next.status == 'RUNNING'}">Bezig… beantwoord de vragen hieronder.</span>
                 </div>
-                <div class="row-actions" th:if="${run.next.status == 'PENDING'}">
+                <div class="row-actions" th:if="${run.next.status == 'PENDING'}" style="align-items:center">
                     <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit">Overslaan</button></form>
-                    <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id},mode='WINDOW')}"><button class="btn btn-s" type="submit" title="Opent het programma in een eigen cmd-venster">In eigen venster</button></form>
-                    <form method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id},mode='IN_APP')}"><button class="btn btn-p" type="submit">Uitvoeren</button></form>
+                    <form th:unless="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}"><button class="btn btn-p" type="submit" name="mode" value="IN_APP">Uitvoeren</button></form>
+                    <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}" style="display:flex;gap:8px;align-items:center">
+                        <label class="hint" style="display:flex;gap:6px;align-items:center;margin-right:6px" title="Zet PERLIO=:unix zodat Perl zijn uitvoer niet buffert; invoer eindigt dan op LF">
+                            <input type="checkbox" name="perlio" value="true"> PERLIO=:unix
+                        </label>
+                        <button class="btn btn-s" type="submit" name="mode" value="WINDOW" title="Opent het programma in een cmd-venster op de computer waar de jar draait (alleen Windows)">In cmd-venster op de server</button>
+                        <button class="btn btn-p" type="submit" name="mode" value="IN_APP">Uitvoeren in de app</button>
+                    </form>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'FAILED'}">
                     <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit">Overslaan</button></form>
@@ -72,13 +78,24 @@
                               hx-trigger=${console != null and console.running} ? 'every 1s' : null"
                      hx-swap="outerHTML">
                     <th:block th:if="${console != null}">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                             <span style="font-weight:600" th:text="${console.label} + ' (' + ${console.mode.label} + ')'"></span>
                             <span th:if="${console.running}" class="chip c-busy">Draait</span>
                             <span th:if="${!console.running and console.exitCode == 0}" class="chip c-ok">Gestopt (exitcode 0)</span>
                             <span th:if="${!console.running and console.exitCode != 0}" class="chip c-err" th:text="'Gestopt (exitcode ' + ${console.exitCode} + ')'"></span>
                         </div>
+                        <div class="hint" style="margin-bottom:8px;display:flex;gap:14px;flex-wrap:wrap">
+                            <span th:text="'Ontvangen: ' + ${console.charsReceived} + ' tekens in ' + ${console.chunksReceived} + ' brokken'"></span>
+                            <span th:text="'Laatste uitvoer: ' + ${console.secondsSinceOutput} + ' s geleden'"></span>
+                            <span th:text="'Invoerregels verstuurd: ' + ${console.inputsSent}"></span>
+                            <a th:href="@{/test/log}" target="_blank">Volledig log</a>
+                        </div>
+                        <div class="alert alert-info" style="margin-bottom:8px" th:if="${console.running and console.mode.name() == 'IN_APP' and console.secondsSinceOutput >= 5}">
+                            Al <b th:text="${console.secondsSinceOutput}"></b> seconden geen uitvoer. Wacht het programma op een antwoord dat je niet ziet?
+                            Dan houdt het zijn uitvoer waarschijnlijk vast (buffering). Probeer blind een antwoord te sturen, of stop en start opnieuw met PERLIO=:unix.
+                        </div>
                         <pre class="console" id="console-out" th:text="${console.output.isEmpty() ? (console.mode.name() == 'WINDOW' ? 'Het programma draait in een eigen venster. Beantwoord de vragen daar; sluit het venster als het klaar is.' : '(nog geen uitvoer)') : console.output}"></pre>
+                        <div class="hint" style="margin-top:6px">Commando: <span class="mono" th:text="${console.command}"></span> · log: <span class="mono" th:text="${console.logFile}"></span></div>
                     </th:block>
                 </div>
                 <div th:if="${console.running and console.mode.name() == 'IN_APP'}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">

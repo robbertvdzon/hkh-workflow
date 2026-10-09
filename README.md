@@ -39,6 +39,18 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
   (knoppen voor Enter/J/N). Lukt dat niet (bijvoorbeeld omdat een programma zijn vragen pas toont als je
   antwoordt), kies dan **In eigen venster**: het programma opent in een eigen cmd-venster.
 
+### Logging
+
+Elke run van een programma krijgt een eigen logbestand in `logs/` (instelbaar met `HKH_WORKFLOW_LOG_DIR`),
+met tijdstempels van elk binnengekomen stuk uitvoer, elke verstuurde invoer, stille periodes en de exitcode.
+Op de testpagina staat een link **Volledig log** en een teller van ontvangen tekens. Zo is te zien of een
+programma zijn vragen pas laat toont (buffering). Probeer dan **PERLIO=:unix**.
+
+### Testen op een Mac
+
+De app start elk uitvoerbaar bestand, niet alleen `.exe`. In `tools/mock/` staan nep-versies van
+images.exe en pdf2zcbs.exe als Perl-scripts; zie `tools/mock/README.md`.
+
 > Let op: images.exe uploadt naar de echte webserver als je bij "UPLOADEN …? [J/N]" J antwoordt.
 > Antwoord N of kies een testcollectie zolang je test.
 

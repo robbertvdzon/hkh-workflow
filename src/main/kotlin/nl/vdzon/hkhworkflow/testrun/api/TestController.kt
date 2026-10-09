@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
@@ -46,6 +47,11 @@ class TestController(
         return "test :: console"
     }
 
+    /** Het volledige logbestand van de laatste run, als platte tekst. */
+    @GetMapping("/test/log", produces = ["text/plain;charset=UTF-8"])
+    @ResponseBody
+    fun logFile(): String = exeRunner.logText() ?: "Nog geen run."
+
     @PostMapping("/test/console/input")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun input(@RequestParam("line", defaultValue = "") line: String) {
@@ -69,8 +75,9 @@ class TestController(
     fun run(
         @PathVariable("id") id: Int,
         @RequestParam("mode", defaultValue = "IN_APP") mode: RunMode,
+        @RequestParam("perlio", defaultValue = "false") perlio: Boolean,
         redirect: RedirectAttributes,
-    ): String = attempt(redirect) { testRunService.execute(id, mode) }
+    ): String = attempt(redirect) { testRunService.execute(id, mode, perlio) }
 
     @PostMapping("/test/steps/{id}/skip")
     fun skip(@PathVariable("id") id: Int, redirect: RedirectAttributes): String =

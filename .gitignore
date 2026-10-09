@@ -2,3 +2,10 @@ target/
 .idea/
 *.iml
 hkh-workflow-settings.json
+logs/
+tools/mock/pdf2zcbs/*.pdf
+tools/mock/pdf2zcbs/output/
+tools/mock/images-werk/images/
+tools/mock/images-werk/small/
+tools/mock/images-werk/large/
+tools/mock/images-werk/100pct/

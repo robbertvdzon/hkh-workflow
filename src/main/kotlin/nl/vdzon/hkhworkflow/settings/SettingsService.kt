@@ -72,6 +72,7 @@ class SettingsService(
         fun exe(field: String, value: String) {
             if (value.isBlank()) problems[field] = "Nog niet ingevuld."
             else if (!Files.isRegularFile(Path.of(value))) problems[field] = "Bestand bestaat niet."
+            else if (!Files.isExecutable(Path.of(value))) problems[field] = "Bestand is niet uitvoerbaar (op Mac/Linux: chmod +x)."
         }
         dir("testFolder", settings.testFolder)
         dir("archivedFolder", settings.archivedFolder)

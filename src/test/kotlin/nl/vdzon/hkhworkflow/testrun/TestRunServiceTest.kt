@@ -27,7 +27,7 @@ class TestRunServiceTest {
         Files.writeString(test.resolve("notes.txt"), "ignored")
         val settings = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         settings.save(WorkflowSettings(test.toString(), archived.toString(), "", ""))
-        return TestRunService(settings, ExeRunner("UTF-8"))
+        return TestRunService(settings, ExeRunner("UTF-8", dir.resolve("logs").toString()))
     }
 
     @Test

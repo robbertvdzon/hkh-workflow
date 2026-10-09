@@ -32,6 +32,7 @@ class SettingsServiceTest {
     @Test
     fun `check accepts existing folders and files`() {
         val exe = Files.createFile(dir.resolve("images.exe"))
+        exe.toFile().setExecutable(true)
         val service = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         val problems = service.check(WorkflowSettings(dir.toString(), dir.toString(), exe.toString(), exe.toString()))
         assertEquals(emptyMap(), problems)
