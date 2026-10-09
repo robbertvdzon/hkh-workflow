@@ -60,8 +60,9 @@ Op de testpagina staat een link **Volledig log** en een teller van ontvangen tek
 programma zijn vragen pas laat toont (buffering). Zet dan **PERLIO=:unix** aan bij Instellingen.
 
 Onderaan de testpagina staat **Runs**: alle logbestanden, nieuwste boven, met starttijd, programma, resultaat en
-looptijd. Per run: **Toon** (inline), **Openen** (nieuw tabblad), **Wis**. **Alle logs wissen** ruimt de hele map op;
-het log van een lopend programma blijft staan. **Nieuwe test** stopt een nog lopend programma en maakt de console leeg.
+looptijd. Per run: **Toon** (log inline) en **Wis**. **Alle logs wissen** ruimt de hele map op; het log van een lopend
+programma blijft staan. De console bovenaan is alleen zichtbaar zolang een programma draait. **Nieuwe test** stopt
+een nog lopend programma.
 
 ### Testen op een Mac
 

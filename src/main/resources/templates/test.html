@@ -70,8 +70,8 @@
             </section>
             <div class="alert alert-ok" th:if="${run.next == null}">Alle stappen zijn klaar of overgeslagen.</div>
 
-            <!-- Console -->
-            <section th:if="${console != null}" style="display:flex;flex-direction:column;gap:10px">
+            <!-- Console: alleen zolang er een programma draait. Daarna staat het resultaat bij de stap en het log onder Runs. -->
+            <section th:if="${console != null and console.running}" style="display:flex;flex-direction:column;gap:10px">
                 <div th:fragment="console" id="console"
                      th:attr="hx-get=${console != null and console.running} ? @{/test/console} : null,
                               hx-trigger=${console != null and console.running} ? 'every 1s' : null"
@@ -147,11 +147,11 @@
                 </form>
             </div>
             <div class="table">
-                <div class="tr th" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(180px,auto)">
+                <div class="tr th" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(130px,auto)">
                     <span>Gestart</span><span>Programma</span><span>Resultaat</span><span>Duur</span><span>Log</span>
                 </div>
                 <div class="tr" th:if="${runs.isEmpty()}"><span class="hint">Nog geen runs.</span></div>
-                <div class="tr" th:each="r : ${runs}" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(180px,auto)">
+                <div class="tr" th:each="r : ${runs}" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(130px,auto)">
                     <span class="mono" th:text="${r.startedText}"></span>
                     <span th:text="${r.label}"></span>
                     <span>
@@ -164,7 +164,6 @@
                     <span class="mono" th:text="${r.duration ?: '–'}"></span>
                     <span class="row-actions">
                         <button class="btn btn-s" type="button" th:attr="hx-get=@{/test/runs/log(file=${r.file})}" hx-target="#runlog" hx-swap="innerHTML">Toon</button>
-                        <a th:href="@{/test/runs/raw(file=${r.file})}" target="_blank">Openen</a>
                         <form method="post" th:action="@{/test/runs/delete}" th:unless="${r.running}" onsubmit="return confirm('Dit logbestand verwijderen?')">
                             <input type="hidden" name="file" th:value="${r.file}">
                             <button class="btn btn-s" type="submit" style="color:var(--err)" title="Verwijder dit logbestand">Wis</button>

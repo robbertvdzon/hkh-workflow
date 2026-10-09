@@ -55,10 +55,6 @@ class TestController(
         redirect.addFlashAttribute("info", "$n logbestanden verwijderd.")
     }
 
-    /** Hetzelfde logbestand als platte tekst (voor een nieuw tabblad). */
-    @GetMapping("/test/runs/raw", produces = ["text/plain;charset=UTF-8"])
-    @ResponseBody
-    fun runLogRaw(@RequestParam("file") file: String): String = exeRunner.logText(file) ?: "Logbestand niet gevonden."
 
     /** Fragment dat elke seconde wordt opgehaald zolang er een programma draait. */
     @GetMapping("/test/console")

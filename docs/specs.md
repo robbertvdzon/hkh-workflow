@@ -167,7 +167,7 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 | GET | `/test/console` | htmx-fragment, elke seconde zolang er iets draait; stuurt `HX-Refresh` als het klaar is |
 | POST | `/test/console/input` (`line`), `/test/console/stop` | Invoer sturen / programma stoppen |
 | GET | `/test/log` | Logbestand van de laatste run (text/plain) |
-| GET | `/test/runs/log?file=..` | Logbestand van een eerdere run als htmx-fragment (onder de runlijst); `/test/runs/raw?file=..` als text/plain |
+| GET | `/test/runs/log?file=..` | Logbestand van een eerdere run als htmx-fragment (onder de runlijst) |
 | POST | `/test/runs/delete` (`file`), `/test/runs/delete-all` | Eén logbestand / alle logbestanden verwijderen (niet dat van een lopend programma) |
 
 ### 5.4 Instellingen
@@ -215,7 +215,8 @@ en de console wordt leeggemaakt (`ExeRunner.clear`), zodat de uitvoer van de vor
 
 **Runs** (onderaan de testpagina): alle logbestanden uit de logmap, nieuwste boven, met starttijd (uit de bestandsnaam),
 programma + bestand (uit de eerste logregel), resultaat (exitcode, "Gestopt door gebruiker", of "Onbekend" als er geen
-EXIT-regel is), looptijd (uit de EXIT-regel) en knoppen **Toon** (log inline), **Openen** (nieuw tabblad) en **Wis**.
+EXIT-regel is), looptijd (uit de EXIT-regel) en knoppen **Toon** (log inline) en **Wis**. De console bovenaan de pagina
+staat er alleen zolang een programma draait; daarna staat het resultaat bij de stap en het log onder Runs.
 **Alle logs wissen** ruimt de hele logmap op; het log van een lopend programma blijft altijd staan. Komt uit de
 bestanden zelf, dus blijft staan na een herstart van de app.
 
