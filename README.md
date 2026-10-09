@@ -35,8 +35,11 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
   3. **images.exe** — kopieert `<nummer>.pdf` naar `<map van images.exe>\images` en start het programma.
   4. **Archiveren** — verplaatst het origineel (met oorspronkelijke naam) naar de archived-map.
 
-  De exe's draaien **in de app**: de uitvoer verschijnt in de browser en je antwoorden worden doorgestuurd
-  (knoppen voor Enter/J/N). Lukt dat niet (bijvoorbeeld omdat een programma zijn vragen pas toont als je
+  De exe's draaien **in de app**: de uitvoer verschijnt in de browser. Kies **Handmatig uitvoeren** om zelf te
+  antwoorden (knoppen voor Enter/J/N) of **Automatisch uitvoeren**: de app herkent de vragen aan de teksten bij
+  Instellingen en geeft het bijbehorende antwoord. Wachtwoorden worden nergens getoond of gelogd (wel leesbaar
+  opgeslagen in het instellingenbestand). Automatisch werkt alleen als de vragen zichtbaar zijn, dus met
+  **PERLIO=:unix** aan (staat standaard aan bij Instellingen). Lukt dat niet (bijvoorbeeld omdat een programma zijn vragen pas toont als je
   antwoordt), kies dan **In eigen venster**: het programma opent in een eigen cmd-venster.
 
 ### Logging
@@ -44,7 +47,7 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
 Elke run van een programma krijgt een eigen logbestand in `logs/` (instelbaar met `HKH_WORKFLOW_LOG_DIR`),
 met tijdstempels van elk binnengekomen stuk uitvoer, elke verstuurde invoer, stille periodes en de exitcode.
 Op de testpagina staat een link **Volledig log** en een teller van ontvangen tekens. Zo is te zien of een
-programma zijn vragen pas laat toont (buffering). Probeer dan **PERLIO=:unix**.
+programma zijn vragen pas laat toont (buffering). Zet dan **PERLIO=:unix** aan bij Instellingen.
 
 ### Testen op een Mac
 

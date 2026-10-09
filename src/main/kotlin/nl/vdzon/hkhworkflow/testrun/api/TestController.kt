@@ -75,9 +75,9 @@ class TestController(
     fun run(
         @PathVariable("id") id: Int,
         @RequestParam("mode", defaultValue = "IN_APP") mode: RunMode,
-        @RequestParam("perlio", defaultValue = "false") perlio: Boolean,
+        @RequestParam("auto", defaultValue = "false") auto: Boolean,
         redirect: RedirectAttributes,
-    ): String = attempt(redirect) { testRunService.execute(id, mode, perlio) }
+    ): String = attempt(redirect) { testRunService.execute(id, mode, auto) }
 
     @PostMapping("/test/steps/{id}/skip")
     fun skip(@PathVariable("id") id: Int, redirect: RedirectAttributes): String =

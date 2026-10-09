@@ -11,7 +11,7 @@ Instellingen in de app (pas het pad aan naar jouw checkout):
 | images.exe | `…/hkh-workflow/tools/mock/images-werk/images.pl` |
 
 Net als een gewoon Perl-programma bufferen ze hun uitvoer als ze niet in een terminal draaien. Zo zie
-je thuis al hetzelfde probleem als met de echte exe's te verwachten is. Vink op de testpagina
-**PERLIO=:unix** aan om te zien of dat het oplost.
+je thuis al hetzelfde probleem als met de echte exe's te verwachten is. Zet bij Instellingen
+**PERLIO=:unix** aan of uit om het verschil te zien.
 
 De scripts schrijven in hun eigen map (`output/`, `images/`, `small/` …); die mappen staan in `.gitignore`.

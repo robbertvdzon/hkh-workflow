@@ -56,11 +56,9 @@
                     <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit">Overslaan</button></form>
                     <form th:unless="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}"><button class="btn btn-p" type="submit" name="mode" value="IN_APP">Uitvoeren</button></form>
                     <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}" style="display:flex;gap:8px;align-items:center">
-                        <label class="hint" style="display:flex;gap:6px;align-items:center;margin-right:6px" title="Zet PERLIO=:unix zodat Perl zijn uitvoer niet buffert; invoer eindigt dan op LF">
-                            <input type="checkbox" name="perlio" value="true"> PERLIO=:unix
-                        </label>
                         <button class="btn btn-s" type="submit" name="mode" value="WINDOW" title="Opent het programma in een cmd-venster op de computer waar de jar draait (alleen Windows)">In cmd-venster op de server</button>
-                        <button class="btn btn-p" type="submit" name="mode" value="IN_APP">Uitvoeren in de app</button>
+                        <button class="btn btn-s" type="submit" name="mode" value="IN_APP" title="Jij beantwoordt de vragen hieronder">Handmatig uitvoeren</button>
+                        <button class="btn btn-p" type="submit" name="auto" value="true" title="De app geeft zelf de antwoorden uit Instellingen">Automatisch uitvoeren</button>
                     </form>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'FAILED'}">
@@ -79,7 +77,7 @@
                      hx-swap="outerHTML">
                     <th:block th:if="${console != null}">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                            <span style="font-weight:600" th:text="${console.label} + ' (' + ${console.mode.label} + ')'"></span>
+                            <span style="font-weight:600" th:text="${console.label} + ' (' + ${console.mode.label} + (${console.auto} ? ', automatisch' : '') + ')'"></span>
                             <span th:if="${console.running}" class="chip c-busy">Draait</span>
                             <span th:if="${!console.running and console.exitCode == 0}" class="chip c-ok">Gestopt (exitcode 0)</span>
                             <span th:if="${!console.running and console.exitCode != 0}" class="chip c-err" th:text="'Gestopt (exitcode ' + ${console.exitCode} + ')'"></span>
@@ -88,7 +86,12 @@
                             <span th:text="'Ontvangen: ' + ${console.charsReceived} + ' tekens in ' + ${console.chunksReceived} + ' brokken'"></span>
                             <span th:text="'Laatste uitvoer: ' + ${console.secondsSinceOutput} + ' s geleden'"></span>
                             <span th:text="'Invoerregels verstuurd: ' + ${console.inputsSent}"></span>
+                            <span th:if="${console.auto}" th:text="'Automatisch beantwoord: ' + ${console.autoAnswered}"></span>
                             <a th:href="@{/test/log}" target="_blank">Volledig log</a>
+                        </div>
+                        <div class="alert alert-err" style="margin-bottom:8px" th:if="${console.autoStuck}">
+                            Automatisch: deze vraag wordt door geen enkele regel herkend. Beantwoord hem hieronder handmatig,
+                            of voeg een regel toe bij <a th:href="@{/instellingen}">Instellingen</a>.
                         </div>
                         <div class="alert alert-info" style="margin-bottom:8px" th:if="${console.mode.name() == 'IN_APP' and console.suspiciousSilence}">
                             Er komt geen uitvoer (meer) terwijl het programma draait. Wacht het op een antwoord op een vraag die je niet ziet?

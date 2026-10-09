@@ -24,6 +24,9 @@ enum class RunMode(val label: String) {
     WINDOW("in eigen venster"),
 }
 
+/** Automatisch antwoord: bevat de uitvoer [pattern] (hoofdletterongevoelig), dan wordt [answer] + Enter gestuurd. */
+data class AutoAnswer(val pattern: String, val answer: String, val secret: Boolean = false)
+
 /** Momentopname van de laatste (of lopende) run, voor de UI. */
 data class RunSnapshot(
     val id: Long,
@@ -48,6 +51,12 @@ data class RunSnapshot(
     val suspiciousSilence: Boolean,
     val logFile: String,
     val command: String,
+    /** Draait met automatische antwoorden. */
+    val auto: Boolean,
+    /** Aantal automatisch gegeven antwoorden. */
+    val autoAnswered: Int,
+    /** Automatisch: er staat een vraag die door geen enkele regel herkend wordt. */
+    val autoStuck: Boolean,
 )
 
 /**
@@ -85,6 +94,7 @@ class ExeRunner(
         val startedAt: Instant,
         val startNanos: Long,
         val newline: String,
+        val auto: List<AutoAnswer>?,
     ) {
         val output = StringBuilder()
 
@@ -95,6 +105,10 @@ class ExeRunner(
         @Volatile var lastOutputNanos = startNanos
         @Volatile var inputsSent = 0
         @Volatile var lastInputNanos = 0L
+        @Volatile var autoAnswered = 0
+        @Volatile var autoEnabled = auto != null
+        @Volatile var autoStuckLoggedAt = 0L
+        val autoBuffer = StringBuilder()
 
         val running: Boolean get() = finishedAt == null
 
@@ -131,6 +145,9 @@ class ExeRunner(
                 (run.charsReceived == 0L || run.lastInputNanos > run.lastOutputNanos),
             logFile = run.logFile.toString(),
             command = run.command,
+            auto = run.auto != null,
+            autoAnswered = run.autoAnswered,
+            autoStuck = isAutoStuck(run),
         )
     }
 
@@ -151,6 +168,7 @@ class ExeRunner(
         mode: RunMode,
         extraEnv: Map<String, String> = emptyMap(),
         notes: List<String> = emptyList(),
+        autoAnswers: List<AutoAnswer>? = null,
         onExit: (Int?) -> Unit,
     ): RunSnapshot {
         check(!isRunning()) { "Er draait al een programma: ${current?.label}" }
@@ -181,7 +199,8 @@ class ExeRunner(
         val writer = if (mode == RunMode.IN_APP) OutputStreamWriter(process.outputStream, charset) else null
         // Met PERLIO=:unix valt Perl's CRLF-vertaling weg; stuur dan alleen LF, anders komt er een \r in het antwoord.
         val newline = if (isWindows() && extraEnv["PERLIO"] == null) "\r\n" else "\n"
-        val run = Run(id, label, mode, command.joinToString(" "), process, writer, logWriter, logFile, Instant.now(), startNanos, newline)
+        val run = Run(id, label, mode, command.joinToString(" "), process, writer, logWriter, logFile, Instant.now(), startNanos, newline,
+            autoAnswers?.takeIf { mode == RunMode.IN_APP })
         current = run
 
         run.logLine("START $label")
@@ -191,6 +210,7 @@ class ExeRunner(
         run.logLine("  charset     : $charset (invoer eindigt op ${if (run.newline == "\r\n") "CRLF" else "LF"})")
         run.logLine("  extra env   : ${if (extraEnv.isEmpty()) "(geen)" else extraEnv}")
         run.logLine("  argumenten  : ${if (command.size > 1 && mode == RunMode.IN_APP) command.drop(1) else "(geen; het programma werkt op de bestanden in zijn werkmap en stelt zijn vragen via de console)"}")
+        run.logLine("  automatisch : ${run.auto?.let { "ja, ${it.size} regels: " + it.joinToString { a -> quote(a.pattern) } } ?: "nee"}")
         run.logLine("  pid         : ${runCatching { process.pid() }.getOrNull()}")
         notes.forEach { run.logLine("  voorbereid  : $it") }
         runCatching {
@@ -229,6 +249,11 @@ class ExeRunner(
                     run.logLine("STIL  al ${silent}s geen uitvoer (programma draait nog; wacht het op invoer of houdt het uitvoer vast?)")
                 }
                 if (silent < 5) warned = 0
+                if (isAutoStuck(run) && run.autoStuckLoggedAt != run.lastOutputNanos) {
+                    run.autoStuckLoggedAt = run.lastOutputNanos
+                    val tail = synchronized(run.output) { run.output.takeLast(160).toString() }
+                    run.logLine("AUTO  geen regel herkent de laatste vraag; wacht op handmatig antwoord. Laatste uitvoer: ${quote(tail)}")
+                }
             }
         }, "exe-watch-${run.id}").apply { isDaemon = true }.start()
         return snapshot()!!
@@ -238,11 +263,17 @@ class ExeRunner(
     fun sendInput(line: String) {
         val run = current ?: error("Er draait geen programma.")
         check(run.running) { "Het programma is al gestopt." }
+        send(run, line, secret = false, auto = false)
+    }
+
+    private fun send(run: Run, line: String, secret: Boolean, auto: Boolean) {
         val writer = run.writer ?: error("Dit programma draait in een eigen venster; typ daar je antwoord.")
-        synchronized(run.output) { run.output.append("⟶ ").append(line).append("\n") }
+        val shown = if (secret) "*".repeat(8) else line
+        synchronized(run.output) { run.output.append(if (auto) "⟶ (auto) " else "⟶ ").append(shown).append("\n") }
         run.inputsSent++
         run.lastInputNanos = System.nanoTime()
-        run.logLine("IN    ${quote(line + run.newline)}")
+        val logged = if (secret) "(wachtwoord, ${line.length} tekens) + ${quote(run.newline)}" else quote(line + run.newline)
+        run.logLine((if (auto) "IN    (auto) " else "IN    ") + logged)
         try {
             writer.write(line + run.newline)
             writer.flush()
@@ -276,6 +307,7 @@ class ExeRunner(
                         run.output.append(chunk)
                         if (run.output.length > MAX_OUTPUT) run.output.delete(0, run.output.length - MAX_OUTPUT)
                     }
+                    if (run.autoEnabled) autoRespond(run, chunk)
                 }
             }
             run.logLine("EOF   uitvoerstroom gesloten")
@@ -284,6 +316,46 @@ class ExeRunner(
         }
     }
 
+    /** Zoekt in de nieuwe uitvoer naar herkende vragen en beantwoordt ze, in volgorde van verschijnen. */
+    private fun autoRespond(run: Run, chunk: String) {
+        val rules = run.auto ?: return
+        run.autoBuffer.append(chunk)
+        while (run.autoEnabled) {
+            val text = run.autoBuffer.toString()
+            var best: AutoAnswer? = null
+            var bestIndex = Int.MAX_VALUE
+            for (rule in rules) {
+                if (rule.pattern.isBlank()) continue
+                val i = text.indexOf(rule.pattern, ignoreCase = true)
+                if (i in 0 until bestIndex) {
+                    best = rule
+                    bestIndex = i
+                }
+            }
+            val rule = best ?: return
+            run.autoBuffer.delete(0, bestIndex + rule.pattern.length)
+            if (run.autoAnswered >= MAX_AUTO_ANSWERS) {
+                run.autoEnabled = false
+                run.logLine("AUTO  uitgezet: al $MAX_AUTO_ANSWERS antwoorden gegeven (loopt het programma in een kringetje?)")
+                return
+            }
+            run.autoAnswered++
+            run.logLine("AUTO  vraag herkend: ${quote(rule.pattern)}")
+            try {
+                send(run, rule.answer, rule.secret, auto = true)
+            } catch (e: Exception) {
+                run.autoEnabled = false
+                return
+            }
+        }
+    }
+
+    /** Automatisch, er kwam uitvoer na het laatste antwoord, maar al 5 s geen regel die past. */
+    private fun isAutoStuck(run: Run): Boolean =
+        run.running && run.autoEnabled && run.charsReceived > 0 &&
+            run.lastOutputNanos > run.lastInputNanos &&
+            (System.nanoTime() - run.lastOutputNanos) / 1_000_000_000 >= 5
+
     private fun quote(s: String): String =
         "\"" + s.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t") + "\""
 
@@ -291,5 +363,6 @@ class ExeRunner(
 
     companion object {
         private const val MAX_OUTPUT = 200_000
+        private const val MAX_AUTO_ANSWERS = 100
     }
 }

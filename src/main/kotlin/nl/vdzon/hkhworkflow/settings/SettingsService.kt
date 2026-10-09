@@ -29,11 +29,21 @@ class SettingsService(
         val loaded = if (Files.isRegularFile(file)) {
             try {
                 val node = objectMapper.readTree(Files.readString(file))
+                fun rules(name: String, defaults: List<AnswerRule>): List<AnswerRule> {
+                    val array = node.path(name)
+                    if (!array.isArray) return defaults
+                    return array.map {
+                        AnswerRule(it.path("pattern").asText(""), it.path("answer").asText(""), it.path("secret").asBoolean(false))
+                    }
+                }
                 WorkflowSettings(
                     testFolder = node.path("testFolder").asText(""),
                     archivedFolder = node.path("archivedFolder").asText(""),
                     imagesExe = node.path("imagesExe").asText(""),
                     pdf2zcbsExe = node.path("pdf2zcbsExe").asText(""),
+                    perlioUnbuffered = node.path("perlioUnbuffered").asBoolean(true),
+                    pdf2zcbsAnswers = rules("pdf2zcbsAnswers", WorkflowSettings.DEFAULT_PDF2ZCBS_ANSWERS),
+                    imagesAnswers = rules("imagesAnswers", WorkflowSettings.DEFAULT_IMAGES_ANSWERS),
                 )
             } catch (e: Exception) {
                 log.warn("Kan instellingen niet lezen uit {}: {}", file, e.message)
@@ -48,11 +58,13 @@ class SettingsService(
 
     @Synchronized
     fun save(settings: WorkflowSettings): WorkflowSettings {
-        val cleaned = WorkflowSettings(
+        val cleaned = settings.copy(
             testFolder = settings.testFolder.trim(),
             archivedFolder = settings.archivedFolder.trim(),
             imagesExe = settings.imagesExe.trim(),
             pdf2zcbsExe = settings.pdf2zcbsExe.trim(),
+            pdf2zcbsAnswers = settings.pdf2zcbsAnswers.filter { it.pattern.isNotBlank() },
+            imagesAnswers = settings.imagesAnswers.filter { it.pattern.isNotBlank() },
         )
         file.parent?.let { Files.createDirectories(it) }
         val tmp = file.resolveSibling(file.fileName.toString() + ".tmp")

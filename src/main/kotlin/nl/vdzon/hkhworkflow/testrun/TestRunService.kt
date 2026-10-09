@@ -7,6 +7,7 @@ import kotlin.io.path.extension
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
+import nl.vdzon.hkhworkflow.exerunner.AutoAnswer
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
 import nl.vdzon.hkhworkflow.settings.SettingsService
@@ -67,7 +68,7 @@ class TestRunService(
     }
 
     @Synchronized
-    fun execute(stepId: Int, mode: RunMode, perlioUnbuffered: Boolean = false) {
+    fun execute(stepId: Int, mode: RunMode, auto: Boolean = false) {
         val current = run ?: error("Er is geen testrun gestart.")
         val step = current.steps.firstOrNull { it.id == stepId } ?: error("Onbekende stap $stepId.")
         check(current.nextStep()?.id == step.id) { "Deze stap is nog niet aan de beurt." }
@@ -77,8 +78,8 @@ class TestRunService(
         try {
             when (step.type) {
                 StepType.RENAME -> rename(current, step)
-                StepType.PDF2ZCBS -> runExe(current, step, settingsService.get().pdf2zcbsExe, mode, perlioUnbuffered, imagesSubfolder = false)
-                StepType.IMAGES -> runExe(current, step, settingsService.get().imagesExe, mode, perlioUnbuffered, imagesSubfolder = true)
+                StepType.PDF2ZCBS -> runExe(current, step, settingsService.get().pdf2zcbsExe, mode, auto, imagesSubfolder = false)
+                StepType.IMAGES -> runExe(current, step, settingsService.get().imagesExe, mode, auto, imagesSubfolder = true)
                 StepType.ARCHIVE -> archive(step)
             }
         } catch (e: Exception) {
@@ -118,7 +119,7 @@ class TestRunService(
         step: Step,
         exeSetting: String,
         mode: RunMode,
-        perlioUnbuffered: Boolean,
+        auto: Boolean,
         imagesSubfolder: Boolean,
     ) {
         require(exeSetting.isNotBlank()) { "Stel eerst het pad naar ${step.type.label} in." }
@@ -138,12 +139,15 @@ class TestRunService(
 
         step.status = StepStatus.RUNNING
         step.message = (if (replaced) "Overschreven in " else "Gekopieerd naar ") + inputDir
-        val env = if (perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
+        val settings = settingsService.get()
+        val env = if (settings.perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
+        val rules = if (imagesSubfolder) settings.imagesAnswers else settings.pdf2zcbsAnswers
+        val autoAnswers = if (auto) rules.map { AutoAnswer(it.pattern, it.answer, it.secret) } else null
         val notes = listOf(
             "origineel ${step.file.original}",
             "${if (replaced) "overschreven" else "gekopieerd"}: $source -> $target",
         )
-        exeRunner.start(exe, exeDir, "${step.type.label} – ${step.file.newName}", mode, env, notes) { code ->
+        exeRunner.start(exe, exeDir, "${step.type.label} – ${step.file.newName}", mode, env, notes, autoAnswers) { code ->
             synchronized(this) {
                 if (code == 0) {
                     step.status = StepStatus.DONE
