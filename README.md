@@ -3,6 +3,9 @@
 Webinterface ("ZcbsServer") om gescande pdf's van de Historische Kring Heemskerk te verwerken naar ZCBS.
 Kotlin + Spring Boot 4 + Spring Modulith, server-side HTML met Thymeleaf en htmx. Levert één runnable jar.
 
+**Documentatie:** [docs/specs.md](docs/specs.md) (specificaties, keuzes, status, volgende stappen) en
+[docs/zcbs-achtergrond.md](docs/zcbs-achtergrond.md) (ZCBS, images.exe, pdf2zcbs.exe).
+
 ## Bouwen en starten
 
 Vereist Java 21 en Maven.
