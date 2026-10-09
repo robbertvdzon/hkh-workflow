@@ -41,6 +41,11 @@ data class RunSnapshot(
     /** Seconden sinds de laatste uitvoer (of sinds de start als er nog niets kwam). */
     val secondsSinceOutput: Long,
     val inputsSent: Int,
+    /**
+     * Verdacht stil: er draait iets, maar er kwam nog nooit uitvoer, of er kwam niets meer na de laatste
+     * invoer. Wacht het programma gewoon op een antwoord na een zichtbare vraag, dan is dit false.
+     */
+    val suspiciousSilence: Boolean,
     val logFile: String,
     val command: String,
 )
@@ -89,6 +94,7 @@ class ExeRunner(
         @Volatile var chunksReceived = 0L
         @Volatile var lastOutputNanos = startNanos
         @Volatile var inputsSent = 0
+        @Volatile var lastInputNanos = 0L
 
         val running: Boolean get() = finishedAt == null
 
@@ -120,6 +126,9 @@ class ExeRunner(
             chunksReceived = run.chunksReceived,
             secondsSinceOutput = (System.nanoTime() - run.lastOutputNanos) / 1_000_000_000,
             inputsSent = run.inputsSent,
+            suspiciousSilence = run.running &&
+                (System.nanoTime() - maxOf(run.lastOutputNanos, run.lastInputNanos)) / 1_000_000_000 >= 5 &&
+                (run.charsReceived == 0L || run.lastInputNanos > run.lastOutputNanos),
             logFile = run.logFile.toString(),
             command = run.command,
         )
@@ -232,6 +241,7 @@ class ExeRunner(
         val writer = run.writer ?: error("Dit programma draait in een eigen venster; typ daar je antwoord.")
         synchronized(run.output) { run.output.append("⟶ ").append(line).append("\n") }
         run.inputsSent++
+        run.lastInputNanos = System.nanoTime()
         run.logLine("IN    ${quote(line + run.newline)}")
         try {
             writer.write(line + run.newline)

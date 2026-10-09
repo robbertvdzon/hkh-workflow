@@ -90,8 +90,8 @@
                             <span th:text="'Invoerregels verstuurd: ' + ${console.inputsSent}"></span>
                             <a th:href="@{/test/log}" target="_blank">Volledig log</a>
                         </div>
-                        <div class="alert alert-info" style="margin-bottom:8px" th:if="${console.running and console.mode.name() == 'IN_APP' and console.secondsSinceOutput >= 5}">
-                            Al <b th:text="${console.secondsSinceOutput}"></b> seconden geen uitvoer. Wacht het programma op een antwoord dat je niet ziet?
+                        <div class="alert alert-info" style="margin-bottom:8px" th:if="${console.mode.name() == 'IN_APP' and console.suspiciousSilence}">
+                            Er komt geen uitvoer (meer) terwijl het programma draait. Wacht het op een antwoord op een vraag die je niet ziet?
                             Dan houdt het zijn uitvoer waarschijnlijk vast (buffering). Probeer blind een antwoord te sturen, of stop en start opnieuw met PERLIO=:unix.
                         </div>
                         <pre class="console" id="console-out" th:text="${console.output.isEmpty() ? (console.mode.name() == 'WINDOW' ? 'Het programma draait in een eigen venster. Beantwoord de vragen daar; sluit het venster als het klaar is.' : '(nog geen uitvoer)') : console.output}"></pre>
