@@ -2,11 +2,13 @@
 # Nep-pdf2zcbs.exe om de workflow op Mac/Linux te testen. Stelt dezelfde vragen als pdf2zcbs.exe
 # (zie docs/050.pdf, hoofdstuk 3). Haalt tekst uit de pdf met pdftotext als dat geïnstalleerd is.
 # Buffert zijn uitvoer zoals een gewoon Perl-programma; MOCK_UNBUFFERED=1 zet dat uit.
-use strict; use warnings; use File::Copy; use File::Path qw(make_path);
+use strict; use warnings; use File::Copy; use File::Path qw(make_path remove_tree);
 $| = 1 if $ENV{MOCK_UNBUFFERED};
 sub ask { my ($q) = @_; print $q; my $a = <STDIN>; $a = '' unless defined $a; $a =~ s/[\r\n]+$//; return $a; }
 
 print "-" x 76, "\n pdf2zcbs: versie MOCK  Info: hkh-workflow\n", "-" x 76, "\n";
+# Net als de echte pdf2zcbs.exe (handleiding 050, hfdst 11.14): bij elke run wordt de map output geleegd.
+if (-d "output") { remove_tree("output"); print " Map output geleegd (vorige resultaten zijn weg).\n"; }
 opendir(my $dh, ".") or die; my @pdfs = sort grep { /\.pdf$/i && -f $_ } readdir($dh); closedir($dh);
 if (!@pdfs) { print " Geen PDF gevonden in de huidige map.\n"; ask(" Type return to exit\n"); exit 1; }
 make_path("output/pdf", "output/ocr", "output/small");

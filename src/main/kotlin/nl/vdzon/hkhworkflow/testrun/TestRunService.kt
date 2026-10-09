@@ -45,7 +45,7 @@ class TestRunService(
 
     @Synchronized
     fun start(startNumber: String) {
-        check(!exeRunner.isRunning()) { "Er draait nog een programma." }
+        stopPrevious()
         val settings = settingsService.get()
         require(settings.testFolder.isNotBlank()) { "Stel eerst de testmap in bij Instellingen." }
         val testFolder = Path.of(settings.testFolder)
@@ -63,8 +63,15 @@ class TestRunService(
 
     @Synchronized
     fun reset() {
-        check(!exeRunner.isRunning()) { "Er draait nog een programma; stop dat eerst." }
+        stopPrevious()
         run = null
+    }
+
+    /** Een nieuwe test begint schoon: een nog lopend programma wordt gestopt en de console leeggemaakt. */
+    private fun stopPrevious() {
+        check(exeRunner.stopAndWait()) { "Het lopende programma wil niet stoppen; probeer het nog eens." }
+        exeRunner.clear()
+        log.info("Vorige testrun opgeruimd")
     }
 
     @Synchronized

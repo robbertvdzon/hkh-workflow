@@ -10,6 +10,8 @@ import java.nio.file.Path
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -58,6 +60,26 @@ data class RunSnapshot(
     /** Automatisch: er staat een vraag die door geen enkele regel herkend wordt. */
     val autoStuck: Boolean,
 )
+
+/** Eén eerdere of lopende run, afgeleid van het logbestand in de logmap. Blijft dus ook na een herstart zichtbaar. */
+data class RunLogEntry(
+    /** Bestandsnaam van het log (zonder map). */
+    val file: String,
+    val startedAt: LocalDateTime?,
+    val label: String,
+    val running: Boolean,
+    val exitCode: Int?,
+    /** Door de gebruiker gestopt. */
+    val stopped: Boolean,
+    /** Looptijd volgens de laatste logregel, bijv. "3,4 s". */
+    val duration: String?,
+) {
+    val startedText: String get() = startedAt?.format(STARTED_FORMAT) ?: file
+
+    companion object {
+        private val STARTED_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm:ss", Locale.forLanguageTag("nl"))
+    }
+}
 
 /**
  * Start externe programma's (images.exe, pdf2zcbs.exe of op een Mac een vervangend script) één tegelijk.
@@ -156,6 +178,76 @@ class ExeRunner(
         synchronized(run.logWriter) { runCatching { Files.readString(run.logFile) }.getOrNull() }
     }
 
+    /** Inhoud van een logbestand uit de logmap, op naam (alleen namen zoals deze klasse ze zelf maakt). */
+    fun logText(file: String): String? {
+        if (!LOG_NAME.matches(file)) return null
+        val path = logDir.resolve(file)
+        if (!Files.isRegularFile(path)) return null
+        val run = current
+        return if (run != null && run.logFile == path) logText() else runCatching { Files.readString(path) }.getOrNull()
+    }
+
+    /** De laatste [limit] runs volgens de logbestanden, nieuwste boven. */
+    fun history(limit: Int = 50): List<RunLogEntry> {
+        if (!Files.isDirectory(logDir)) return emptyList()
+        val files = Files.list(logDir).use { stream ->
+            stream.filter { Files.isRegularFile(it) && LOG_NAME.matches(it.fileName.toString()) }
+                .map { it.fileName.toString() }
+                .sorted(Comparator.reverseOrder())
+                .limit(limit.toLong())
+                .toList()
+        }
+        return files.map { readEntry(it) }
+    }
+
+    private fun readEntry(file: String): RunLogEntry {
+        val match = LOG_NAME.matchEntire(file)
+        val startedAt = match?.let { runCatching { LocalDateTime.parse(it.groupValues[1], STAMP_FORMAT) }.getOrNull() }
+        var label = match?.groupValues?.get(3) ?: file
+        var exitCode: Int? = null
+        var stopped = false
+        var lastElapsed: String? = null
+        runCatching {
+            Files.lines(logDir.resolve(file), Charsets.UTF_8).use { lines ->
+                var first = true
+                lines.forEach { line ->
+                    if (first) {
+                        first = false
+                        line.substringAfter("] START ", "").takeIf { it.isNotBlank() }?.let { label = it }
+                    }
+                    if (line.contains("] STOP  door gebruiker")) stopped = true
+                    if (line.contains("] EXIT code=")) {
+                        exitCode = line.substringAfter("EXIT code=").substringBefore(",").trim().toIntOrNull()
+                        lastElapsed = line.substringAfter("[").substringBefore("s]").trim()
+                    }
+                }
+            }
+        }
+        val run = current
+        val running = run != null && run.running && run.logFile.fileName.toString() == file
+        val duration = lastElapsed?.toDoubleOrNull()?.let { String.format(Locale.forLanguageTag("nl"), "%.1f s", it) }
+        return RunLogEntry(file, startedAt, label, running, exitCode, stopped, duration)
+    }
+
+    /**
+     * Stopt een eventueel lopend programma en wacht tot het echt gestopt is (max. [timeoutSeconds]).
+     * @return true als er niets (meer) draait.
+     */
+    fun stopAndWait(timeoutSeconds: Long = 5): Boolean {
+        val run = current?.takeIf { it.running } ?: return true
+        kill()
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeoutSeconds)
+        while (run.running && System.nanoTime() < deadline) Thread.sleep(50)
+        return !run.running
+    }
+
+    /** Vergeet de laatste run, zodat de console leeg is. Alleen als er niets draait. */
+    @Synchronized
+    fun clear() {
+        check(current?.running != true) { "Er draait nog een programma: ${current?.label}" }
+        current = null
+    }
+
     /**
      * Start [exe] met [workingDir] als werkmap. [onExit] wordt aangeroepen met de exitcode zodra het
      * proces stopt.
@@ -182,7 +274,7 @@ class ExeRunner(
         }
         val id = ids.incrementAndGet()
         Files.createDirectories(logDir)
-        val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
+        val stamp = LocalDateTime.now().format(STAMP_FORMAT)
         val safeLabel = label.replace(Regex("[^A-Za-z0-9._-]+"), "_").trim('_')
         val logFile = logDir.resolve("run-$stamp-$id-$safeLabel.log")
         val logWriter = Files.newBufferedWriter(logFile, Charsets.UTF_8)
@@ -364,5 +456,9 @@ class ExeRunner(
     companion object {
         private const val MAX_OUTPUT = 200_000
         private const val MAX_AUTO_ANSWERS = 100
+        private val STAMP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
+
+        /** Logbestandsnaam zoals [start] die maakt: run-<datum-tijd>-<id>-<label>.log. */
+        private val LOG_NAME = Regex("run-(\\d{8}-\\d{6})-(\\d+)-([A-Za-z0-9._-]*)\\.log")
     }
 }

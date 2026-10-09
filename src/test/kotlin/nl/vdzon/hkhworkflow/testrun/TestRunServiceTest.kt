@@ -65,4 +65,15 @@ class TestRunServiceTest {
         val later = service.view()!!.rows[1].cells[0]
         assertThrows<IllegalStateException> { service.execute(later.id, RunMode.IN_APP) }
     }
+
+    @Test
+    fun `a new test replaces the previous one without reset`() {
+        val service = service()
+        service.start("1")
+        service.execute(service.view()!!.next!!.id, RunMode.IN_APP)
+        service.start("5")
+        val view = service.view()!!
+        assertEquals("5", view.startNumber)
+        assertEquals(0, view.doneCount)
+    }
 }

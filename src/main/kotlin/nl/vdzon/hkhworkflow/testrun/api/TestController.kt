@@ -32,8 +32,22 @@ class TestController(
         model.addAttribute("pdfs", testRunService.pdfsInTestFolder().map { it.fileName.toString() })
         model.addAttribute("run", testRunService.view())
         model.addAttribute("console", exeRunner.snapshot())
+        model.addAttribute("runs", exeRunner.history())
         return "test"
     }
+
+    /** Het logbestand van een eerdere run, als fragment onder de runlijst op de testpagina. */
+    @GetMapping("/test/runs/log")
+    fun runLog(@RequestParam("file") file: String, model: Model): String {
+        model.addAttribute("logFile", file)
+        model.addAttribute("logText", exeRunner.logText(file) ?: "Logbestand niet gevonden.")
+        return "test :: runlog"
+    }
+
+    /** Hetzelfde logbestand als platte tekst (voor een nieuw tabblad). */
+    @GetMapping("/test/runs/raw", produces = ["text/plain;charset=UTF-8"])
+    @ResponseBody
+    fun runLogRaw(@RequestParam("file") file: String): String = exeRunner.logText(file) ?: "Logbestand niet gevonden."
 
     /** Fragment dat elke seconde wordt opgehaald zolang er een programma draait. */
     @GetMapping("/test/console")

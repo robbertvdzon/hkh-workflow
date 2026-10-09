@@ -11,7 +11,7 @@
                 <p class="sub">Verwerk de pdf's uit de testmap stap voor stap: hernoemen → pdf2zcbs.exe → images.exe → archiveren.</p>
             </div>
             <form th:if="${run != null}" method="post" th:action="@{/test/reset}">
-                <button class="btn btn-s" type="submit" th:disabled="${console != null and console.running}">Nieuwe test</button>
+                <button class="btn btn-s" type="submit" title="Stopt een nog lopend programma en maakt de console leeg">Nieuwe test</button>
             </form>
         </div>
 
@@ -133,6 +133,43 @@
             </section>
             <p class="hint" style="margin:0">Werkmap: <span class="mono" th:text="${run.workDir}"></span> · beginnummer <span class="mono" th:text="${run.startNumber}"></span></p>
         </th:block>
+
+        <!-- Runs: alle logbestanden uit de logmap, nieuwste boven -->
+        <section style="display:flex;flex-direction:column;gap:10px">
+            <div>
+                <h2 style="margin:0">Runs</h2>
+                <p class="hint" style="margin:4px 0 0">Elke start van een programma heeft een eigen logbestand met tijd sinds start per regel. Nieuwste boven; blijft staan na een herstart van de app.</p>
+            </div>
+            <div class="table">
+                <div class="tr th" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(120px,auto)">
+                    <span>Gestart</span><span>Programma</span><span>Resultaat</span><span>Duur</span><span>Log</span>
+                </div>
+                <div class="tr" th:if="${runs.isEmpty()}"><span class="hint">Nog geen runs.</span></div>
+                <div class="tr" th:each="r : ${runs}" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(120px,auto)">
+                    <span class="mono" th:text="${r.startedText}"></span>
+                    <span th:text="${r.label}"></span>
+                    <span>
+                        <span th:if="${r.running}" class="chip c-busy">Draait</span>
+                        <span th:if="${!r.running and r.stopped}" class="chip c-err">Gestopt door gebruiker</span>
+                        <span th:if="${!r.running and !r.stopped and r.exitCode == 0}" class="chip c-ok">Klaar (exitcode 0)</span>
+                        <span th:if="${!r.running and !r.stopped and r.exitCode != null and r.exitCode != 0}" class="chip c-err" th:text="'Mislukt (exitcode ' + ${r.exitCode} + ')'"></span>
+                        <span th:if="${!r.running and !r.stopped and r.exitCode == null}" class="chip c-neutral" title="Geen EXIT-regel in het log: de app is gestopt terwijl het programma draaide">Onbekend</span>
+                    </span>
+                    <span class="mono" th:text="${r.duration ?: '–'}"></span>
+                    <span class="row-actions">
+                        <button class="btn btn-s" type="button" th:attr="hx-get=@{/test/runs/log(file=${r.file})}" hx-target="#runlog" hx-swap="innerHTML">Toon</button>
+                        <a th:href="@{/test/runs/raw(file=${r.file})}" target="_blank">Openen</a>
+                    </span>
+                </div>
+            </div>
+            <div id="runlog"></div>
+            <div th:fragment="runlog" th:remove="tag">
+                <div th:if="${logFile != null}" style="display:flex;flex-direction:column;gap:6px">
+                    <div class="hint">Log: <span class="mono" th:text="${logFile}"></span></div>
+                    <pre class="console" style="height:420px" th:text="${logText}"></pre>
+                </div>
+            </div>
+        </section>
     </main>
 </div>
 <script>

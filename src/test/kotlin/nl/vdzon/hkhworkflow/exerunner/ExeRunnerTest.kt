@@ -54,4 +54,39 @@ class ExeRunnerTest {
         assertFalse(snapshot.output.contains("geheim"), "wachtwoord mag niet in de uitvoer staan")
         assertFalse(runner.logText()!!.contains("geheim"), "wachtwoord mag niet in het log staan")
     }
+
+    @Test
+    fun `history lists finished runs newest first and clear empties the console`() {
+        val exe = script("echo hallo")
+        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        repeat(2) { i ->
+            val done = CountDownLatch(1)
+            runner.start(exe, dir, "run $i", RunMode.IN_APP) { done.countDown() }
+            assertTrue(done.await(10, TimeUnit.SECONDS))
+            Thread.sleep(1100) // de tijdstempel in de bestandsnaam heeft secondenresolutie
+        }
+
+        val history = runner.history()
+        assertEquals(listOf("run 1", "run 0"), history.map { it.label })
+        assertTrue(history.all { !it.running && it.exitCode == 0 && it.duration != null })
+        assertTrue(runner.logText(history[0].file)!!.contains("EXIT code=0"))
+        assertEquals(null, runner.logText("../geheim.txt"), "alleen eigen lognamen")
+
+        assertTrue(runner.stopAndWait(), "niets draait, dus meteen klaar")
+        runner.clear()
+        assertEquals(null, runner.snapshot())
+    }
+
+    @Test
+    fun `stopAndWait kills a running program`() {
+        val exe = script("printf 'wacht...'; read a; echo nooit")
+        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        runner.start(exe, dir, "hangt", RunMode.IN_APP) {}
+        assertTrue(runner.isRunning())
+        assertTrue(runner.stopAndWait(), "programma moet binnen de tijd stoppen")
+        assertFalse(runner.isRunning())
+        assertTrue(runner.history().first().stopped)
+        runner.clear()
+        assertEquals(null, runner.snapshot())
+    }
 }

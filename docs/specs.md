@@ -5,7 +5,7 @@
 > wat images.exe en pdf2zcbs.exe precies doen) staat in [zcbs-achtergrond.md](zcbs-achtergrond.md).
 > De bronnen: de ZCBS-handleidingen in deze map en het UX-ontwerp [ZcbsServer UX.pdf](ZcbsServer%20UX.pdf).
 
-Laatst bijgewerkt: 9 oktober 2026.
+Laatst bijgewerkt: 9 oktober 2026 (middag).
 
 ---
 
@@ -167,6 +167,7 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 | GET | `/test/console` | htmx-fragment, elke seconde zolang er iets draait; stuurt `HX-Refresh` als het klaar is |
 | POST | `/test/console/input` (`line`), `/test/console/stop` | Invoer sturen / programma stoppen |
 | GET | `/test/log` | Logbestand van de laatste run (text/plain) |
+| GET | `/test/runs/log?file=..` | Logbestand van een eerdere run als htmx-fragment (onder de runlijst); `/test/runs/raw?file=..` als text/plain |
 
 ### 5.4 Instellingen
 
@@ -206,6 +207,14 @@ uit Instellingen), **In cmd-venster op de server** (Windows: `cmd /c start "<tit
 computer waar de jar draait, niet bij de browser). Verder: Overslaan; bij mislukken Opnieuw / Toch klaar.
 Exitcode 0 = klaar, anders mislukt. Testrun staat alleen in het geheugen (weg na herstart).
 
+**Nieuwe test** (knop rechtsboven of opnieuw starten): een nog lopend programma wordt gestopt (`stopAndWait`, max 5 s)
+en de console wordt leeggemaakt (`ExeRunner.clear`), zodat de uitvoer van de vorige test niet meer te zien is.
+
+**Runs** (onderaan de testpagina): alle logbestanden uit de logmap, nieuwste boven, met starttijd (uit de bestandsnaam),
+programma + bestand (uit de eerste logregel), resultaat (exitcode, "Gestopt door gebruiker", of "Onbekend" als er geen
+EXIT-regel is), looptijd (uit de EXIT-regel) en knoppen **Toon** (log inline) en **Openen** (nieuw tabblad). Komt uit
+de bestanden zelf, dus blijft staan na een herstart van de app.
+
 ### 5.6 Programma's starten en logging (`ExeRunner`)
 
 - `ProcessBuilder`, stderr samengevoegd met stdout, werkmap = map van de exe.
@@ -230,7 +239,9 @@ Exitcode 0 = klaar, anders mislukt. Testrun staat alleen in het geheugen (weg na
 
 `tools/mock/pdf2zcbs/pdf2zcbs.pl` en `tools/mock/images-werk/images.pl`: Perl-scripts die de vragen uit de
 handleidingen nadoen, maar niets uploaden. Ze bufferen zoals een gewoon Perl-programma (`MOCK_UNBUFFERED=1` zet dat
-uit). Zie [../tools/mock/README.md](../tools/mock/README.md).
+uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke start** (handleiding 050, §11.14) en
+**ruimt images.pl bij "J" echt op** (small/large/100pct en de inhoud van `images/`). Zie
+[../tools/mock/README.md](../tools/mock/README.md).
 
 ### 5.8 Tests
 
@@ -247,7 +258,12 @@ uit). Zie [../tools/mock/README.md](../tools/mock/README.md).
   de vragen bleven hangen tot er (blind) invoer kwam. Het programma "hangt" dan niet, het wacht op een onzichtbare vraag.
 - **Met `PERLIO=:unix` werkt het**: vragen verschijnen direct, handmatig en automatisch antwoorden werkt.
 - Restanten van eerdere pogingen in de map van pdf2zcbs worden opnieuw meegenomen (pdf2zcbs verwerkt **alle** pdf's in
-  zijn map; bij meer dan één pdf vervalt de splitsvraag). `output/` groeit steeds aan.
+  zijn map; bij meer dan één pdf vervalt de splitsvraag).
+- **pdf2zcbs.exe leegt `output/` bij elke start** (handleiding §11.14). De testflow draait pdf2zcbs nu **per bestand**,
+  dus de tekst en thumbnail van bestand 1 zijn weg zodra bestand 2 start. Dat is geen probleem van de app maar van de
+  opzet: beide programma's verwerken alles wat in hun map staat en horen **één keer per batch** te draaien
+  (images.exe adviseert zelfs 5–1000 bestanden per keer; één run = één FTP-sessie en één keer `updates.txt`
+  ophalen/terugzetten). Zie §9.
 - **Nog niet getest met de echte exe's** (perl2exe-programma's op Windows bij HKH). Onbekend: respecteert perl2exe
   `PERLIO`? Werkt verborgen wachtwoordinvoer van images.exe (`Echo : 1` in images.ini) zonder echte console? Komen
   tekens als ë goed door met IBM850?
@@ -271,6 +287,9 @@ uit). Zie [../tools/mock/README.md](../tools/mock/README.md).
 | Automatisch uitvoeren | Regels "uitvoer bevat → antwoord" per programma in Instellingen; wachtwoorden verborgen | Robbert |
 | Knoppen | "Handmatig uitvoeren" en "Automatisch uitvoeren" | Robbert |
 | Commits | Lokaal op `main` als Robbert; Robbert pusht zelf (sessie heeft geen push-rechten/SSH) | — |
+| Nieuwe test | Stopt een lopend programma en maakt de console leeg | Robbert: uitvoer van de vorige test hoort niet meer zichtbaar te zijn |
+| Runlogboek | Lijst van alle runs (uit de logbestanden) op de testpagina, nieuwste boven | Robbert |
+| Nep-exe's | Gedragen zich als de echte: output wissen, opruimen bij J | Robbert |
 
 ---
 
@@ -280,7 +299,8 @@ uit). Zie [../tools/mock/README.md](../tools/mock/README.md).
 - De agent die dit schreef kon **niet compileren** (geen toegang tot Maven Central). Robbert bouwt met
   `mvn clean package` op zijn Mac. Laatst gemelde compileerfout (JsonNode.map in `SettingsService`) is opgelost maar
   nog niet opnieuw gebouwd. Reken op mogelijke compile/testfixes.
-- Thuis getest met nep-exe's: testflow werkt, PERLIO lost buffering op.
+- Thuis getest met nep-exe's: testflow werkt, PERLIO lost buffering op. Build en tests zijn groen (`mvn clean package`
+  op de Mac, 9 oktober).
 
 ## 9. Volgende stappen
 
@@ -289,8 +309,10 @@ uit). Zie [../tools/mock/README.md](../tools/mock/README.md).
    Kijk in het runlog of PERLIO werkt.
 3. Als PERLIO niet werkt bij perl2exe: **pseudo-console** via JetBrains **pty4j** (Windows ConPTY), zodat het programma
    een echte console ziet (lost ook verborgen wachtwoordinvoer op).
-4. Vóór het starten waarschuwen/opruimen als er al andere pdf's in de map van pdf2zcbs of in `images\` staan;
-   de `output\` per bestand wegzetten na afloop.
+4. **Testflow ombouwen naar één run per batch** (zie §6): hernoemen voor alle bestanden → alle kopieën in de map van
+   pdf2zcbs → pdf2zcbs één keer → `output\` wegzetten → alle kopieën in `images\` → images.exe één keer → archiveren.
+   De tabel wordt dan: per bestand hernoemen/archiveren, per batch de twee exe-stappen. Vóór het starten
+   waarschuwen/opruimen als er al andere pdf's in de map van pdf2zcbs of in `images\` staan.
 5. De open vragen uit §2 aan Carla stellen (FTP vs SFTP is cruciaal: images.exe kan alleen FTP).
 6. Echte "Te verwerken": `K:\scabslelly` (submap per scanner) elke minuut scannen + database (status per bestand).
 7. Echte batches (ID `B-yyyyMMdd-HHmm`), voortgang, resultaat met ZCBS-links, "beschreven"-controle, historie.

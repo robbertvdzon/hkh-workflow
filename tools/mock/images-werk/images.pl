@@ -3,7 +3,7 @@
 # (zie docs/042.pdf, hoofdstuk 5) maar uploadt niets. Net als een gewoon Perl-programma zonder
 # $| = 1 buffert het zijn uitvoer als het niet in een terminal draait. Zet MOCK_UNBUFFERED=1 om
 # dat uit te zetten.
-use strict; use warnings; use File::Copy; use File::Path qw(make_path);
+use strict; use warnings; use File::Copy; use File::Path qw(make_path remove_tree);
 $| = 1 if $ENV{MOCK_UNBUFFERED};
 sub ask { my ($q) = @_; print $q; my $a = <STDIN>; $a = '' unless defined $a; $a =~ s/[\r\n]+$//; return $a; }
 
@@ -36,7 +36,10 @@ if ($up =~ /^j/i) {
   my $db = ask(" > AANMAKEN en UPLOADEN van de bijbehorende ", scalar(@files), " nieuwe lege DATABASE RECORDS? [J/N]\n");
   print " - NEP: geen records aangemaakt\n" if $db =~ /^j/i;
 }
-ask(" > VERWIJDEREN (tijdelijk) aangemaakte mappen [small], [large] en [100pct]? [J/N]\n");
-ask(" > VERWIJDEREN inhoud van de map [images] met bron images? [J/N]\n");
+# Opruimen gebeurt echt, net als bij images.exe (stap E).
+my $rm1 = ask(" > VERWIJDEREN (tijdelijk) aangemaakte mappen [small], [large] en [100pct]? [J/N]\n");
+if ($rm1 =~ /^j/i) { remove_tree($_) for qw(small large 100pct); print " - Mappen small/large/100pct verwijderd\n"; }
+my $rm2 = ask(" > VERWIJDEREN inhoud van de map [images] met bron images? [J/N]\n");
+if ($rm2 =~ /^j/i) { unlink("images/$_") for @files; print " - ", scalar(@files), " bestanden uit map images verwijderd\n"; }
 ask(" > Geef een Return/Enter om dit DOS-window te verlaten\n");
 exit 0;
