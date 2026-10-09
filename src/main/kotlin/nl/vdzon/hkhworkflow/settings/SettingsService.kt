@@ -32,9 +32,13 @@ class SettingsService(
                 fun rules(name: String, defaults: List<AnswerRule>): List<AnswerRule> {
                     val array = node.path(name)
                     if (!array.isArray) return defaults
-                    return array.map {
-                        AnswerRule(it.path("pattern").asText(""), it.path("answer").asText(""), it.path("secret").asBoolean(false))
+                    // Expliciete lus: JsonNode in Jackson 3 heeft een eigen map(), dus geen Kotlin-map gebruiken.
+                    val result = mutableListOf<AnswerRule>()
+                    for (i in 0 until array.size()) {
+                        val item = array.get(i)
+                        result.add(AnswerRule(item.path("pattern").asText(""), item.path("answer").asText(""), item.path("secret").asBoolean(false)))
                     }
+                    return result
                 }
                 WorkflowSettings(
                     testFolder = node.path("testFolder").asText(""),
