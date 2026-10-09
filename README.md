@@ -12,13 +12,13 @@ mvn clean package          # bouwt en test; jar komt in target/hkh-workflow.jar
 java -jar target/hkh-workflow.jar
 ```
 
-Open daarna http://localhost:8080 (of `http://<computernaam>:8080` vanaf een ander systeem). De app luistert
+Open daarna http://localhost:9000 (of `http://<computernaam>:9000` vanaf een ander systeem). De app luistert
 op alle netwerkadressen en heeft nog **geen login**: iedereen die de computer kan bereiken kan de exe's
 starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met omgevingsvariabelen:
 
 | Variabele | Standaard | Betekenis |
 |---|---|---|
-| `HKH_WORKFLOW_PORT` | `8080` | Poort |
+| `HKH_WORKFLOW_PORT` | `9000` | Poort |
 | `HKH_WORKFLOW_ADDRESS` | `0.0.0.0` | Adres waarop de app luistert |
 | `HKH_WORKFLOW_SETTINGS_FILE` | `hkh-workflow-settings.json` | Instellingenbestand (relatief = t.o.v. de map waaruit je de jar start) |
 | `HKH_WORKFLOW_CONSOLE_CHARSET` | `IBM850` | Codepagina van de DOS-uitvoer van de exe's |
