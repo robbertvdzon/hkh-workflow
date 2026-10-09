@@ -16,6 +16,7 @@
         </div>
 
         <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
+        <div class="alert alert-ok" th:if="${info}" th:text="${info}"></div>
 
         <div class="alert alert-info" th:if="${!problems.isEmpty()}">
             Niet alles is ingesteld:
@@ -136,16 +137,21 @@
 
         <!-- Runs: alle logbestanden uit de logmap, nieuwste boven -->
         <section style="display:flex;flex-direction:column;gap:10px">
-            <div>
-                <h2 style="margin:0">Runs</h2>
-                <p class="hint" style="margin:4px 0 0">Elke start van een programma heeft een eigen logbestand met tijd sinds start per regel. Nieuwste boven; blijft staan na een herstart van de app.</p>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px">
+                <div>
+                    <h2 style="margin:0">Runs</h2>
+                    <p class="hint" style="margin:4px 0 0">Elke start van een programma heeft een eigen logbestand met tijd sinds start per regel. Nieuwste boven; blijft staan na een herstart van de app.</p>
+                </div>
+                <form method="post" th:action="@{/test/runs/delete-all}" th:unless="${runs.isEmpty()}" onsubmit="return confirm('Alle logbestanden verwijderen? Het log van een lopend programma blijft staan.')">
+                    <button class="btn btn-s" type="submit" style="color:var(--err)">Alle logs wissen</button>
+                </form>
             </div>
             <div class="table">
-                <div class="tr th" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(120px,auto)">
+                <div class="tr th" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(180px,auto)">
                     <span>Gestart</span><span>Programma</span><span>Resultaat</span><span>Duur</span><span>Log</span>
                 </div>
                 <div class="tr" th:if="${runs.isEmpty()}"><span class="hint">Nog geen runs.</span></div>
-                <div class="tr" th:each="r : ${runs}" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(120px,auto)">
+                <div class="tr" th:each="r : ${runs}" style="grid-template-columns:minmax(150px,auto) minmax(0,1.5fr) minmax(0,1fr) 70px minmax(180px,auto)">
                     <span class="mono" th:text="${r.startedText}"></span>
                     <span th:text="${r.label}"></span>
                     <span>
@@ -159,6 +165,10 @@
                     <span class="row-actions">
                         <button class="btn btn-s" type="button" th:attr="hx-get=@{/test/runs/log(file=${r.file})}" hx-target="#runlog" hx-swap="innerHTML">Toon</button>
                         <a th:href="@{/test/runs/raw(file=${r.file})}" target="_blank">Openen</a>
+                        <form method="post" th:action="@{/test/runs/delete}" th:unless="${r.running}" onsubmit="return confirm('Dit logbestand verwijderen?')">
+                            <input type="hidden" name="file" th:value="${r.file}">
+                            <button class="btn btn-s" type="submit" style="color:var(--err)" title="Verwijder dit logbestand">Wis</button>
+                        </form>
                     </span>
                 </div>
             </div>

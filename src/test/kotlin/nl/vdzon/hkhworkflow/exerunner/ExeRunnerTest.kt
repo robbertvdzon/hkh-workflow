@@ -89,4 +89,26 @@ class ExeRunnerTest {
         runner.clear()
         assertEquals(null, runner.snapshot())
     }
+
+    @Test
+    fun `logs can be deleted one by one or all at once, except a running one`() {
+        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val done = CountDownLatch(1)
+        runner.start(script("echo klaar"), dir, "klaar", RunMode.IN_APP) { done.countDown() }
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+        Thread.sleep(1100)
+        runner.start(script("printf 'wacht'; read a"), dir, "hangt", RunMode.IN_APP) {}
+        assertEquals(2, runner.history().size)
+
+        val running = runner.history().first { it.running }
+        assertFalse(runner.deleteLog(running.file), "lopend log mag niet weg")
+        assertFalse(runner.deleteLog("../iets.log"))
+        assertEquals(1, runner.deleteAllLogs())
+        assertEquals(listOf(running.file), runner.history().map { it.file })
+
+        runner.stopAndWait()
+        assertTrue(runner.deleteLog(running.file))
+        assertEquals(null, runner.snapshot(), "console van een gewist log is weg")
+        assertTrue(runner.history().isEmpty())
+    }
 }

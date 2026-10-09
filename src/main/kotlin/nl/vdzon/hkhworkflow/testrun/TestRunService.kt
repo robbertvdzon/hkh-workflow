@@ -16,7 +16,8 @@ import org.springframework.stereotype.Service
 
 /**
  * De testworkflow: alle pdf's in de testmap krijgen een volgnummer en gaan stap voor stap door
- * hernoemen → pdf2zcbs.exe → images.exe → archiveren. Elke stap start de gebruiker zelf.
+ * hernoemen (per bestand) → pdf2zcbs.exe (één keer) → images.exe (één keer) → archiveren (per bestand).
+ * Elke stap start de gebruiker zelf.
  *
  * Het origineel blijft tot het archiveren onaangeroerd in de testmap; "hernoemen" maakt een kopie
  * met het nieuwe nummer in de submap `werk`. Zo kan het origineel met zijn eigen naam worden
@@ -56,7 +57,9 @@ class TestRunService(
         val numbers = sequenceNumbers(startNumber, pdfs.size)
         val files = pdfs.mapIndexed { i, path -> TestFile(i, path, numbers[i]) }
         var id = 0
-        val steps = StepType.entries.flatMap { type -> files.map { Step(++id, type, it) } }
+        val steps = StepType.entries.flatMap { type ->
+            if (type.perFile) files.map { Step(++id, type, listOf(it)) } else listOf(Step(++id, type, files))
+        }
         run = TestRun(startNumber.trim(), testFolder, testFolder.resolve("werk"), files, steps)
         log.info("Testrun gestart: {} bestanden vanaf {}", files.size, startNumber)
     }
@@ -133,28 +136,41 @@ class TestRunService(
         val exe = Path.of(exeSetting)
         require(Files.isRegularFile(exe)) { "${step.type.label} niet gevonden: $exe" }
         val exeDir = exe.toAbsolutePath().parent
-        val source = current.workDir.resolve(step.file.newName)
-        check(Files.exists(source)) { "Werkbestand ontbreekt: $source (is de hernoem-stap gedaan?)" }
+        val sources = step.files.map { it to current.workDir.resolve(it.newName) }
+        sources.forEach { (_, source) -> check(Files.exists(source)) { "Werkbestand ontbreekt: $source (is de hernoem-stap gedaan?)" } }
 
-        // pdf2zcbs.exe verwerkt de pdf's in zijn eigen map; images.exe die in de submap 'images'.
+        // pdf2zcbs.exe verwerkt alle pdf's in zijn eigen map; images.exe alles in de submap 'images'.
+        // Daarom draaien ze één keer per batch, en mag er niets anders in die map staan.
         val inputDir = if (imagesSubfolder) exeDir.resolve("images") else exeDir
         Files.createDirectories(inputDir)
-        val target = inputDir.resolve(step.file.newName)
-        // Bij opnieuw proberen staat het bestand er vaak nog van de vorige poging: overschrijven.
-        val replaced = Files.exists(target)
-        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+        val expected = step.files.map { it.newName.lowercase() }.toSet()
+        val strangers = Files.list(inputDir).use { list ->
+            list.filter { Files.isRegularFile(it) && it.extension.equals("pdf", ignoreCase = true) && it.name.lowercase() !in expected }
+                .map { it.name }.sorted().toList()
+        }
+        check(strangers.isEmpty()) {
+            "In $inputDir staan nog andere pdf's die ${step.type.label} ook zou verwerken: ${strangers.joinToString()}. Verwijder die eerst."
+        }
+        val notes = mutableListOf<String>()
+        var replaced = 0
+        sources.forEach { (file, source) ->
+            val target = inputDir.resolve(file.newName)
+            // Bij opnieuw proberen staan de bestanden er vaak nog van de vorige poging: overschrijven.
+            val existed = Files.exists(target)
+            if (existed) replaced++
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+            notes += "origineel ${file.original}"
+            notes += "${if (existed) "overschreven" else "gekopieerd"}: $source -> $target"
+        }
 
         step.status = StepStatus.RUNNING
-        step.message = (if (replaced) "Overschreven in " else "Gekopieerd naar ") + inputDir
+        step.message = "${sources.size} bestanden in $inputDir gezet" + (if (replaced > 0) " ($replaced overschreven)" else "")
         val settings = settingsService.get()
         val env = if (settings.perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
         val rules = if (imagesSubfolder) settings.imagesAnswers else settings.pdf2zcbsAnswers
         val autoAnswers = if (auto) rules.map { AutoAnswer(it.pattern, it.answer, it.secret) } else null
-        val notes = listOf(
-            "origineel ${step.file.original}",
-            "${if (replaced) "overschreven" else "gekopieerd"}: $source -> $target",
-        )
-        exeRunner.start(exe, exeDir, "${step.type.label} – ${step.file.newName}", mode, env, notes, autoAnswers) { code ->
+        val label = "${step.type.label} – ${sources.size} ${if (sources.size == 1) "bestand" else "bestanden"} (${step.files.joinToString { it.newName }})"
+        exeRunner.start(exe, exeDir, label, mode, env, notes, autoAnswers) { code ->
             synchronized(this) {
                 if (code == 0) {
                     step.status = StepStatus.DONE
@@ -200,20 +216,20 @@ class TestRunService(
             id = step.id,
             type = step.type.name,
             typeLabel = step.type.label,
-            originalName = step.file.originalName,
-            newName = step.file.newName,
+            fileCount = step.files.size,
             status = step.status.name,
             statusLabel = step.status.label,
             message = step.message,
-            question = step.type.question.format(step.file.originalName, step.file.newName),
+            question = step.question,
             current = step.id == next?.id,
-            usesExe = step.type == StepType.PDF2ZCBS || step.type == StepType.IMAGES,
+            usesExe = !step.type.perFile,
         )
+        // Per bestand een rij; een batchstap staat (met dezelfde status) in elke rij.
         val rows = current.files.map { file ->
             FileRowView(
                 originalName = file.originalName,
                 newName = file.newName,
-                cells = current.steps.filter { it.file.index == file.index }.map(::toView),
+                cells = StepType.entries.map { type -> toView(current.steps.first { it.type == type && it.files.contains(file) }) },
             )
         }
         return TestRunView(

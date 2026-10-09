@@ -229,6 +229,19 @@ class ExeRunner(
         return RunLogEntry(file, startedAt, label, running, exitCode, stopped, duration)
     }
 
+    /** Verwijdert één logbestand. Het log van een lopend programma blijft staan. */
+    fun deleteLog(file: String): Boolean {
+        if (!LOG_NAME.matches(file)) return false
+        val path = logDir.resolve(file)
+        val run = current
+        if (run != null && run.running && run.logFile == path) return false
+        if (run != null && run.logFile == path) current = null
+        return Files.deleteIfExists(path)
+    }
+
+    /** Verwijdert alle logbestanden behalve dat van een lopend programma. @return aantal verwijderd. */
+    fun deleteAllLogs(): Int = history(Int.MAX_VALUE).count { deleteLog(it.file) }
+
     /**
      * Stopt een eventueel lopend programma en wacht tot het echt gestopt is (max. [timeoutSeconds]).
      * @return true als er niets (meer) draait.

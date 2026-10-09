@@ -168,6 +168,7 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 | POST | `/test/console/input` (`line`), `/test/console/stop` | Invoer sturen / programma stoppen |
 | GET | `/test/log` | Logbestand van de laatste run (text/plain) |
 | GET | `/test/runs/log?file=..` | Logbestand van een eerdere run als htmx-fragment (onder de runlijst); `/test/runs/raw?file=..` als text/plain |
+| POST | `/test/runs/delete` (`file`), `/test/runs/delete-all` | Eén logbestand / alle logbestanden verwijderen (niet dat van een lopend programma) |
 
 ### 5.4 Instellingen
 
@@ -190,16 +191,18 @@ Opgeslagen in JSON; velden:
 ### 5.5 Testworkflow (pagina Test)
 
 1. Vraagt een **beginnummer** (alleen cijfers; voorloopnullen blijven: `01650` → `01651`).
-2. Neemt alle `*.pdf` in de testmap (niet recursief, gesorteerd op naam) en maakt per bestand vier stappen.
-   Volgorde: eerst alle hernoem-stappen, dan alle pdf2zcbs, dan alle images, dan alle archiveer-stappen.
+2. Neemt alle `*.pdf` in de testmap (niet recursief, gesorteerd op naam) en maakt de stappen: per bestand
+   hernoemen, **één** pdf2zcbs-stap voor alle bestanden, **één** images-stap voor alle bestanden, per bestand archiveren
+   (2n + 2 stappen). De programma's draaien één keer per batch omdat ze alles verwerken wat in hun map staat en
+   pdf2zcbs zijn `output/` bij elke start leegt. In de tabel staat een batchstap (met dezelfde status) in elke rij.
 3. **Elke stap start de gebruiker zelf.** De UI toont de eerstvolgende stap als vraag ("Run pdf2zcbs.exe voor 33.pdf?")
    met knoppen; alleen die stap mag uitgevoerd worden. Overzichtstabel met status per bestand × stap.
 
 | Stap | Wat er gebeurt |
 |---|---|
 | Hernoemen | **Kopie** van het origineel naar `<testmap>\werk\<nummer>.pdf`. Origineel blijft staan (keuze: archiveren gebeurt met de originele naam). Faalt als het doel al bestaat. |
-| pdf2zcbs.exe | Kopieert `werk\<nummer>.pdf` naar **de map van pdf2zcbs.exe** (overschrijft bij opnieuw proberen) en start het programma met die map als werkmap, **zonder argumenten**. |
-| images.exe | Kopieert naar **`<map van images.exe>\images\`** en start images.exe in zijn eigen map, zonder argumenten. |
+| pdf2zcbs.exe | Kopieert **alle** `werk\<nummer>.pdf` van de batch naar **de map van pdf2zcbs.exe** (overschrijft bij opnieuw proberen) en start het programma één keer met die map als werkmap, **zonder argumenten**. Weigert (stap mislukt) als er andere pdf's in die map staan, want die zouden meegaan. |
+| images.exe | Kopieert alle bestanden naar **`<map van images.exe>\images\`** en start images.exe één keer in zijn eigen map, zonder argumenten. Zelfde controle op vreemde pdf's. |
 | Archiveren | **Verplaatst het origineel** (oorspronkelijke naam) naar de archived-map; bestaat de naam al, dan `naam-1.pdf` enz. |
 
 Knoppen bij een exe-stap: **Handmatig uitvoeren** (jij antwoordt in de browser), **Automatisch uitvoeren** (antwoorden
@@ -212,8 +215,9 @@ en de console wordt leeggemaakt (`ExeRunner.clear`), zodat de uitvoer van de vor
 
 **Runs** (onderaan de testpagina): alle logbestanden uit de logmap, nieuwste boven, met starttijd (uit de bestandsnaam),
 programma + bestand (uit de eerste logregel), resultaat (exitcode, "Gestopt door gebruiker", of "Onbekend" als er geen
-EXIT-regel is), looptijd (uit de EXIT-regel) en knoppen **Toon** (log inline) en **Openen** (nieuw tabblad). Komt uit
-de bestanden zelf, dus blijft staan na een herstart van de app.
+EXIT-regel is), looptijd (uit de EXIT-regel) en knoppen **Toon** (log inline), **Openen** (nieuw tabblad) en **Wis**.
+**Alle logs wissen** ruimt de hele logmap op; het log van een lopend programma blijft altijd staan. Komt uit de
+bestanden zelf, dus blijft staan na een herstart van de app.
 
 ### 5.6 Programma's starten en logging (`ExeRunner`)
 
@@ -290,6 +294,8 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 | Nieuwe test | Stopt een lopend programma en maakt de console leeg | Robbert: uitvoer van de vorige test hoort niet meer zichtbaar te zijn |
 | Runlogboek | Lijst van alle runs (uit de logbestanden) op de testpagina, nieuwste boven | Robbert |
 | Nep-exe's | Gedragen zich als de echte: output wissen, opruimen bij J | Robbert |
+| Exe-stappen | Eén run per batch (pdf2zcbs en images.exe), met controle op vreemde pdf's in de exe-map | Robbert; de programma's verwerken hun hele map |
+| Logs wissen | Per run en alles in één keer, nooit het log van een lopend programma | Robbert: het worden er veel |
 
 ---
 
@@ -309,10 +315,8 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
    Kijk in het runlog of PERLIO werkt.
 3. Als PERLIO niet werkt bij perl2exe: **pseudo-console** via JetBrains **pty4j** (Windows ConPTY), zodat het programma
    een echte console ziet (lost ook verborgen wachtwoordinvoer op).
-4. **Testflow ombouwen naar één run per batch** (zie §6): hernoemen voor alle bestanden → alle kopieën in de map van
-   pdf2zcbs → pdf2zcbs één keer → `output\` wegzetten → alle kopieën in `images\` → images.exe één keer → archiveren.
-   De tabel wordt dan: per bestand hernoemen/archiveren, per batch de twee exe-stappen. Vóór het starten
-   waarschuwen/opruimen als er al andere pdf's in de map van pdf2zcbs of in `images\` staan.
+4. ~~Testflow ombouwen naar één run per batch~~ (gedaan, 9 oktober). Nog te doen: de `output\` van pdf2zcbs na afloop
+   wegzetten (bijv. naar `werk\pdf2zcbs-output\`), want de volgende run wist hem.
 5. De open vragen uit §2 aan Carla stellen (FTP vs SFTP is cruciaal: images.exe kan alleen FTP).
 6. Echte "Te verwerken": `K:\scabslelly` (submap per scanner) elke minuut scannen + database (status per bestand).
 7. Echte batches (ID `B-yyyyMMdd-HHmm`), voortgang, resultaat met ZCBS-links, "beschreven"-controle, historie.

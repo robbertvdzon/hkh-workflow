@@ -44,6 +44,17 @@ class TestController(
         return "test :: runlog"
     }
 
+    @PostMapping("/test/runs/delete")
+    fun deleteRun(@RequestParam("file") file: String, redirect: RedirectAttributes): String = attempt(redirect) {
+        check(exeRunner.deleteLog(file)) { "Dit log kan niet verwijderd worden (bestaat het niet, of draait het programma nog?)." }
+    }
+
+    @PostMapping("/test/runs/delete-all")
+    fun deleteAllRuns(redirect: RedirectAttributes): String = attempt(redirect) {
+        val n = exeRunner.deleteAllLogs()
+        redirect.addFlashAttribute("info", "$n logbestanden verwijderd.")
+    }
+
     /** Hetzelfde logbestand als platte tekst (voor een nieuw tabblad). */
     @GetMapping("/test/runs/raw", produces = ["text/plain;charset=UTF-8"])
     @ResponseBody

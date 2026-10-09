@@ -31,12 +31,17 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
 - **Te verwerken, Batch controleren, Batch bezig/klaar, Batches** — de schermen uit `docs/ZcbsServer UX.pdf`,
   nog met **demo-gegevens**.
 - **Instellingen** — testmap, archived-map, pad naar `images.exe` en `pdf2zcbs.exe`. Opgeslagen als JSON.
-- **Test** — verwerkt alle pdf's uit de testmap, elke stap per bestand met de hand gestart:
-  1. **Hernoemen** — vraagt eerst een beginnummer; elk bestand krijgt een volgnummer (voorloopnullen blijven).
-     Het origineel blijft staan; er komt een kopie `<nummer>.pdf` in `<testmap>\werk`.
-  2. **pdf2zcbs.exe** — kopieert `<nummer>.pdf` naar de map van pdf2zcbs.exe en start het programma daar.
-  3. **images.exe** — kopieert `<nummer>.pdf` naar `<map van images.exe>\images` en start het programma.
-  4. **Archiveren** — verplaatst het origineel (met oorspronkelijke naam) naar de archived-map.
+- **Test** — verwerkt alle pdf's uit de testmap, elke stap met de hand gestart:
+  1. **Hernoemen** (per bestand) — vraagt eerst een beginnummer; elk bestand krijgt een volgnummer (voorloopnullen
+     blijven). Het origineel blijft staan; er komt een kopie `<nummer>.pdf` in `<testmap>\werk`.
+  2. **pdf2zcbs.exe** (één keer voor de hele batch) — zet alle `<nummer>.pdf` in de map van pdf2zcbs.exe en start
+     het programma daar. Het weigert als er nog andere pdf's in die map staan.
+  3. **images.exe** (één keer voor de hele batch) — zet alle `<nummer>.pdf` in `<map van images.exe>\images` en
+     start het programma. Ook hier: geen andere pdf's in die map.
+  4. **Archiveren** (per bestand) — verplaatst het origineel (met oorspronkelijke naam) naar de archived-map.
+
+  De programma's draaien één keer per batch omdat ze alles verwerken wat in hun map staat, en pdf2zcbs zijn
+  `output\` bij elke start leegt.
 
   De exe's draaien **in de app**: de uitvoer verschijnt in de browser. Kies **Handmatig uitvoeren** om zelf te
   antwoorden (knoppen voor Enter/J/N) of **Automatisch uitvoeren**: de app herkent de vragen aan de teksten bij
@@ -53,6 +58,10 @@ Elke run van een programma krijgt een eigen logbestand in `logs/` (instelbaar me
 met tijdstempels van elk binnengekomen stuk uitvoer, elke verstuurde invoer, stille periodes en de exitcode.
 Op de testpagina staat een link **Volledig log** en een teller van ontvangen tekens. Zo is te zien of een
 programma zijn vragen pas laat toont (buffering). Zet dan **PERLIO=:unix** aan bij Instellingen.
+
+Onderaan de testpagina staat **Runs**: alle logbestanden, nieuwste boven, met starttijd, programma, resultaat en
+looptijd. Per run: **Toon** (inline), **Openen** (nieuw tabblad), **Wis**. **Alle logs wissen** ruimt de hele map op;
+het log van een lopend programma blijft staan. **Nieuwe test** stopt een nog lopend programma en maakt de console leeg.
 
 ### Testen op een Mac
 
