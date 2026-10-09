@@ -141,6 +141,7 @@ class ExeRunner(
         label: String,
         mode: RunMode,
         extraEnv: Map<String, String> = emptyMap(),
+        notes: List<String> = emptyList(),
         onExit: (Int?) -> Unit,
     ): RunSnapshot {
         check(!isRunning()) { "Er draait al een programma: ${current?.label}" }
@@ -180,7 +181,14 @@ class ExeRunner(
         run.logLine("  modus       : $mode")
         run.logLine("  charset     : $charset (invoer eindigt op ${if (run.newline == "\r\n") "CRLF" else "LF"})")
         run.logLine("  extra env   : ${if (extraEnv.isEmpty()) "(geen)" else extraEnv}")
+        run.logLine("  argumenten  : ${if (command.size > 1 && mode == RunMode.IN_APP) command.drop(1) else "(geen; het programma werkt op de bestanden in zijn werkmap en stelt zijn vragen via de console)"}")
         run.logLine("  pid         : ${runCatching { process.pid() }.getOrNull()}")
+        notes.forEach { run.logLine("  voorbereid  : $it") }
+        runCatching {
+            Files.list(workingDir).use { files ->
+                files.sorted().forEach { f -> run.logLine("  werkmap bevat: ${f.fileName}${if (Files.isDirectory(f)) "/" else ""}") }
+            }
+        }
         log.info("Gestart: {} ({}) in {}, log {}", label, mode, workingDir, logFile)
 
         Thread({ pump(run) }, "exe-output-${run.id}").apply { isDaemon = true }.start()

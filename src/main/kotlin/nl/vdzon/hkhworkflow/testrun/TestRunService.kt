@@ -139,7 +139,11 @@ class TestRunService(
         step.status = StepStatus.RUNNING
         step.message = (if (replaced) "Overschreven in " else "Gekopieerd naar ") + inputDir
         val env = if (perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
-        exeRunner.start(exe, exeDir, "${step.type.label} – ${step.file.newName}", mode, env) { code ->
+        val notes = listOf(
+            "origineel ${step.file.original}",
+            "${if (replaced) "overschreven" else "gekopieerd"}: $source -> $target",
+        )
+        exeRunner.start(exe, exeDir, "${step.type.label} – ${step.file.newName}", mode, env, notes) { code ->
             synchronized(this) {
                 if (code == 0) {
                     step.status = StepStatus.DONE
