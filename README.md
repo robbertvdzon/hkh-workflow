@@ -39,8 +39,10 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
   antwoorden (knoppen voor Enter/J/N) of **Automatisch uitvoeren**: de app herkent de vragen aan de teksten bij
   Instellingen en geeft het bijbehorende antwoord. Wachtwoorden worden nergens getoond of gelogd (wel leesbaar
   opgeslagen in het instellingenbestand). Automatisch werkt alleen als de vragen zichtbaar zijn, dus met
-  **PERLIO=:unix** aan (staat standaard aan bij Instellingen). Lukt dat niet (bijvoorbeeld omdat een programma zijn vragen pas toont als je
-  antwoordt), kies dan **In eigen venster**: het programma opent in een eigen cmd-venster.
+  **PERLIO=:unix** aan (staat standaard aan bij Instellingen).
+
+  Lukt het in de app niet (bijvoorbeeld omdat een programma zijn vragen pas toont als je
+  antwoordt), kies dan **In cmd-venster op de server**: het programma opent in een eigen cmd-venster op de computer waar de jar draait (alleen Windows).
 
 ### Logging
 
