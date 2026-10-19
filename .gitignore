@@ -9,3 +9,7 @@ tools/mock/images-werk/images/
 tools/mock/images-werk/small/
 tools/mock/images-werk/large/
 tools/mock/images-werk/100pct/
+.DS_Store
+# Bestanden van de ZCBS-server en de Windows-pc bij HKH (alleen lokaal); zie docs/server/README.md
+docs/server/*
+!docs/server/README.md
