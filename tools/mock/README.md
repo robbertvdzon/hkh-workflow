@@ -15,3 +15,25 @@ je thuis al hetzelfde probleem als met de echte exe's te verwachten is. Zet bij 
 **PERLIO=:unix** aan of uit om het verschil te zien.
 
 De scripts schrijven in hun eigen map (`output/`, `images/`, `small/` …); die mappen staan in `.gitignore`.
+
+## Echte plaatjes en uitvoer
+
+- `pdf2zcbs.pl` maakt per pdf `output/pdf`, `output/ocr` (met `pdftotext`), `output/small` en `output/large` (met `pdftoppm`,
+  de eerste pagina) en wist `output/` bij elke start, zoals het echte programma. Zonder `pdftoppm` komen er kleine nep-jpg's.
+- `images.pl` maakt van de jpg's in `images/` een small (100 of 250 volgens de gekozen resolutie), large (700) en 100pct
+  (met `sips` op macOS; het schaalt niet op) en ruimt alleen op als je op de verwijdervragen J antwoordt.
+
+## Een sftp-server om de upload te proberen
+
+De upload van tekst en pdf's kun je thuis proberen tegen een sftp-server in het geheugen. Bouw eerst en haal het
+classpath op, en start dan de server:
+
+```bash
+mvn -q test-compile dependency:build-classpath -Dmdep.outputFile=/tmp/hkh-cp.txt -Dmdep.includeScope=test
+mkdir -p /tmp/hkh-sftp/public_html/archief/ocr /tmp/hkh-sftp/public_html/archief/pdf
+java -cp "target/test-classes:target/classes:$(cat /tmp/hkh-cp.txt)" nl.vdzon.hkhworkflow.sftp.TestSftpServerMainKt /tmp/hkh-sftp /tmp/hkh-hostkey.ser
+```
+
+Het programma toont de poort, de vingerafdruk en het wachtwoord (gebruiker `robbert`, wachtwoord `geheim`). Zet bij Instellingen
+host `localhost`, die poort, basismap `/public_html` en klik Test verbinding; zet de vingerafdruk vast.
+

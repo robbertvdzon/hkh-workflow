@@ -47,24 +47,42 @@
         <th:block th:if="${run != null}">
             <!-- Volgende stap -->
             <section class="next" th:if="${run.next != null}">
-                <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:0">
                     <span class="hint" th:text="'Stap ' + (${run.doneCount} + 1) + ' van ' + ${run.totalCount}"></span>
                     <span class="q" th:text="${run.next.question}"></span>
-                    <span class="hint" th:if="${run.next.status == 'FAILED'}" style="color:var(--err)" th:text="${run.next.message}"></span>
-                    <span class="hint" th:if="${run.next.status == 'RUNNING'}">Bezig… beantwoord de vragen hieronder.</span>
+                    <ul class="plan" th:if="${run.next.status == 'PENDING' and !run.next.plan.isEmpty()}">
+                        <li th:each="line : ${run.next.plan}" th:text="${line}"></li>
+                    </ul>
+                    <ul class="plan problem" th:if="${!run.next.problems.isEmpty()}">
+                        <li th:each="p : ${run.next.problems}" th:text="${p}"></li>
+                    </ul>
+                    <div class="alert alert-info" style="margin:4px 0 0" th:each="w : ${run.next.warnings}" th:text="${w}"></div>
+                    <span class="hint" th:if="${run.next.status == 'FAILED'}" style="color:var(--err);white-space:pre-line" th:text="${run.next.message}"></span>
+                    <span class="hint" th:if="${run.next.status == 'RUNNING' and run.next.usesExe}">Bezig… beantwoord de vragen hieronder.</span>
+                    <span class="hint" th:if="${run.next.status == 'RUNNING' and !run.next.usesExe}">Bezig… even geduld, de pagina laadt opnieuw als het klaar is.</span>
                 </div>
-                <div class="row-actions" th:if="${run.next.status == 'PENDING'}" style="align-items:center">
-                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit">Overslaan</button></form>
-                    <form th:unless="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}"><button class="btn btn-p" type="submit" name="mode" value="IN_APP">Uitvoeren</button></form>
-                    <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}" style="display:flex;gap:8px;align-items:center">
-                        <button class="btn btn-s" type="submit" name="mode" value="WINDOW" title="Opent het programma in een cmd-venster op de computer waar de jar draait (alleen Windows)">In cmd-venster op de server</button>
-                        <button class="btn btn-s" type="submit" name="mode" value="IN_APP" title="Jij beantwoordt de vragen hieronder">Handmatig uitvoeren</button>
-                        <button class="btn btn-p" type="submit" name="auto" value="true" title="De app geeft zelf de antwoorden uit Instellingen">Automatisch uitvoeren</button>
+                <div class="row-actions" th:if="${run.next.status == 'PENDING'}" style="align-items:flex-end;flex-direction:column;gap:10px">
+                    <form th:unless="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}">
+                        <button class="btn btn-p" type="submit" name="mode" value="IN_APP" th:disabled="${!run.next.problems.isEmpty()}">Uitvoeren</button>
                     </form>
+                    <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}" style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
+                        <div th:if="${run.next.type == 'IMAGES'}" style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fffaf0;max-width:380px">
+                            <b style="font-size:13px">Alleen bij Automatisch uitvoeren. Dit schrijft in de echte collectie:</b>
+                            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" name="upload" value="true" id="opt-upload" style="margin-top:2px"> Afbeeldingen uploaden naar de server (FTP)</label>
+                            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" name="records" value="true" id="opt-records" style="margin-top:2px"> Lege records aanmaken in ZCBS</label>
+                            <span class="hint">Beide staan standaard uit. Bij Handmatig uitvoeren antwoord je zelf.</span>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <button class="btn btn-s" type="submit" name="mode" value="WINDOW" th:disabled="${!run.next.problems.isEmpty()}" title="Opent het programma in een cmd-venster op de computer waar de jar draait (alleen Windows)">In cmd-venster op de server</button>
+                            <button class="btn btn-s" type="submit" name="mode" value="IN_APP" th:disabled="${!run.next.problems.isEmpty()}" title="Jij beantwoordt de vragen hieronder">Handmatig uitvoeren</button>
+                            <button class="btn btn-p" type="submit" name="auto" value="true" th:disabled="${!run.next.problems.isEmpty()}" title="De app geeft zelf de antwoorden uit Instellingen">Automatisch uitvoeren</button>
+                        </div>
+                    </form>
+                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit" title="Sla deze stap over, bijvoorbeeld omdat je hem zelf met de hand doet">Overslaan</button></form>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'FAILED'}">
                     <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit">Overslaan</button></form>
-                    <form method="post" th:action="@{/test/steps/{id}/done(id=${run.next.id})}"><button class="btn btn-s" type="submit">Toch klaar</button></form>
+                    <form method="post" th:action="@{/test/steps/{id}/done(id=${run.next.id})}"><button class="btn btn-s" type="submit" title="Alleen als je zelf hebt gecontroleerd dat het goed is gegaan">Toch klaar</button></form>
                     <form method="post" th:action="@{/test/steps/{id}/retry(id=${run.next.id})}"><button class="btn btn-p" type="submit">Opnieuw</button></form>
                 </div>
             </section>
@@ -115,22 +133,32 @@
                 </div>
             </section>
 
-            <!-- Overzicht -->
+            <!-- Overzicht: per bestand de stappen, met daaronder de controle of de bestanden er echt zijn -->
             <section class="table">
-                <div class="tr th" style="grid-template-columns:minmax(0,1.3fr) 90px repeat(4,minmax(0,1fr))">
+                <div class="tr th" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(6,minmax(0,1fr))">
                     <span>Origineel</span><span>Nummer</span>
                     <span th:each="t : ${run.stepTypes}" th:text="${t}"></span>
                 </div>
-                <div class="tr" th:each="row : ${run.rows}" style="grid-template-columns:minmax(0,1.3fr) 90px repeat(4,minmax(0,1fr))">
-                    <span th:text="${row.originalName}"></span>
-                    <span class="mono" th:text="${row.newName}"></span>
-                    <span th:each="c : ${row.cells}" th:title="${c.message}">
-                        <span class="chip"
-                              th:classappend="${c.status == 'DONE'} ? 'c-ok' : (${c.status == 'RUNNING'} ? 'c-busy' : (${c.status == 'FAILED'} ? 'c-err' : 'c-neutral'))"
-                              th:style="${c.current} ? 'outline:2px solid var(--accent);outline-offset:1px'"
-                              th:text="${c.statusLabel}"></span>
-                    </span>
-                </div>
+                <th:block th:each="row : ${run.rows}">
+                    <div class="tr" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(6,minmax(0,1fr));border-bottom:0">
+                        <span th:text="${row.originalName}"></span>
+                        <span class="mono" th:text="${row.newName}"></span>
+                        <span th:each="c : ${row.cells}" th:title="${c.message}">
+                            <span class="chip"
+                                  th:classappend="${c.status == 'DONE'} ? 'c-ok' : (${c.status == 'RUNNING'} ? 'c-busy' : (${c.status == 'FAILED'} ? 'c-err' : 'c-neutral'))"
+                                  th:style="${c.current} ? 'outline:2px solid var(--accent);outline-offset:1px'"
+                                  th:text="${c.statusLabel}"></span>
+                        </span>
+                    </div>
+                    <div class="tr checks">
+                        <span class="hint" th:each="g : ${row.checks}" style="display:inline-flex;gap:5px;align-items:center;margin-right:14px">
+                            <span th:text="${g.label} + ':'"></span>
+                            <span th:each="i : ${g.items}" class="chip chk"
+                                  th:classappend="${i.state == 'OK'} ? 'c-ok' : (${i.state == 'MISSING'} ? 'c-err' : 'c-neutral')"
+                                  th:title="${i.path}" th:text="${(i.state == 'OK' ? '✓ ' : (i.state == 'MISSING' ? '✗ ' : '– ')) + i.label}"></span>
+                        </span>
+                    </div>
+                </th:block>
             </section>
             <p class="hint" style="margin:0">Werkmap: <span class="mono" th:text="${run.workDir}"></span> · beginnummer <span class="mono" th:text="${run.startNumber}"></span></p>
         </th:block>
@@ -182,6 +210,13 @@
     </main>
 </div>
 <script>
+    // Lege records aanmaken kan alleen samen met uploaden.
+    document.addEventListener('change', function (e) {
+        var up = document.getElementById('opt-upload'), rec = document.getElementById('opt-records');
+        if (!up || !rec) return;
+        if (e.target === rec && rec.checked) up.checked = true;
+        if (e.target === up && !up.checked) rec.checked = false;
+    });
     // Console automatisch naar beneden scrollen.
     function scrollConsole() { var el = document.getElementById('console-out'); if (el) el.scrollTop = el.scrollHeight; }
     document.addEventListener('DOMContentLoaded', scrollConsole);

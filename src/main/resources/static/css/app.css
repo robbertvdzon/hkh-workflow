@@ -63,5 +63,10 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 .console{background:#16201f;color:#e8efe9;font:13px/1.45 var(--mono);padding:16px 18px;border-radius:10px;height:340px;overflow:auto;white-space:pre-wrap;margin:0}
 .next{border:2px solid var(--accent);border-radius:12px;background:#fff;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:20px}
 .next .q{font-size:18px;font-weight:600}
+.next{align-items:flex-start}
+.next .plan{margin:2px 0 0;padding-left:18px;font-size:13.5px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.next .plan.problem{color:var(--err);font-weight:600}
+.tr.checks{min-height:34px;padding-top:0;padding-bottom:10px;display:flex;flex-wrap:wrap;gap:4px 0;align-items:center}
+.chip.chk{font-size:11.5px;padding:1px 8px}
 .row-actions{display:flex;gap:8px;flex-wrap:wrap}
 @keyframes spin{to{transform:rotate(360deg)}} .spin{animation:spin 1s linear infinite}

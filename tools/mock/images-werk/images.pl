@@ -19,9 +19,22 @@ print " Gevonden ", scalar(@files), " bestanden in map (\\images) van type: ****
 my $t = ask(" > Type ENTER/RETURN indien OK -- of kies A, B of C -- of breek het programma af:\n");
 print " - Resoluties voor aan te maken afgeleide afbeeldingen?\n   1 = small: 100x100 - large: 700x500 - 100pct: ongewijzigd\n   6 = small: 250x250 - large: 700x500 - 100pct: ongewijzigd\n";
 my $r = ask(" Kies 1,2,3 (objecten,boeken,etc), of kies 6,7,8 (foto's,etc)\n");
+# small = 100 of 250 (keuze 1-3 of 6-8), large = 700, 100pct = ongewijzigd. Met sips (macOS) echt verkleind, anders gekopieerd.
+my %max = (small => ($r =~ /^[1-3]$/ ? 100 : 250), large => 700);
 for my $d (qw(small large 100pct)) {
   make_path($d);
-  for my $f (@files) { (my $j = $f) =~ s/\.[^.]+$/.jpg/; copy("images/$f", "$d/$j"); }
+  for my $f (@files) {
+    (my $j = $f) =~ s/\.[^.]+$/.jpg/;
+    # Alleen verkleinen als de afbeelding groter is dan de doelmaat, zoals het echte programma (geen opschalen).
+    my $side = 0;
+    if ($max{$d} && $f =~ /\.jpe?g$/i) {
+      my $dims = `sips -g pixelWidth -g pixelHeight "images/$f" 2>/dev/null`;
+      my ($w) = $dims =~ /pixelWidth:\s*(\d+)/; my ($h) = $dims =~ /pixelHeight:\s*(\d+)/;
+      $side = ($w && $h) ? ($w > $h ? $w : $h) : 0;
+    }
+    if ($side > ($max{$d} || 0) && system("sips -Z $max{$d} \"images/$f\" --out \"$d/$j\" >/dev/null 2>&1") == 0) { next; }
+    copy("images/$f", "$d/$j");
+  }
   print " - ", scalar(@files), " (van de ", scalar(@files), ") images via Irfanview omgezet en geplaatst in submap: \\$d\n";
   sleep 1;
 }

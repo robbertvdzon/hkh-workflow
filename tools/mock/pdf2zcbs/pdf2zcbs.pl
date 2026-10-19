@@ -11,7 +11,17 @@ print "-" x 76, "\n pdf2zcbs: versie MOCK  Info: hkh-workflow\n", "-" x 76, "\n"
 if (-d "output") { remove_tree("output"); print " Map output geleegd (vorige resultaten zijn weg).\n"; }
 opendir(my $dh, ".") or die; my @pdfs = sort grep { /\.pdf$/i && -f $_ } readdir($dh); closedir($dh);
 if (!@pdfs) { print " Geen PDF gevonden in de huidige map.\n"; ask(" Type return to exit\n"); exit 1; }
-make_path("output/pdf", "output/ocr", "output/small");
+make_path("output/pdf", "output/ocr", "output/small", "output/large", "output/log");
+# Eerste pagina als jpg met de gegeven hoogte; zonder pdftoppm (of bij een kapotte pdf) een klein nep-bestand.
+sub jpg {
+  my ($pdf, $out, $height) = @_;
+  my $tmp = "$out.tmp";
+  if (system("pdftoppm -jpeg -f 1 -l 1 -singlefile -scale-to-y $height -scale-to-x -1 \"$pdf\" \"$tmp\" >/dev/null 2>&1") == 0 && -s "$tmp.jpg") {
+    rename("$tmp.jpg", $out);
+  } else {
+    open(my $fh, '>:raw', $out) or die; print $fh "NEP-JPG $out\n"; close $fh;
+  }
+}
 if (@pdfs == 1) {
   print " Aanwezige PDF in de huidige map:\n - $pdfs[0]\n";
   my $s = ask(" > Deze PDF splitsen in (groepen van) losse pagina's (default = N)?\n");
@@ -25,9 +35,11 @@ for my $p (@pdfs) {
   my @zinnen = grep { /\S/ } split(/(?<=[.!?])\s+/, $text);
   open(my $fh, '>', "output/ocr/$base.txt") or die; print $fh "$_\n" for @zinnen; close $fh;
   print " Verwerking: $p : bevat ", scalar(@zinnen), " zinnen --> output/ocr/$base.txt)\n";
+  jpg("output/pdf/$p", "output/small/$base.jpg", 193);
+  jpg("output/pdf/$p", "output/large/$base.jpg", 500);
   sleep 1;
 }
-print " Tevens de thumbnails van de 1e pagina van de PDF's aangemaakt --> output/small/*.jpg (NEP: niet echt)\n";
+print " Tevens de small- en large-images van de 1e pagina van de PDF's aangemaakt --> output/small/*.jpg en output/large/*.jpg\n";
 print "-" x 76, "\n That's all folks\n";
 ask(" Type return to exit\n");
 exit 0;

@@ -30,18 +30,25 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
 
 - **Te verwerken, Batch controleren, Batch bezig/klaar, Batches** — de schermen uit `docs/ZcbsServer UX.pdf`,
   nog met **demo-gegevens**.
-- **Instellingen** — testmap, archived-map, pad naar `images.exe` en `pdf2zcbs.exe`. Opgeslagen als JSON.
-- **Test** — verwerkt alle pdf's uit de testmap, elke stap met de hand gestart:
+- **Instellingen** — mappen, paden naar `images.exe` en `pdf2zcbs.exe`, collectie, back-upmap en de sftp-server (met
+  Test verbinding). Opgeslagen als JSON, die niet in git komt.
+- **Test** — verwerkt alle pdf's uit de testmap volgens het stappenplan van Carla. Elke stap start je zelf, na een
+  overzicht van wat hij gaat doen, en per bestand zie je met vinkjes of de bestanden er echt zijn:
   1. **Hernoemen** (per bestand) — vraagt eerst een beginnummer; elk bestand krijgt een volgnummer (voorloopnullen
      blijven). Het origineel blijft staan; er komt een kopie `<nummer>.pdf` in `<testmap>\werk`.
-  2. **pdf2zcbs.exe** (één keer voor de hele batch) — zet alle `<nummer>.pdf` in de map van pdf2zcbs.exe en start
-     het programma daar. Het weigert als er nog andere pdf's in die map staan.
-  3. **images.exe** (één keer voor de hele batch) — zet alle `<nummer>.pdf` in `<map van images.exe>\images` en
-     start het programma. Ook hier: geen andere pdf's in die map.
-  4. **Archiveren** (per bestand) — verplaatst het origineel (met oorspronkelijke naam) naar de archived-map.
+  2. **pdf2zcbs.exe** (één keer voor de hele batch) — zet alle `<nummer>.pdf` in de map van pdf2zcbs.exe en start het
+     programma daar. Verwacht per bestand tekst, pdf, small en large in `output\`.
+  3. **images.exe** (één keer voor de hele batch) — krijgt de **large-jpg's** van pdf2zcbs in `<map van images.exe>\images`
+     en maakt small, large en 100pct. Upload en records aanmaken staan standaard uit en kies je per run met een vinkje.
+  4. **Upload (sftp)** — zet tekst en pdf's in `<collectie>/ocr` en `<collectie>/pdf` op de server. Overschrijft en
+     verwijdert nooit, controleert eerst alles en gebruikt een vastgezette vingerafdruk van de server.
+  5. **Opruimen** — back-up van de 100pct, daarna de mappen van de programma's leegmaken.
+  6. **Archiveren** (per bestand) — verplaatst het origineel naar de archived-map.
 
-  De programma's draaien één keer per batch omdat ze alles verwerken wat in hun map staat, en pdf2zcbs zijn
-  `output\` bij elke start leegt.
+  De programma's draaien één keer per batch omdat ze alles verwerken wat in hun map staan en pdf2zcbs zijn `output\` bij
+  elke start leegt. Een stap start niet als er oude resultaten of andere bestanden in die mappen staan. Een stap is pas
+  klaar als de verwachte bestanden er zijn, niet op de exitcode alleen. Voor de eerste echte run bij HKH: zie
+  [docs/testen-bij-hkh.md](docs/testen-bij-hkh.md).
 
   De exe's draaien **in de app**: de uitvoer verschijnt in de browser. Kies **Handmatig uitvoeren** om zelf te
   antwoorden (knoppen voor Enter/J/N) of **Automatisch uitvoeren**: de app herkent de vragen aan de teksten bij
@@ -78,7 +85,8 @@ images.exe en pdf2zcbs.exe als Perl-scripts; zie `tools/mock/README.md`.
 |---|---|
 | `settings` | Instellingen lezen/schrijven + pagina |
 | `exerunner` | Externe programma's starten, uitvoer lezen, invoer doorsturen |
-| `testrun` | De testworkflow (stappen per bestand) + pagina |
+| `sftp` | Uploaden naar de server met sftp, met vastgezette vingerafdruk |
+| `testrun` | De testworkflow (de stappenketen met controles) + pagina |
 | `ux` | De UX-schermen met demo-gegevens |
 
 ## Documentatie

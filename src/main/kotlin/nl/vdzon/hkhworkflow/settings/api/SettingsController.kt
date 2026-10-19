@@ -21,7 +21,8 @@ class SettingsController(private val settingsService: SettingsService) {
         val settings = settingsService.get()
         model.addAttribute("active", "instellingen")
         model.addAttribute("settings", settings)
-        model.addAttribute("problems", settingsService.check(settings))
+        model.addAttribute("problems", settingsService.check(settings) + settingsService.checkExtras(settings))
+        model.addAttribute("hasSftpPassword", settings.sftpPassword.isNotEmpty())
         model.addAttribute("settingsFile", settingsService.settingsFile().toString())
         model.addAttribute("saved", saved == true)
         model.addAttribute("pdf2zcbsRows", rows(settings.pdf2zcbsAnswers))
@@ -40,6 +41,24 @@ class SettingsController(private val settingsService: SettingsService) {
                 imagesExe = param("imagesExe"),
                 pdf2zcbsExe = param("pdf2zcbsExe"),
                 perlioUnbuffered = request.getParameter("perlioUnbuffered") != null,
+                collection = param("collection"),
+                imagesFileType = param("imagesFileType"),
+                imagesResolution = param("imagesResolution"),
+                imagesInstitution = param("imagesInstitution"),
+                backup100pctFolder = param("backup100pctFolder"),
+                sftpHost = param("sftpHost"),
+                sftpPort = param("sftpPort").trim().toIntOrNull() ?: 22,
+                sftpUser = param("sftpUser"),
+                // Een leeg wachtwoordveld betekent: het opgeslagen wachtwoord houden (tenzij "wissen" is aangevinkt).
+                sftpPassword = when {
+                    request.getParameter("sftpPasswordClear") != null -> ""
+                    param("sftpPassword").isEmpty() -> current.sftpPassword
+                    else -> param("sftpPassword")
+                },
+                sftpHostKey = param("sftpHostKey"),
+                sftpBaseDir = param("sftpBaseDir"),
+                sftpOcrDir = param("sftpOcrDir"),
+                sftpPdfDir = param("sftpPdfDir"),
                 pdf2zcbsAnswers = readRules(request, "pdf2zcbs", current.pdf2zcbsAnswers),
                 imagesAnswers = readRules(request, "images", current.imagesAnswers),
             ),

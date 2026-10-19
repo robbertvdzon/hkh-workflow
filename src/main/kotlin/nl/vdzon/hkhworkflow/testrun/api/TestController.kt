@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
 import nl.vdzon.hkhworkflow.settings.SettingsService
+import nl.vdzon.hkhworkflow.testrun.StepOptions
 import nl.vdzon.hkhworkflow.testrun.TestRunService
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Controller
@@ -28,7 +29,7 @@ class TestController(
         val settings = settingsService.get()
         model.addAttribute("active", "test")
         model.addAttribute("settings", settings)
-        model.addAttribute("problems", settingsService.check(settings))
+        model.addAttribute("problems", settingsService.check(settings) + settingsService.checkExtras(settings))
         model.addAttribute("pdfs", testRunService.pdfsInTestFolder().map { it.fileName.toString() })
         model.addAttribute("run", testRunService.view())
         model.addAttribute("console", exeRunner.snapshot())
@@ -97,8 +98,10 @@ class TestController(
         @PathVariable("id") id: Int,
         @RequestParam("mode", defaultValue = "IN_APP") mode: RunMode,
         @RequestParam("auto", defaultValue = "false") auto: Boolean,
+        @RequestParam("upload", defaultValue = "false") upload: Boolean,
+        @RequestParam("records", defaultValue = "false") records: Boolean,
         redirect: RedirectAttributes,
-    ): String = attempt(redirect) { testRunService.execute(id, mode, auto) }
+    ): String = attempt(redirect) { testRunService.execute(id, mode, auto, StepOptions(upload, records)) }
 
     @PostMapping("/test/steps/{id}/skip")
     fun skip(@PathVariable("id") id: Int, redirect: RedirectAttributes): String =

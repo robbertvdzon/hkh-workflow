@@ -5,7 +5,7 @@
 > wat images.exe en pdf2zcbs.exe precies doen) staat in [zcbs-achtergrond.md](zcbs-achtergrond.md).
 > De bronnen: de ZCBS-handleidingen in deze map en het UX-ontwerp [ZcbsServer UX.pdf](ZcbsServer%20UX.pdf).
 
-Laatst bijgewerkt: 9 oktober 2026 (middag).
+Laatst bijgewerkt: 19 oktober 2026.
 
 ---
 
@@ -60,6 +60,32 @@ Proces voor gebruikers: *digitaliseren → tekstherkenning → beschrijven → i
 - Wat verplaatst ze precies naar `c:\zcbs\images` (images.exe verwerkt wat vóór het starten in `\images` staat)?
 - De oorspronkelijke bestandsnaam (`xx01.pdf`) gaat bij het hernoemen verloren; bij type-A-bestanden vult images.exe
   veld 27 niet.
+
+### Het echte stappenplan (Carla's Word-document, 19 oktober 2026)
+
+Uit de testsessie van 19 oktober bij HKH (bestanden: `docs/docs-19-oct-testsessie/`, nog niet in git). Dit is de werkwijze die
+de app moet nabootsen. Windows-mappen bij HKH: `c:\zcbs\invoer`, `c:\zcbs\pdf2zcbs`, `c:\zcbs\images`.
+
+1. `copy c:\zcbs\invoer\*.* c:\zcbs\pdf2zcbs` en `pdf2zcbs.exe` draaien. Per pdf komt in `output\`: `ocr\<nr>.txt`,
+   `pdf\<nr>.pdf` (de pdf wordt **verplaatst**), `small\<nr>.jpg` (250 breed, in de test 250×193), `large\<nr>.jpg` (hoogte 500,
+   in de test 647×500) en `log\`. De ocr-tekst is latin-1.
+2. **Niet de pdf's maar de large-jpg's gaan naar images.exe**: `copy c:\zcbs\pdf2zcbs\output\large\*.jpg c:\zcbs\images\images`.
+   images.exe maakt daar small, large en 100pct van (type **A**, het bestandstype wordt met `a` geforceerd; resolutie **6**).
+   Omdat de large-jpg al klein is, is de 100pct ongeveer even klein; de pdf is het volwaardige document.
+3. Controle met `dir` op `small`, `large` en `100pct` in `c:\zcbs\images`.
+4. Met Total Commander (**sftp**) naar de server: `output\ocr` naar `/domains/historischekringheemskerk.nl/public_html/archief/ocr` en
+   `output\pdf` naar `.../archief/pdf`. De afbeeldingen en records zet images.exe zelf op de server (FTP). Dat staat niet
+   uitdrukkelijk in het stappenplan, maar het noemt alleen ocr en pdf als handmatige overzet (afleiding).
+5. Back-up: `100pct` naar `c:\zcbs\backup_100pct`, invoer naar `c:\zcbs\backup_invoer_org`.
+6. Opruimen: `rmdir /S /Q output` (pdf2zcbs), `rmdir /S /Q 100pct small large` (images), `del c:\zcbs\images\*.txt` (het
+   images.exe-log), `del c:\zcbs\images\images\*.*`, `del c:\zcbs\invoer\*.*`.
+
+Antwoorden uit de testlog van images.exe (zonder upload, want er is geen testdatabase): type `a`, resolutie `6`, upload `n`,
+records `n`, verwijderen `n`, `n`. Versie bij HKH: **images.exe 3.27** (de interne lijst met beeldbanken is van 21-01-2022) en
+**pdf2zcbs 1.16**; de handleidingen beschrijven 3.30 en 1.16. Bij pdf2zcbs staat een `pdf2zcbs.ini` (het log meldt "ini aanwezig
+en verwerkt"), dus de vragen komen daar waarschijnlijk niet; onze automatische regels doen dan niets.
+
+Antwoorden op eerdere open vragen: de sftp-mappen zijn hierboven bekend. FTP voor images.exe lijkt dus nog te werken.
 
 ---
 
@@ -149,7 +175,8 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 |---|---|---|
 | `settings` | – | `WorkflowSettings`, `AnswerRule`, `SettingsService` (JSON lezen/schrijven, controles), `WorkflowProperties`; `api/SettingsController` |
 | `exerunner` | – | `ExeRunner`: start één extern programma tegelijk, leest uitvoer, stuurt invoer, automatische antwoorden, logbestand per run |
-| `testrun` | `settings`, `exerunner` | `TestRunService` (stappen per bestand), model/views, `sequenceNumbers`; `api/TestController` |
+| `sftp` | `settings` | `SftpService`: sftp-upload met vastgezette vingerafdruk, nooit overschrijven of verwijderen; `api/SftpController` (Test verbinding, vingerafdruk vastzetten) |
+| `testrun` | `settings`, `exerunner`, `sftp` | `TestRunService` (de stappenketen met controles), model/views, `sequenceNumbers`; `api/TestController` |
 | `ux` | – | `DemoData` + `api/UxController`: de UX-schermen met voorbeeldgegevens |
 
 ### 5.3 Routes
@@ -162,7 +189,8 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 | GET/POST | `/instellingen` | Instellingen |
 | GET | `/test` | Testpagina |
 | POST | `/test/start` (`startNumber`), `/test/reset` | Testrun starten / nieuwe test |
-| POST | `/test/steps/{id}/run` (`mode=IN_APP\|WINDOW`, `auto=true\|false`) | Stap uitvoeren |
+| POST | `/instellingen/sftp-test`, `/instellingen/sftp-vingerafdruk` (`fingerprint`) | Verbinding testen (toont vingerafdruk, controleert de mappen, schrijft niets) / vingerafdruk vastzetten |
+| POST | `/test/steps/{id}/run` (`mode=IN_APP\|WINDOW`, `auto=true\|false`, `upload`, `records`) | Stap uitvoeren; `upload` en `records` (standaard uit) gelden alleen voor images.exe met automatisch uitvoeren |
 | POST | `/test/steps/{id}/skip`, `/done`, `/retry` | Overslaan / toch klaar / opnieuw |
 | GET | `/test/console` | htmx-fragment, elke seconde zolang er iets draait; stuurt `HX-Refresh` als het klaar is |
 | POST | `/test/console/input` (`line`), `/test/console/stop` | Invoer sturen / programma stoppen |
@@ -179,9 +207,18 @@ Opgeslagen in JSON; velden:
 - `pdf2zcbsExe`, `imagesExe` — volledige paden. Mag elk uitvoerbaar bestand zijn (op Mac/Linux een script met
   `chmod +x`); de pagina waarschuwt als een pad niet bestaat of niet uitvoerbaar is.
 - `perlioUnbuffered` (standaard **aan**) — start de programma's met `PERLIO=:unix` (zie §6).
+- `collection` (standaard `archief`) — antwoord op "Kies de ZCBS-toepassing" en basis voor de sftp-mappen.
+- `imagesFileType` (`a`), `imagesResolution` (`6`), `imagesInstitution` (`4`) — vaste antwoorden voor images.exe.
+- `backup100pctFolder` — back-up van de 100pct vóór het opruimen.
+- `sftpHost`, `sftpPort` (22), `sftpUser`, `sftpPassword` (verborgen in de UI, zoals de andere wachtwoorden),
+  `sftpHostKey` (vastgezette vingerafdruk, `SHA256:…`; zonder deze wordt er niet geüpload), `sftpBaseDir`
+  (standaard `/domains/historischekringheemskerk.nl/public_html`), `sftpOcrDir` en `sftpPdfDir` (relatief aan de basismap;
+  leeg = `<collectie>/ocr` en `<collectie>/pdf`).
+- De antwoorden voor bestandstype, resolutie, instelling, collectie, uploaden, records en het verwijderen van mappen zet de
+  testpagina **bovenop** de regels in `imagesAnswers`; die gaan voor. Overschrijven en verwijderen zijn altijd `n`.
 - `pdf2zcbsAnswers`, `imagesAnswers` — lijsten `{pattern, answer, secret}` voor automatisch uitvoeren.
   Standaardregels zijn afgeleid uit de handleidingen (`WorkflowSettings.DEFAULT_*`), met veilige keuzes:
-  uploaden = `n`, records aanmaken = `n`, instelling = `4`, collectie = `test`, FTP-wachtwoord leeg.
+  type `a`, resolutie `6`, uploaden `n`, records aanmaken `n`, overschrijven `n`, verwijderen `n`, FTP-wachtwoord leeg.
 - **Wachtwoorden** (`secret = true`): in de UI een `*`-veld; de waarde gaat nooit terug naar de browser
   (placeholder "•••••••• (opgeslagen)"); leeg laten = behouden, vinkje "wissen" = leegmaken. Staan wél leesbaar in het
   JSON-bestand.
@@ -190,20 +227,36 @@ Opgeslagen in JSON; velden:
 
 ### 5.5 Testworkflow (pagina Test)
 
-1. Vraagt een **beginnummer** (alleen cijfers; voorloopnullen blijven: `01650` → `01651`).
-2. Neemt alle `*.pdf` in de testmap (niet recursief, gesorteerd op naam) en maakt de stappen: per bestand
-   hernoemen, **één** pdf2zcbs-stap voor alle bestanden, **één** images-stap voor alle bestanden, per bestand archiveren
-   (2n + 2 stappen). De programma's draaien één keer per batch omdat ze alles verwerken wat in hun map staat en
-   pdf2zcbs zijn `output/` bij elke start leegt. In de tabel staat een batchstap (met dezelfde status) in elke rij.
-3. **Elke stap start de gebruiker zelf.** De UI toont de eerstvolgende stap als vraag ("Run pdf2zcbs.exe voor 33.pdf?")
-   met knoppen; alleen die stap mag uitgevoerd worden. Overzichtstabel met status per bestand × stap.
+Bedoeld voor de eerste echte run bij HKH, **in het echte archief** omdat er geen testdatabase is. Daarom volgt de flow Carla's
+stappenplan (§2), draait elke stap pas na jouw goedkeuring, en blijft alles op schijf zo staan dat een stap die misgaat op de
+oude manier kan worden afgemaakt. Er wordt pas iets verwijderd of gearchiveerd als de stappen daarvoor kloppen.
 
-| Stap | Wat er gebeurt |
-|---|---|
-| Hernoemen | **Kopie** van het origineel naar `<testmap>\werk\<nummer>.pdf`. Origineel blijft staan (keuze: archiveren gebeurt met de originele naam). Faalt als het doel al bestaat. |
-| pdf2zcbs.exe | Kopieert **alle** `werk\<nummer>.pdf` van de batch naar **de map van pdf2zcbs.exe** (overschrijft bij opnieuw proberen) en start het programma één keer met die map als werkmap, **zonder argumenten**. Weigert (stap mislukt) als er andere pdf's in die map staan, want die zouden meegaan. |
-| images.exe | Kopieert alle bestanden naar **`<map van images.exe>\images\`** en start images.exe één keer in zijn eigen map, zonder argumenten. Zelfde controle op vreemde pdf's. |
-| Archiveren | **Verplaatst het origineel** (oorspronkelijke naam) naar de archived-map; bestaat de naam al, dan `naam-1.pdf` enz. |
+1. Vraagt een **beginnummer** (alleen cijfers; voorloopnullen blijven: `01650` → `01651`).
+2. Neemt alle `*.pdf` in de testmap (niet recursief, gesorteerd op naam). Stappen, in volgorde: per bestand **hernoemen**,
+   één keer **pdf2zcbs**, één keer **images**, één keer **upload**, één keer **opruimen**, per bestand **archiveren**
+   (2n + 4 stappen). Beide programma's draaien één keer per batch, want ze verwerken alles wat in hun map staat en
+   pdf2zcbs leegt zijn `output/` bij elke start.
+3. **Elke stap start de gebruiker zelf.** De kaart toont de eerstvolgende stap met **wat hij gaat doen** (paden, aantallen,
+   antwoorden) en **waarom hij nu niet kan** (rood, knoppen uit). Daarna kijk je in de tabel of het klopt.
+4. **Controle per bestand** onder elke rij in de tabel: vinkjes voor tekst, pdf, small en large (pdf2zcbs), small, large en
+   100pct (images), tekst en pdf op de server, en de back-up. Groen = het bestand bestaat en is niet leeg, rood = ontbreekt,
+   grijs = stap nog niet aan de beurt. Na het opruimen verdwijnen de lokale groepen.
+5. Een exe-stap is pas **klaar** als de verwachte bestanden er zijn; exitcode 0 alleen is niet genoeg (Perl-programma's geven
+   die bijna altijd). Ontbreekt er iets, dan is de stap mislukt met de lijst van ontbrekende bestanden.
+
+| Stap | Wat er gebeurt | Weigert als |
+|---|---|---|
+| Hernoemen | **Kopie** van het origineel naar `<testmap>\werk\<nummer>.pdf`. Origineel blijft staan. | doel bestaat al, origineel weg |
+| pdf2zcbs.exe | Kopieert alle `werk\<nummer>.pdf` naar de map van pdf2zcbs en start het programma één keer in die map, zonder argumenten. Verwacht per bestand tekst, pdf, small en large in `output\`. | er andere pdf's in de map staan; `output\` resultaten van een andere run bevat (het programma wist die map bij de start) |
+| images.exe | Kopieert de **large-jpg's** uit `pdf2zcbs\output\large` naar `<map van images.exe>\images` en start het programma één keer. Verwacht per bestand small, large en 100pct. Wist en overschrijft nooit. | large-jpg's ontbreken; er andere bestanden in `images\` staan; `small`, `large` of `100pct` oude resultaten bevatten (die zouden opnieuw worden geüpload) |
+| Upload (sftp) | Zet tekst en pdf's op de server in `<collectie>/ocr` en `<collectie>/pdf`. **Eerst een controle** van alles (mappen bestaan, geen bestand bestaat al), pas dan uploaden onder een tijdelijke naam, hernoemen, rechten 644 en de grootte controleren. Nooit overschrijven, nooit verwijderen, nooit mappen aanmaken. Bij opnieuw proberen worden al geüploade bestanden overgeslagen. | sftp niet volledig ingesteld, vingerafdruk niet vastgezet of anders, lokale bestanden ontbreken, doelmap ontbreekt, een doelbestand bestaat al |
+| Opruimen | **Eerst** de 100pct kopiëren naar de back-upmap en de grootte controleren, **dan** verwijderen: `pdf2zcbs\output`, `images\small`, `large`, `100pct`, de eigen bestanden in `images\images` en `log-*.txt` in de images-map. Alleen binnen de mappen van de programma's. | back-upmap ontbreekt of niet bestaat, een 100pct ontbreekt. Waarschuwt als de upload is overgeslagen |
+| Archiveren | **Verplaatst het origineel** naar de archived-map (die de back-up van de invoermap vervangt); bestaat de naam al, dan `naam-1.pdf` enz. | archived-map niet ingesteld, origineel weg |
+
+**images.exe en de keuzes die in productie schrijven.** Bij Automatisch uitvoeren staan er twee vinkjes, standaard **uit**:
+*Afbeeldingen uploaden (FTP)* en *Lege records aanmaken*. Records aanmaken kan alleen samen met uploaden, en uploaden vraagt
+dat het FTP-wachtwoord in de regels bij Instellingen staat. Vraagt images.exe iets wat geen regel herkent (bijvoorbeeld in
+welke submap de afbeeldingen moeten), dan stopt de app daar en toont de vraag, zodat je zelf antwoordt.
 
 Knoppen bij een exe-stap: **Handmatig uitvoeren** (jij antwoordt in de browser), **Automatisch uitvoeren** (antwoorden
 uit Instellingen), **In cmd-venster op de server** (Windows: `cmd /c start "<titel>" /wait <exe>` — opent op de
@@ -243,7 +296,9 @@ bestanden zelf, dus blijft staan na een herstart van de app.
 ### 5.7 Testen zonder Windows: nep-exe's
 
 `tools/mock/pdf2zcbs/pdf2zcbs.pl` en `tools/mock/images-werk/images.pl`: Perl-scripts die de vragen uit de
-handleidingen nadoen, maar niets uploaden. Ze bufferen zoals een gewoon Perl-programma (`MOCK_UNBUFFERED=1` zet dat
+handleidingen nadoen, maar niets uploaden. pdf2zcbs.pl maakt met `pdftoppm` echte small- (hoogte 193) en large-jpg's
+(hoogte 500) in `output/small` en `output/large`; images.pl maakt met `sips` small (100 of 250), large (700) en 100pct,
+en schaalt niet op. Ze bufferen zoals een gewoon Perl-programma (`MOCK_UNBUFFERED=1` zet dat
 uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke start** (handleiding 050, §11.14) en
 **ruimt images.pl bij "J" echt op** (small/large/100pct en de inhoud van `images/`). Zie
 [../tools/mock/README.md](../tools/mock/README.md).
@@ -253,7 +308,13 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 - `ModulithArchitectureTest` (modulegrenzen + fail-closed `allowedDependencies`).
 - `SettingsServiceTest`, `NumberingTest`, `TestRunServiceTest` (hernoemen/archiveren met tijdelijke mappen, volgorde).
 - `ExeRunnerTest` (alleen Mac/Linux): shellscript met vragen, controleert automatische antwoorden en dat het
-  wachtwoord niet in uitvoer of log komt.
+  wachtwoord niet in uitvoer of log komt; geschiedenis, stoppen, wissen van logs.
+- `SftpServiceTest`: tegen een in-process sftp-server (Apache MINA SSHD, testscope): uploaden, nooit overschrijven,
+  geen mappen aanmaken, vingerafdruk (ook vergeleken met de berekening van de serverbibliotheek), verkeerd wachtwoord.
+- `TestRunServiceTest` (alleen Mac/Linux): de volledige keten met nep-programma's uit `src/test/resources/fake-exes` en
+  sftp-server; exitcode 0 zonder bestanden is mislukt; weigeringen bij oude resultaten, vreemde pdf's, ontbrekende back-upmap
+  en bestaande serverbestanden; de antwoorden die images.exe krijgt.
+- `TestSftpServerMain` (testbron): start een sftp-server om de app met de hand tegen te proberen (zie `tools/mock/README.md`).
 
 ---
 
@@ -269,7 +330,10 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
   opzet: beide programma's verwerken alles wat in hun map staat en horen **één keer per batch** te draaien
   (images.exe adviseert zelfs 5–1000 bestanden per keer; één run = één FTP-sessie en één keer `updates.txt`
   ophalen/terugzetten). Zie §9.
-- **Nog niet getest met de echte exe's** (perl2exe-programma's op Windows bij HKH). Onbekend: respecteert perl2exe
+- **19 oktober, eerste sessie bij HKH:** handmatig gedraaid, de app er nog niet mee getest. Het stappenplan en de logs
+  staan in §2. Belangrijkste les: images.exe krijgt de large-jpg's van pdf2zcbs, niet de pdf's, en de tekst en pdf's gaan met
+  sftp naar `.../archief/ocr` en `.../archief/pdf` (de handleiding noemt voorbeeldpaden).
+- **Nog niet getest met de echte exe's via de app** (perl2exe-programma's op Windows bij HKH). Onbekend: respecteert perl2exe
   `PERLIO`? Werkt verborgen wachtwoordinvoer van images.exe (`Echo : 1` in images.ini) zonder echte console? Komen
   tekens als ë goed door met IBM850?
 
@@ -297,30 +361,39 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 | Nep-exe's | Gedragen zich als de echte: output wissen, opruimen bij J | Robbert |
 | Exe-stappen | Eén run per batch (pdf2zcbs en images.exe), met controle op vreemde pdf's in de exe-map | Robbert; de programma's verwerken hun hele map |
 | Logs wissen | Per run en alles in één keer, nooit het log van een lopend programma | Robbert: het worden er veel |
+| Eerste echte run | In het echte archief (geen testdatabase), elke stap apart goedkeuren en controleren; bij een fout op de oude manier afmaken | Robbert, 19 oktober |
+| Route van de test | Carla's stappenplan: large-jpg's naar images.exe, tekst en pdf's met sftp, back-up en opruimen | Het stappenplan van 19 oktober |
+| Succes van een stap | Aan de verwachte bestanden, niet aan de exitcode | Perl-programma's geven bijna altijd 0 |
+| Schrijven in productie | Upload en records standaard uit en per run te kiezen; sftp overschrijft en verwijdert nooit, controleert eerst alles, vingerafdruk vastgezet | Voorzichtigheid bij de eerste echte run |
+| Opruimen | Pas na de upload en met back-up van de 100pct; originelen pas in de laatste stap archiveren | Zo blijft de oude werkwijze altijd mogelijk |
 
 ---
 
-## 8. Status (9 oktober 2026)
+## 8. Status (19 oktober 2026)
 
 - Code staat lokaal in `~/git/hkh-workflow` op `main`; **Robbert pusht zelf** (`git push origin main`).
-- De agent die dit schreef kon **niet compileren** (geen toegang tot Maven Central). Robbert bouwt met
-  `mvn clean package` op zijn Mac. Laatst gemelde compileerfout (JsonNode.map in `SettingsService`) is opgelost maar
-  nog niet opnieuw gebouwd. Reken op mogelijke compile/testfixes.
-- Thuis getest met nep-exe's: testflow werkt, PERLIO lost buffering op. Build en tests zijn groen (`mvn clean package`
-  op de Mac, 9 oktober).
+- `mvn clean package` is groen (40 tests). De hele keten is op de Mac doorlopen in de browser met de nep-exe's en een lokale
+  sftp-server: hernoemen, pdf2zcbs, images, upload, opruimen, archiveren, met de vinkjes per bestand.
+- **Nog niet gedaan:** de keten met de echte exe's op Windows bij HKH. Zie [testen-bij-hkh.md](testen-bij-hkh.md) voor de checklist.
+- De demoschermen (Te verwerken, Batch, Batches) zijn nog niet gekoppeld; de testpagina is de motor van de latere batch.
 
 ## 9. Volgende stappen
 
-1. Bouwen en tests groen krijgen.
-2. Bij HKH testen met de **echte** images.exe en pdf2zcbs.exe (Windows), eerst met een **testcollectie** en upload = N.
-   Kijk in het runlog of PERLIO werkt.
-3. Als PERLIO niet werkt bij perl2exe: **pseudo-console** via JetBrains **pty4j** (Windows ConPTY), zodat het programma
+1. **Bij HKH testen met de echte exe's, in het echte archief, stap voor stap** (checklist in [testen-bij-hkh.md](testen-bij-hkh.md)).
+   Kijk in elk runlog of PERLIO werkt en of de vragen direct verschijnen.
+2. Als PERLIO niet werkt bij perl2exe: **pseudo-console** via JetBrains **pty4j** (Windows ConPTY), zodat het programma
    een echte console ziet (lost ook verborgen wachtwoordinvoer op).
-4. ~~Testflow ombouwen naar één run per batch~~ (gedaan, 9 oktober). Nog te doen: de `output\` van pdf2zcbs na afloop
-   wegzetten (bijv. naar `werk\pdf2zcbs-output\`), want de volgende run wist hem.
-5. De open vragen uit §2 aan Carla stellen (FTP vs SFTP is cruciaal: images.exe kan alleen FTP).
-6. Echte "Te verwerken": `K:\scabslelly` (submap per scanner) elke minuut scannen + database (status per bestand).
-7. Echte batches (ID `B-yyyyMMdd-HHmm`), voortgang, resultaat met ZCBS-links, "beschreven"-controle, historie.
-8. Login (het UX-ontwerp heeft een inlogscherm) voordat de app breder gebruikt wordt.
-9. Aanbevelingen uit §3 (OCR, recordnummers, mappingtabel, per-collectie-config, back-up).
-10. Testcollectie in ZCBS laten aanmaken door de auteur van ZCBS (zie achtergrond §licentie).
+3. Uitzoeken: bij uploaden vraagt images.exe in welke submap de afbeeldingen moeten (kies 0-1, of een nieuwe submap). Als de
+   uitkomst vast is, een instelling of antwoordregel toevoegen; nu stopt de app bij die vraag en antwoord je zelf.
+4. Uitzoeken: hoeveel cijfers hebben de recordnummers van archief? Type A eist overal hetzelfde aantal. De testnummers waren
+   acht cijfers (`90000000`).
+5. De vingerafdruk van de sftp-server vergelijken met wat Total Commander of de hostingprovider toont, voordat je hem vastzet.
+6. Testcollectie: Gerard van Nes antwoordde dat je die zelf moet aanmaken (aparte map aan beide kanten van `/cgi-bin`, dan
+   herkent images.exe hem als aparte beeldbank). Nog niet gedaan; tot dan is de eerste run in het echte archief.
+7. Echte "Te verwerken": `K:\scabslelly` (submap per scanner) elke minuut scannen + database (status per bestand).
+8. Echte batches (ID `B-yyyyMMdd-HHmm`), voortgang, resultaat met ZCBS-links, "beschreven"-controle, historie, gebouwd op de
+   stappen van de testflow. Nummering uit ZCBS, collectie per batch.
+9. Login (het UX-ontwerp heeft een inlogscherm) voordat de app breder gebruikt wordt.
+10. Aanbevelingen uit §3 (OCR, recordnummers, mappingtabel, per-collectie-config, back-up).
+11. De testrun staat alleen in het geheugen. Na een herstart van de app midden in een run begint de test opnieuw; de controles
+    vooraf (oude resultaten in `output\` en de map van images.exe) weigeren dan te starten, zodat er niets verloren gaat.

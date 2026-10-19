@@ -48,6 +48,19 @@ class SettingsService(
                     perlioUnbuffered = node.path("perlioUnbuffered").asBoolean(true),
                     pdf2zcbsAnswers = rules("pdf2zcbsAnswers", WorkflowSettings.DEFAULT_PDF2ZCBS_ANSWERS),
                     imagesAnswers = rules("imagesAnswers", WorkflowSettings.DEFAULT_IMAGES_ANSWERS),
+                    collection = node.path("collection").asText("archief"),
+                    imagesFileType = node.path("imagesFileType").asText("a"),
+                    imagesResolution = node.path("imagesResolution").asText("6"),
+                    imagesInstitution = node.path("imagesInstitution").asText("4"),
+                    backup100pctFolder = node.path("backup100pctFolder").asText(""),
+                    sftpHost = node.path("sftpHost").asText(""),
+                    sftpPort = node.path("sftpPort").asInt(22),
+                    sftpUser = node.path("sftpUser").asText(""),
+                    sftpPassword = node.path("sftpPassword").asText(""),
+                    sftpHostKey = node.path("sftpHostKey").asText(""),
+                    sftpBaseDir = node.path("sftpBaseDir").asText(WorkflowSettings.DEFAULT_SFTP_BASE_DIR),
+                    sftpOcrDir = node.path("sftpOcrDir").asText(""),
+                    sftpPdfDir = node.path("sftpPdfDir").asText(""),
                 )
             } catch (e: Exception) {
                 log.warn("Kan instellingen niet lezen uit {}: {}", file, e.message)
@@ -67,6 +80,17 @@ class SettingsService(
             archivedFolder = settings.archivedFolder.trim(),
             imagesExe = settings.imagesExe.trim(),
             pdf2zcbsExe = settings.pdf2zcbsExe.trim(),
+            collection = settings.collection.trim(),
+            imagesFileType = settings.imagesFileType.trim(),
+            imagesResolution = settings.imagesResolution.trim(),
+            imagesInstitution = settings.imagesInstitution.trim(),
+            backup100pctFolder = settings.backup100pctFolder.trim(),
+            sftpHost = settings.sftpHost.trim(),
+            sftpUser = settings.sftpUser.trim(),
+            sftpHostKey = settings.sftpHostKey.trim(),
+            sftpBaseDir = settings.sftpBaseDir.trim(),
+            sftpOcrDir = settings.sftpOcrDir.trim(),
+            sftpPdfDir = settings.sftpPdfDir.trim(),
             pdf2zcbsAnswers = settings.pdf2zcbsAnswers.filter { it.pattern.isNotBlank() },
             imagesAnswers = settings.imagesAnswers.filter { it.pattern.isNotBlank() },
         )
@@ -94,6 +118,19 @@ class SettingsService(
         dir("archivedFolder", settings.archivedFolder)
         exe("imagesExe", settings.imagesExe)
         exe("pdf2zcbsExe", settings.pdf2zcbsExe)
+        return problems
+    }
+
+    /** Waarschuwingen over de instellingen die alleen de latere stappen (upload, back-up) nodig hebben. */
+    fun checkExtras(settings: WorkflowSettings): Map<String, String> {
+        val problems = linkedMapOf<String, String>()
+        if (settings.collection.isBlank()) problems["collection"] = "Nog niet ingevuld."
+        if (settings.backup100pctFolder.isBlank()) problems["backup100pctFolder"] = "Nog niet ingevuld."
+        else if (!Files.isDirectory(Path.of(settings.backup100pctFolder))) problems["backup100pctFolder"] = "Map bestaat niet."
+        if (settings.sftpHost.isBlank()) problems["sftpHost"] = "Nog niet ingevuld."
+        if (settings.sftpUser.isBlank()) problems["sftpUser"] = "Nog niet ingevuld."
+        if (settings.sftpPassword.isEmpty()) problems["sftpPassword"] = "Nog niet ingevuld."
+        if (settings.sftpHostKey.isBlank()) problems["sftpHostKey"] = "Nog niet vastgezet: gebruik Test verbinding."
         return problems
     }
 }

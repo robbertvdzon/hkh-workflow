@@ -20,7 +20,7 @@
             <div class="field">
                 <label class="f" for="archivedFolder">Archived-map</label>
                 <input type="text" id="archivedFolder" name="archivedFolder" th:value="${settings.archivedFolder}" placeholder="C:\zcbs\archived">
-                <span class="hint">Hier gaan de originele bestanden naartoe als ze klaar zijn.</span>
+                <span class="hint">Hier gaan de originele bestanden naartoe als ze klaar zijn. Dit vervangt de back-up van de invoermap.</span>
                 <span class="warn" th:if="${problems['archivedFolder']}" th:text="${problems['archivedFolder']}"></span>
             </div>
             <div class="field">
@@ -32,21 +32,112 @@
             <div class="field">
                 <label class="f" for="imagesExe">images.exe</label>
                 <input type="text" id="imagesExe" name="imagesExe" th:value="${settings.imagesExe}" placeholder="C:\zcbs\images-werk\images.exe">
-                <span class="hint">De pdf wordt in de submap <span class="mono">images</span> naast images.exe gezet.</span>
+                <span class="hint">De large-jpg's van pdf2zcbs worden in de submap <span class="mono">images</span> naast images.exe gezet.</span>
                 <span class="warn" th:if="${problems['imagesExe']}" th:text="${problems['imagesExe']}"></span>
             </div>
             <label style="display:flex;gap:10px;align-items:flex-start">
                 <input type="checkbox" name="perlioUnbuffered" th:checked="${settings.perlioUnbuffered}" style="margin-top:2px">
                 <span><b>Start met PERLIO=:unix</b><br><span class="hint">Zet de uitvoerbuffer van Perl uit, zodat de vragen van images.exe en pdf2zcbs.exe meteen zichtbaar zijn. Nodig voor automatisch uitvoeren. Invoer eindigt dan op LF.</span></span>
             </label>
+            <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
+                <legend class="f" style="padding:0;margin-bottom:6px">Collectie en images.exe</legend>
+                <div class="field">
+                    <label class="f" for="collection">Collectie</label>
+                    <input type="text" id="collection" name="collection" th:value="${settings.collection}" placeholder="archief">
+                    <span class="hint">Antwoord op "Kies de ZCBS-toepassing" van images.exe. Bepaalt ook de sftp-mappen <span class="mono">&lt;collectie&gt;/ocr</span> en <span class="mono">&lt;collectie&gt;/pdf</span>.</span>
+                    <span class="warn" th:if="${problems['collection']}" th:text="${problems['collection']}"></span>
+                </div>
+                <div style="display:flex;gap:16px;flex-wrap:wrap">
+                    <div class="field" style="width:200px"><label class="f" for="imagesFileType">Bestandstype</label>
+                        <input type="text" id="imagesFileType" name="imagesFileType" th:value="${settings.imagesFileType}" placeholder="a">
+                        <span class="hint">a = het recordnummer is de bestandsnaam.</span></div>
+                    <div class="field" style="width:200px"><label class="f" for="imagesResolution">Resolutie</label>
+                        <input type="text" id="imagesResolution" name="imagesResolution" th:value="${settings.imagesResolution}" placeholder="6">
+                        <span class="hint">1-3: small 100x100. 6-8: small 250x250.</span></div>
+                    <div class="field" style="width:200px"><label class="f" for="imagesInstitution">Instelling</label>
+                        <input type="text" id="imagesInstitution" name="imagesInstitution" th:value="${settings.imagesInstitution}" placeholder="4">
+                        <span class="hint">Nummer van de ZCBS-instelling (HKH is 4).</span></div>
+                </div>
+                <div class="field">
+                    <label class="f" for="backup100pctFolder">Back-upmap voor 100pct</label>
+                    <input type="text" id="backup100pctFolder" name="backup100pctFolder" th:value="${settings.backup100pctFolder}" placeholder="C:\zcbs\backup_100pct">
+                    <span class="hint">De 100pct-afbeeldingen worden hierheen gekopieerd voordat de exe-mappen worden opgeruimd.</span>
+                    <span class="warn" th:if="${problems['backup100pctFolder']}" th:text="${problems['backup100pctFolder']}"></span>
+                </div>
+            </fieldset>
+            <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
+                <legend class="f" style="padding:0;margin-bottom:6px">Sftp-server (tekst en pdf's)</legend>
+                <div style="display:flex;gap:16px;flex-wrap:wrap">
+                    <div class="field" style="flex:1;min-width:260px"><label class="f" for="sftpHost">Host</label>
+                        <input type="text" id="sftpHost" name="sftpHost" th:value="${settings.sftpHost}" autocomplete="off">
+                        <span class="warn" th:if="${problems['sftpHost']}" th:text="${problems['sftpHost']}"></span></div>
+                    <div class="field" style="width:110px"><label class="f" for="sftpPort">Poort</label>
+                        <input type="text" id="sftpPort" name="sftpPort" th:value="${settings.sftpPort}" inputmode="numeric"></div>
+                    <div class="field" style="width:220px"><label class="f" for="sftpUser">Gebruiker</label>
+                        <input type="text" id="sftpUser" name="sftpUser" th:value="${settings.sftpUser}" autocomplete="off">
+                        <span class="warn" th:if="${problems['sftpUser']}" th:text="${problems['sftpUser']}"></span></div>
+                </div>
+                <div class="field">
+                    <label class="f" for="sftpPassword">Wachtwoord</label>
+                    <div style="display:flex;gap:12px;align-items:center">
+                        <input type="password" id="sftpPassword" name="sftpPassword" autocomplete="new-password" style="max-width:320px"
+                               th:placeholder="${hasSftpPassword} ? '•••••••• (opgeslagen)' : ''">
+                        <label th:if="${hasSftpPassword}" style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="sftpPasswordClear"> wissen</label>
+                    </div>
+                    <span class="hint">Leeg laten = het opgeslagen wachtwoord houden. Het staat wel leesbaar in het instellingenbestand, dat niet in git komt.</span>
+                    <span class="warn" th:if="${problems['sftpPassword']}" th:text="${problems['sftpPassword']}"></span>
+                </div>
+                <div class="field">
+                    <label class="f" for="sftpHostKey">Vingerafdruk van de server</label>
+                    <input type="text" id="sftpHostKey" name="sftpHostKey" th:value="${settings.sftpHostKey}" class="mono" placeholder="SHA256:...">
+                    <span class="hint">Er wordt alleen geüpload naar een server met precies deze vingerafdruk. Haal hem op met Test verbinding hieronder en vergelijk hem met wat Total Commander of de hostingprovider toont.</span>
+                    <span class="warn" th:if="${problems['sftpHostKey']}" th:text="${problems['sftpHostKey']}"></span>
+                </div>
+                <div class="field">
+                    <label class="f" for="sftpBaseDir">Basismap op de server</label>
+                    <input type="text" id="sftpBaseDir" name="sftpBaseDir" th:value="${settings.sftpBaseDir}" class="mono">
+                </div>
+                <div style="display:flex;gap:16px;flex-wrap:wrap">
+                    <div class="field" style="flex:1;min-width:260px"><label class="f" for="sftpOcrDir">Map voor tekstbestanden</label>
+                        <input type="text" id="sftpOcrDir" name="sftpOcrDir" th:value="${settings.sftpOcrDir}" class="mono" placeholder="leeg = <collectie>/ocr">
+                        <span class="hint">Nu: <span class="mono" th:text="${settings.remoteOcrDir()}"></span></span></div>
+                    <div class="field" style="flex:1;min-width:260px"><label class="f" for="sftpPdfDir">Map voor pdf's</label>
+                        <input type="text" id="sftpPdfDir" name="sftpPdfDir" th:value="${settings.sftpPdfDir}" class="mono" placeholder="leeg = <collectie>/pdf">
+                        <span class="hint">Nu: <span class="mono" th:text="${settings.remotePdfDir()}"></span></span></div>
+                </div>
+            </fieldset>
             <div th:replace="~{fragments/answers :: answers('pdf2zcbs', 'Antwoorden voor pdf2zcbs.exe', ${pdf2zcbsRows})}"></div>
             <div th:replace="~{fragments/answers :: answers('images', 'Antwoorden voor images.exe', ${imagesRows})}"></div>
-            <p class="hint" style="margin:0">Wachtwoorden worden niet in de pagina getoond, maar staan wel leesbaar in het instellingenbestand. Zet daar dus alleen een testwachtwoord in, of beveilig het bestand.</p>
+            <p class="hint" style="margin:0">Bestandstype, resolutie, instelling, collectie, uploaden, records en het verwijderen van mappen zet de testpagina bovenop deze antwoorden; die gaan voor. Wachtwoorden worden niet in de pagina getoond, maar staan wel leesbaar in het instellingenbestand. Zet daar dus alleen een testwachtwoord in, of beveilig het bestand.</p>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
                 <span class="hint">Opgeslagen in <span class="mono" th:text="${settingsFile}"></span></span>
                 <button type="submit" class="btn btn-p">Opslaan</button>
             </div>
         </form>
+        <section class="card pad" style="display:flex;flex-direction:column;gap:12px;max-width:980px;margin-top:18px">
+            <h2 style="margin:0">Test verbinding</h2>
+            <p class="hint" style="margin:0">Maakt verbinding met de <b>opgeslagen</b> instellingen, toont de vingerafdruk en controleert of de mappen voor tekst en pdf's bestaan. Er wordt niets geschreven.</p>
+            <form method="post" th:action="@{/instellingen/sftp-test}"><button class="btn btn-s" type="submit">Test verbinding</button></form>
+            <div th:if="${sftpTest != null}" style="display:flex;flex-direction:column;gap:8px">
+                <div class="alert" th:classappend="${sftpTest.ok} ? 'alert-ok' : 'alert-err'" th:text="${sftpTest.message}"></div>
+                <div th:if="${sftpTest.fingerprint != null}">
+                    <div class="hint">Vingerafdruk van de server:</div>
+                    <div class="mono" th:text="${sftpTest.fingerprint}"></div>
+                    <div class="hint" th:if="${sftpTest.pinned == 'MATCH'}" style="color:var(--ok)">Komt overeen met de vastgezette vingerafdruk.</div>
+                    <div class="hint" th:if="${sftpTest.pinned == 'MISMATCH'}" style="color:var(--err)">LET OP: wijkt af van de vastgezette vingerafdruk. Upload wordt geweigerd.</div>
+                    <form th:if="${sftpTest.pinned != 'MATCH'}" method="post" th:action="@{/instellingen/sftp-vingerafdruk}" style="margin-top:8px">
+                        <input type="hidden" name="fingerprint" th:value="${sftpTest.fingerprint}">
+                        <button class="btn btn-s" type="submit">Deze vingerafdruk vastzetten</button>
+                        <span class="hint">Doe dit alleen als je zeker weet dat dit de echte server is.</span>
+                    </form>
+                </div>
+                <ul style="margin:0;padding-left:20px" th:if="${!sftpTest.dirs.isEmpty()}">
+                    <li th:each="d : ${sftpTest.dirs}"><span class="mono" th:text="${d.path}"></span>: <span th:text="${d.exists} ? 'bestaat' : 'bestaat niet'" th:style="${d.exists} ? 'color:var(--ok)' : 'color:var(--err)'"></span> <span class="hint" th:if="${d.message != null}" th:text="${d.message}"></span></li>
+                </ul>
+            </div>
+        </section>
+        <div th:if="false">
+        </div>
     </main>
 </div>
 </body>

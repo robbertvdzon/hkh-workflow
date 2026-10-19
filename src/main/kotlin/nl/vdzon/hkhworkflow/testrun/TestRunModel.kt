@@ -2,15 +2,19 @@ package nl.vdzon.hkhworkflow.testrun
 
 import java.nio.file.Path
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Soorten stappen. Hernoemen en archiveren zijn per bestand; de twee programma's draaien **één keer per batch**,
- * omdat ze alles verwerken wat in hun map staat (en pdf2zcbs zijn `output/` bij elke start leegt).
+ * Soorten stappen, in de volgorde waarin ze draaien. Hernoemen en archiveren zijn per bestand. De rest draait één
+ * keer per batch, omdat de programma's alles verwerken wat in hun map staat en pdf2zcbs zijn `output/` bij elke
+ * start leegt.
  */
-enum class StepType(val label: String, val perFile: Boolean) {
+enum class StepType(val label: String, val perFile: Boolean, val usesExe: Boolean = false) {
     RENAME("Hernoemen", true),
-    PDF2ZCBS("pdf2zcbs.exe", false),
-    IMAGES("images.exe", false),
+    PDF2ZCBS("pdf2zcbs.exe", false, usesExe = true),
+    IMAGES("images.exe", false, usesExe = true),
+    UPLOAD("Upload (sftp)", false),
+    CLEANUP("Opruimen", false),
     ARCHIVE("Archiveren", true),
 }
 
@@ -27,6 +31,14 @@ data class TestFile(val index: Int, val original: Path, val number: String) {
     val newName: String get() = "$number.pdf"
 }
 
+/** Keuzes die de gebruiker bij het starten van images.exe maakt. Standaard schrijft het niets naar de server. */
+data class StepOptions(
+    /** Antwoord j op "UPLOADEN aangemaakte images ... naar webserver?" (schrijft in de echte collectie). */
+    val upload: Boolean = false,
+    /** Antwoord j op "AANMAKEN en UPLOADEN van de bijbehorende ... lege DATABASE RECORDS?" (schrijft in de echte collectie). */
+    val records: Boolean = false,
+)
+
 /** Eén stap: voor een stap per bestand bevat [files] precies één bestand, voor een batchstap alle bestanden. */
 class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
     @Volatile
@@ -35,17 +47,26 @@ class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
     @Volatile
     var message: String? = null
 
+    /** Paden op de server die in deze run zijn geüpload en gecontroleerd (alleen bij de uploadstap). */
+    val uploaded: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     val finished: Boolean get() = status == StepStatus.DONE || status == StepStatus.SKIPPED
 
     /** Het bestand van een stap per bestand. */
     val file: TestFile get() = files.single()
+
+    /** De bestandsnamen die de stap verwerkt: images.exe krijgt jpg's, de rest werkt met de genummerde pdf's. */
+    val fileNames: String
+        get() = files.joinToString { if (type == StepType.IMAGES) "${it.number}.jpg" else it.newName }
 
     val question: String
         get() = when (type) {
             StepType.RENAME -> "Hernoem ${file.originalName} naar ${file.newName}?"
             StepType.ARCHIVE -> "Verplaats origineel ${file.originalName} naar de archived-map?"
             StepType.PDF2ZCBS, StepType.IMAGES ->
-                "Run ${type.label} één keer voor ${files.size} ${if (files.size == 1) "bestand" else "bestanden"} (${files.joinToString { it.newName }})?"
+                "Run ${type.label} één keer voor ${files.size} ${if (files.size == 1) "bestand" else "bestanden"} ($fileNames)?"
+            StepType.UPLOAD -> "Upload tekst en pdf van ${files.size} ${if (files.size == 1) "bestand" else "bestanden"} naar de server?"
+            StepType.CLEANUP -> "Maak een back-up van de 100pct en ruim de mappen van de programma's op?"
         }
 }
 
@@ -75,12 +96,24 @@ data class StepView(
     val question: String,
     val current: Boolean,
     val usesExe: Boolean,
+    /** Wat deze stap gaat doen, ter goedkeuring (alleen gevuld voor de eerstvolgende stap). */
+    val plan: List<String> = emptyList(),
+    /** Reden waarom de stap nu niet kan draaien (alleen voor de eerstvolgende stap). */
+    val problems: List<String> = emptyList(),
+    /** Aandachtspunten die de stap niet blokkeren. */
+    val warnings: List<String> = emptyList(),
 )
+
+/** Eén controle op een bestand. [state] is OK, MISSING of PENDING (stap nog niet aan de beurt). */
+data class CheckView(val label: String, val state: String, val path: String)
+
+data class CheckGroupView(val label: String, val items: List<CheckView>)
 
 data class FileRowView(
     val originalName: String,
     val newName: String,
     val cells: List<StepView>,
+    val checks: List<CheckGroupView>,
 )
 
 data class TestRunView(
