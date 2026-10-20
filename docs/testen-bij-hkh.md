@@ -2,7 +2,7 @@
 
 Dit is de eerste run met de echte `pdf2zcbs.exe` en `images.exe` via de app, **in het echte archief** omdat er geen
 testdatabase is. Ga daarom stap voor stap en kijk na elke stap of het klopt. Gaat een stap mis, maak dan het werk af op de
-oude manier (zie onderaan); tot en met het opruimen is er niets weg.
+oude manier (zie onderaan); tot het opruimen is er niets weg, en bij het opruimen is er eerst een back-up gemaakt.
 
 ## Voor je begint
 

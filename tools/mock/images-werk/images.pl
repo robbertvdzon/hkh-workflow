@@ -46,9 +46,10 @@ if ($up =~ /^j/i) {
   print " > Beschikbare ZCBS-toepassingen:\n   - archief\n   - beeldbank\n   - test\n";
   my $app = ask(" > Kies de ZCBS-toepassing (= tevens naam van de uploadmap op de webserver):\n");
   print " - NEP: niets geupload naar $app\n";
-  my $db = ask(" > AANMAKEN en UPLOADEN van de bijbehorende ", scalar(@files), " nieuwe lege DATABASE RECORDS? [J/N]\n");
-  print " - NEP: geen records aangemaakt\n" if $db =~ /^j/i;
 }
+# Ook na een nee op uploaden wordt naar de records gevraagd (zo staat het in het log van het echte programma).
+my $db = ask(" > AANMAKEN en UPLOADEN van de bijbehorende " . scalar(@files) . " nieuwe lege DATABASE RECORDS? [J/N]\n");
+print " - NEP: geen records aangemaakt\n" if $db =~ /^j/i;
 # Opruimen gebeurt echt, net als bij images.exe (stap E).
 my $rm1 = ask(" > VERWIJDEREN (tijdelijk) aangemaakte mappen [small], [large] en [100pct]? [J/N]\n");
 if ($rm1 =~ /^j/i) { remove_tree($_) for qw(small large 100pct); print " - Mappen small/large/100pct verwijderd\n"; }

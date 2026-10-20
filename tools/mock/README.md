@@ -34,6 +34,8 @@ mkdir -p /tmp/hkh-sftp/public_html/archief/ocr /tmp/hkh-sftp/public_html/archief
 java -cp "target/test-classes:target/classes:$(cat /tmp/hkh-cp.txt)" nl.vdzon.hkhworkflow.sftp.TestSftpServerMainKt /tmp/hkh-sftp /tmp/hkh-hostkey.ser
 ```
 
-Het programma toont de poort, de vingerafdruk en het wachtwoord (gebruiker `robbert`, wachtwoord `geheim`). Zet bij Instellingen
+Het programma toont de poort, de vingerafdruk en het wachtwoord (gebruiker `robbert`, wachtwoord `geheim`). Geef als derde
+argument een poortnummer mee als je na een herstart dezelfde poort wilt houden; met hetzelfde hostsleutelbestand blijft ook
+de vingerafdruk gelijk. Zet bij Instellingen
 host `localhost`, die poort, basismap `/public_html` en klik Test verbinding; zet de vingerafdruk vast.
 

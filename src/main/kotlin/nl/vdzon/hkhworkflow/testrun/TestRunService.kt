@@ -518,9 +518,11 @@ class TestRunService(
         val cleaned = stepOf(StepType.CLEANUP).status == StepStatus.DONE
 
         fun local(type: StepType, label: String, path: Path?): CheckView {
+            val status = stepOf(type).status
             val state = when {
-                stepOf(type).status == StepStatus.PENDING -> "PENDING"
+                status == StepStatus.PENDING -> "PENDING"
                 path.present() -> "OK"
+                status == StepStatus.RUNNING -> "PENDING" // wordt nog gemaakt: niet alarmerend rood
                 else -> "MISSING"
             }
             return CheckView(label, state, path?.toString().orEmpty())

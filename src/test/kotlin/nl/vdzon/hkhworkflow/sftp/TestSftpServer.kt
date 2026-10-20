@@ -8,9 +8,9 @@ import org.apache.sshd.sftp.server.SftpSubsystemFactory
 import org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory
 
 /** Sftp-server in het geheugen voor de tests. `root` is de wortel van het bestandssysteem voor de ingelogde gebruiker. */
-class TestSftpServer(val root: Path, hostKeyFile: Path) : AutoCloseable {
+class TestSftpServer(val root: Path, hostKeyFile: Path, fixedPort: Int = 0) : AutoCloseable {
     private val server: SshServer = SshServer.setUpDefaultServer().apply {
-        port = 0
+        port = fixedPort
         keyPairProvider = SimpleGeneratorHostKeyProvider(hostKeyFile).apply { algorithm = "EC"; keySize = 256 }
         setPasswordAuthenticator { user, password, _ -> user == USER && password == PASSWORD }
         subsystemFactories = listOf(SftpSubsystemFactory())
