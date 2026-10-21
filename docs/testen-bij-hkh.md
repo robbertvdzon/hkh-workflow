@@ -11,9 +11,14 @@ oude manier (zie onderaan); tot het opruimen is er niets weg, en bij het opruime
 - Neem een **back-up van `/cgi-bin/archief/` en `/cgi-bin/misc/permit.lst`** met FTP voordat je iets uploadt.
 - Zet in de testmap (`c:\zcbs\invoer`) **alleen de originele bestanden** met hun oude naam. De app geeft ze zelf het
   nummer. Staan er al op nummer hernoemde bestanden, dan krijgen die een tweede nummer.
-- Kijk wat het volgende vrije recordnummer in archief is (zoekopdracht `LAST`) en hoeveel cijfers de nummers hebben.
-  Gebruik dat als beginnummer. Voor een eerste proef kun je een nummer ver buiten de echte reeks nemen, zoals bij de
-  testsessie `90000000`, maar dan komen er wel echte records met dat nummer in archief.
+- **Recordnummers in archief hebben precies vijf cijfers** (`$MAX_OBJECT` is 99999; ZCBS weigert andere lengtes). Gebruik dus geen
+  nummers zoals `90000000`. In de serverbestanden van 21 oktober was het hoogste nummer 11933, dus het volgende vrije is
+  dan 11934. Controleer dat met `LAST` in ZCBS.
+- **De records bestaan al voordat images.exe draait.** Sinds eind februari 2026 maakt Carla ze eerst aan met `NEWRECORD <begin>
+  <eind>` (beheerderspagina, optie Q) en laat ze bij images.exe het aanmaken van records uit. Doe dat dus eerst, voor het bereik
+  dat je gaat gebruiken. Records 11842 tot en met 11933 zijn op 14 oktober al aangemaakt en hadden toen nog geen
+  images.exe-sessie: gebruik die nummers niet per ongeluk voor andere bestanden, en kijk met `IMAGENO` welke records nog geen
+  afbeelding hebben.
 
 ## Instellingen
 
@@ -33,6 +38,10 @@ Klik **Test verbinding**. Controleer dat beide mappen (`archief/ocr` en `archief
 van Total Commander of de hostingprovider, en zet hem dan pas vast. Zonder vastgezette vingerafdruk wordt er niet geüpload.
 
 ## De stappen
+
+**Stap 0, met de hand in ZCBS:** maak de lege records aan voor het bereik dat je gaat verwerken (`NEWRECORD <begin> <eind>`, hoogstens
+1000 tegelijk, vijf cijfers). De app doet dit niet en controleert het nog niet; laat bij images.exe de vinkjes voor upload en
+records daarom uit, tenzij je uploaden bewust wilt proberen.
 
 De app toont bij elke stap wat hij gaat doen, en waarom hij niet kan als er iets niet klopt. Na elke stap staan er vinkjes
 per bestand. Ga pas verder als ze groen zijn.

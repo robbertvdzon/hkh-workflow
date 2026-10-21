@@ -74,8 +74,8 @@ de app moet nabootsen. Windows-mappen bij HKH: `c:\zcbs\invoer`, `c:\zcbs\pdf2zc
    Omdat de large-jpg al klein is, is de 100pct ongeveer even klein; de pdf is het volwaardige document.
 3. Controle met `dir` op `small`, `large` en `100pct` in `c:\zcbs\images`.
 4. Met Total Commander (**sftp**) naar de server: `output\ocr` naar `/domains/historischekringheemskerk.nl/public_html/archief/ocr` en
-   `output\pdf` naar `.../archief/pdf`. De afbeeldingen en records zet images.exe zelf op de server (FTP). Dat staat niet
-   uitdrukkelijk in het stappenplan, maar het noemt alleen ocr en pdf als handmatige overzet (afleiding).
+   `output\pdf` naar `.../archief/pdf`. De afbeeldingen zet images.exe zelf op de server (FTP; in `images.log`
+   staat de upload in vrijwel elke sessie). De records worden sinds eind februari 2026 **vooraf** met `NEWRECORD` aangemaakt, zie hieronder.
 5. Back-up: `100pct` naar `c:\zcbs\backup_100pct`, invoer naar `c:\zcbs\backup_invoer_org`.
 6. Opruimen: `rmdir /S /Q output` (pdf2zcbs), `rmdir /S /Q 100pct small large` (images), `del c:\zcbs\images\*.txt` (het
    images.exe-log), `del c:\zcbs\images\images\*.*`, `del c:\zcbs\invoer\*.*`.
@@ -86,6 +86,36 @@ records `n`, verwijderen `n`, `n`. Versie bij HKH: **images.exe 3.27** (de inter
 en verwerkt"), dus de vragen komen daar waarschijnlijk niet; onze automatische regels doen dan niets.
 
 Antwoorden op eerdere open vragen: de sftp-mappen zijn hierboven bekend. FTP voor images.exe lijkt dus nog te werken.
+
+### Wat de serverbestanden laten zien (download van 21 oktober 2026, in `docs/server/`, niet in git)
+
+- **Recordnummers zijn vijf cijfers.** `$MAX_OBJECT = 99999` in de config; het hoofdprogramma weigert andere lengtes. Archief heeft
+  records 10000 tot en met 11933 (1908 stuks, 26 gaten). Nummers van acht cijfers, zoals `90000000` uit de testsessie, kunnen niet.
+- **Paden:** `$OCR_MAP = archief/ocr` en `$PDF_VIEWER = archief/pdf`, relatief aan de webroot. ZCBS zoekt de tekst door die map te
+  doorzoeken en leidt het recordnummer af uit de bestandsnaam; de pdf wordt gevonden als `archief/pdf/<nummer>.pdf`. `small` en
+  `large` staan in `public_html/archief`, de `100pct` in het beveiligde `cgi-bin/archief/100pct`. Archief is type `$ZCBS = 2` (publicaties).
+- **Nieuwe records** bestaan uit alleen id's, het nummer en een aanmaakstempel `jjmmdd-uu:mm|system`; de titel is leeg en veld 27
+  (originele bestandsnaam) is nergens gevuld. "Nog te beschrijven" is dus: lege titel, of een lege beschrijfdatum (veld 33).
+  `updates.txt` krijgt bij elke opslag een regel erbij; de laatste regel per nummer wint.
+- **Hoe de records ontstaan (uit `images.log`, 103 archief-sessies sinds februari 2022):** tot en met 25 februari 2026 maakte
+  images.exe de records aan (stappen `up1-up2`, in 49 sessies). Sinds eind februari 2026 maakt Carla ze ongeveer tien minuten
+  vóór images.exe aan met `NEWRECORD` (hetzelfde `system`-stempel, aantal gelijk aan de batch) en draait images.exe zonder
+  records-stap. `NEWRECORD` kent een maximum van 1000, weigert bestaande nummers en vereist vijf cijfers.
+- **images.exe uploadt in vrijwel elke sessie** (stap `ftp2-C`), dus FTP werkt bij HKH. Carla gebruikt versie 3.27, Marcel 3.34 en Jan
+  Kamps gebruikte op 13 oktober 2026 3.62 voor de beeldbank. Op de ZCBS-site staat 3.62 (29-10-2025) als huidige; pdf2zcbs 1.17
+  (HKH heeft 1.16).
+- **Opnieuw draaien is gewoon:** op 19 van 76 dagen was er meer dan één sessie, bijna altijd met hetzelfde aantal afbeeldingen. In
+  9 sessies moest opnieuw worden ingelogd. Overschrijven moet in de app dus een bewuste keuze per run kunnen zijn.
+- **Batchgrootte:** mediaan 11 afbeeldingen, maximaal 108. De records van 14 oktober 2026 (11842 tot en met 11933, 92 stuks) hadden
+  nog geen images.exe-sessie; voor de 104 records van 15 oktober 2025 is er ook geen sessie met dat aantal.
+- **Tekenset:** de master is latin-1, maar 40 records bevatten UTF-8-resten (`Ã©` voor é). Nooit UTF-8 schrijven in de database.
+- **Back-ups:** het laatste `backup.exe`-run in `backup.log` is van 1 januari 2024 (daarvoor rond twee per jaar).
+- **Voorbeeld-ocr:** `ocr/10000.txt` bevat alleen de kop van pdf2zcbs; de pdf is een scan zonder tekstlaag. pdf2zcbs doet geen OCR.
+- **Images 2.0** (`zcbs_frontend`, versie 1.1.6.14) is een webversie van images.exe voor afbeeldingen, met een PHP-backend. Niet
+  ingesteld bij HKH (`FIRST_START`). Geen pdf of OCR. De backend zelf is niet gedownload.
+- Beveiligingspunten voor Jan of de ZCBS-groep: een wachtwoord en privénummer staan leesbaar in `cfg-cbs.pl`; de `.js.map` van Images
+  2.0 bevat een vaste API-sleutel en een debug-sleutel en de app stuurt na elke upload een logregel met sleutel onversleuteld naar
+  een externe host; `phpinfo.php` en `printenv.pl` staan op de server.
 
 ---
 
@@ -385,8 +415,10 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
    een echte console ziet (lost ook verborgen wachtwoordinvoer op).
 3. Uitzoeken: bij uploaden vraagt images.exe in welke submap de afbeeldingen moeten (kies 0-1, of een nieuwe submap). Als de
    uitkomst vast is, een instelling of antwoordregel toevoegen; nu stopt de app bij die vraag en antwoord je zelf.
-4. Uitzoeken: hoeveel cijfers hebben de recordnummers van archief? Type A eist overal hetzelfde aantal. De testnummers waren
-   acht cijfers (`90000000`).
+4. **Records aanmaken.** Nu doet Carla dat vooraf met `NEWRECORD`. Beslissen of de app dat doet (via het ZCBS-web, met een
+   ingelogde beheerder) of alleen controleert dat de records van de batch bestaan. Tot dan: stap 0 met de hand, zie
+   [testen-bij-hkh.md](testen-bij-hkh.md).
+4b. **Overschrijven per run** (derde vinkje, standaard uit) voor het opnieuw uploaden van een batch.
 5. De vingerafdruk van de sftp-server vergelijken met wat Total Commander of de hostingprovider toont, voordat je hem vastzet.
 6. Testcollectie: Gerard van Nes antwoordde dat je die zelf moet aanmaken (aparte map aan beide kanten van `/cgi-bin`, dan
    herkent images.exe hem als aparte beeldbank). Nog niet gedaan; tot dan is de eerste run in het echte archief.
