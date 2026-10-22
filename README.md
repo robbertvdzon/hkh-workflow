@@ -91,5 +91,6 @@ images.exe en pdf2zcbs.exe als Perl-scripts; zie `tools/mock/README.md`.
 
 ## Documentatie
 
-`docs/` bevat de ZCBS-handleidingen (technische documentatie v4.0, images.exe = 042, pdf2zcbs = 050) en het
+`docs/zcbs-analyse-en-wrapper.md` bundelt alle bevindingen uit de serverbestanden, hoe HKH nu werkt en het voorstel voor een wrapper
+om ZCBS heen. `docs/` bevat verder de ZCBS-handleidingen (technische documentatie v4.0, images.exe = 042, pdf2zcbs = 050) en het
 UX-ontwerp.

@@ -67,9 +67,12 @@ voor alleen één collectie krijgen (eerste kolom). Ook een lokale `permit.lst` 
 ### Testversies en een testcollectie
 
 - Ingebouwd: `beeldbank2.pl` → `objecten2.pl`, met testbestanden `cfg-cbs2.pl`, `layout2.html`, `replace2.txt`,
-  `<collectie>2.txt` als die bestaan (anders de productiebestanden). Ook `…3.pl` enz. mogelijk. Bedoeld voor config/
-  layout/nieuwe versies. **Er wordt geen `updates2.txt` genoemd** en afbeeldingsmappen zijn gedeeld → niet geschikt om
-  het importproces veilig te testen (afleiding).
+  `<collectie>2.txt` als die bestaan (anders de productiebestanden). Bedoeld voor config/layout/nieuwe versies.
+  **Correctie van 22 oktober 2026, uit de code van `objecten.pl`:** in testmodus schrijft ZCBS wijzigingen naar `updates2.txt`
+  (variabele `$UPDATES2`), zonder cumulatieve back-up en zonder mail, en leest het productie-master en productie-updates plus
+  `updates2.txt` zolang er geen testmaster is. Voor het bewerken van records is de testversie dus een veilige oefenomgeving.
+  `NEWRECORD` werkt in testmodus niet, en de afbeeldingsmappen en de map met tekst en pdf zijn gedeeld, dus voor het importproces
+  met uploads is hij niet geschikt. Zie [zcbs-analyse-en-wrapper.md](zcbs-analyse-en-wrapper.md), A3.
 - **Testcollectie** (bijv. `test`): is gewoon een collectie (startscript + `/cgi-bin/test/` + `/public_html/test/`),
   data gescheiden. In de config zetten: `$INTERNET = 0;` (niet publiek) en `test` in `$NODB` van de andere collecties
   (niet meezoeken in "alle databases").
