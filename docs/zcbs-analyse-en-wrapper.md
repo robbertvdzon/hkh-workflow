@@ -19,8 +19,11 @@ code zonder het uit te proberen, staat als *afgeleid*. Er is niets uitgeprobeerd
 2. Een nieuw of gewijzigd record komt als complete regel achteraan `updates.txt`. ZCBS schrijft dezelfde regel in een cumulatieve
    back-up en mailt de beheerder. De master wordt pas bij een merge bijgewerkt.
 3. Archief en beeldbank krijgen records in batches. Bidprent en library krijgen ze met de hand, één voor één.
-4. Sinds eind februari 2026 maakt Carla de records van een batch eerst aan met het ZCBS-commando `NEWRECORD`. images.exe maakt
-   ze niet meer aan.
+4. Records van een batch: volgens Robbert en het stappenplan laat Carla ze door images.exe aanmaken (stap D, antwoord J). Een
+   eerdere afleiding uit de aanmaaktijden, dat ze sinds februari 2026 `NEWRECORD` gebruikt, is niet bevestigd. De database laat
+   zien dat alle records sinds 2022 het stempel `system` hebben en meestal een lege titel, terwijl de handleiding (2022) voor
+   images.exe een titel "Een nog niet beschreven record (datum)" noemt (7 records in 2022, 1 in 2026). Dat past niet eenduidig bij
+   één van beide, en de nieuwere images.exe-versie kan het anders doen.
 5. Recordnummers zijn per collectie anders opgebouwd. Archief, beeldbank en bidprent hebben doorlopende nummers van vijf
    cijfers, library van vier, objecten van één tot vier zonder voorloopnullen, en artikelen en transcripties tien cijfers.
 6. images.exe draait bij HKH in drie versies naast elkaar. Er is een nieuwere versie beschikbaar.
@@ -223,10 +226,9 @@ zichtbaar.
 Dit is de werkwijze zoals die uit het stappenplan van Carla (19 oktober 2026), `images.log`, de database en de bestanden volgt.
 
 1. **Scannen.** Ria en anderen zetten pdf's op het netwerk, in `K:\scabslelly`, elk in een eigen map. Carla krijgt een melding.
-2. **Records aanmaken, sinds eind februari 2026.** Carla zoekt het hoogste nummer op en maakt de records van de batch aan met
-   `NEWRECORD <begin> <eind>`. Die records krijgen het stempel `system`, een lege titel en bestaan uit alleen het nummer. Dit gebeurt
-   ongeveer tien minuten vóór het draaien van images.exe, met precies zoveel records als er bestanden zijn. *Afgeleid* uit de
-   aanmaaktijden in de database naast de tijden in `images.log`. Vóór februari 2026 maakte images.exe de records zelf aan.
+2. **Records aanmaken.** Volgens Robbert en het stappenplan doet images.exe dit zelf (stap D). Eerdere afleiding uit de aanmaaktijden:
+   sinds eind februari 2026 zouden de records ongeveer tien minuten vóór images.exe met `NEWRECORD` zijn aangemaakt. Niet bevestigd,
+   zie punt 4 hierboven.
 3. **Hernoemen.** De pdf's krijgen het recordnummer als naam, in `c:\zcbs\invoer`.
 4. **pdf2zcbs.** `copy invoer\*.*` naar `c:\zcbs\pdf2zcbs` en het programma draaien. Per pdf komen er in `output\` een tekstbestand,
    de pdf zelf, een small en een large.
@@ -386,7 +388,7 @@ De flow volgt het stappenplan van Carla. Elke stap wordt apart goedgekeurd.
 
 | Stap | Wat | Status in de code |
 |---|---|---|
-| 0 | Records aanmaken met `NEWRECORD`. Het bereik komt uit `LAST` plus één en wordt door de gebruiker bevestigd. | Nog niet. Nu met de hand in ZCBS. |
+| 0 | Controleren dat de nummers van de batch nog niet bestaan (images.exe maakt de records aan). | Nog niet. |
 | 1 | Hernoemen naar recordnummers, in een werkmap. | Gebouwd |
 | 2 | pdf2zcbs één keer voor de hele batch. Controle op tekst, pdf, small en large. | Gebouwd |
 | 3 | images.exe met de large-jpg's. Type `a`, resolutie uit de instelling. Uploaden en records staan standaard uit. | Gebouwd. Het vinkje om te overschrijven ontbreekt nog. |

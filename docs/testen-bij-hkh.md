@@ -14,11 +14,12 @@ oude manier (zie onderaan); tot het opruimen is er niets weg, en bij het opruime
 - **Recordnummers in archief hebben precies vijf cijfers** (`$MAX_OBJECT` is 99999; ZCBS weigert andere lengtes). Gebruik dus geen
   nummers zoals `90000000`. In de serverbestanden van 21 oktober was het hoogste nummer 11933, dus het volgende vrije is
   dan 11934. Controleer dat met `LAST` in ZCBS.
-- **De records bestaan al voordat images.exe draait.** Sinds eind februari 2026 maakt Carla ze eerst aan met `NEWRECORD <begin>
-  <eind>` (beheerderspagina, optie Q) en laat ze bij images.exe het aanmaken van records uit. Doe dat dus eerst, voor het bereik
-  dat je gaat gebruiken. Records 11842 tot en met 11933 zijn op 14 oktober al aangemaakt en hadden toen nog geen
-  images.exe-sessie: gebruik die nummers niet per ongeluk voor andere bestanden, en kijk met `IMAGENO` welke records nog geen
-  afbeelding hebben.
+- **Wie maakt de records aan?** Volgens Robbert maakt Carla geen records met de hand aan: het stappenplan (`Stappenplan archief
+  beeldbank.docx`) noemt geen `NEWRECORD`, en images.exe maakt ze zelf aan in stap D (vraag "AANMAKEN en UPLOADEN van de bijbehorende
+  ... nieuwe lege DATABASE RECORDS? [J/N]", antwoord J). images.exe zet ze via FTP in de update-database op de server. Een eerdere
+  afleiding uit de aanmaaktijden (dat Carla sinds februari 2026 `NEWRECORD` gebruikt) is daarmee niet meer het uitgangspunt.
+  Records die al bestaan mag images.exe niet nog eens aanmaken: controleer vooraf (met `LAST` of de bewerkpagina) dat de nummers
+  van deze batch nog niet bestaan. Records 11842 tot en met 11933 bestaan al sinds 14 oktober.
 
 ## Instellingen
 
@@ -39,9 +40,9 @@ van Total Commander of de hostingprovider, en zet hem dan pas vast. Zonder vastg
 
 ## De stappen
 
-**Stap 0, met de hand in ZCBS:** maak de lege records aan voor het bereik dat je gaat verwerken (`NEWRECORD <begin> <eind>`, hoogstens
-1000 tegelijk, vijf cijfers). De app doet dit niet en controleert het nog niet; laat bij images.exe de vinkjes voor upload en
-records daarom uit, tenzij je uploaden bewust wilt proberen.
+**Stap 0, vooraf controleren:** de nummers van deze batch mogen nog niet als record bestaan, want images.exe maakt ze zelf aan.
+De app controleert dat nog niet; kijk met `LAST` in ZCBS wat het hoogste nummer is. Laat bij images.exe de vinkjes voor upload en
+records uit voor een droge run, en zet ze pas aan als je het echt wilt (dat schrijft in het echte archief).
 
 De app toont bij elke stap wat hij gaat doen, en waarom hij niet kan als er iets niet klopt. Na elke stap staan er vinkjes
 per bestand. Ga pas verder als ze groen zijn.
