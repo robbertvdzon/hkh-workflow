@@ -154,6 +154,10 @@ productie, dus voor uploads is dit geen veilige omgeving.
 - Er is geen "onthoud dit adres". Alleen een beheerder past `permit.lst` aan, met FTP of via de beheerderspagina.
 - Voor archief staan er 13 regels voor negen personen en twee gemeenschappelijke routerregels. Vier personen hebben geen echt
   IP-adres in hun regel en loggen dus altijd in met naam en wachtwoord.
+- **Het inlogscherm is niet zichtbaar.** De publieke homepage heeft geen inlogknop en de publieke pagina's tonen geen bewerkknoppen. Je
+  komt bij het inlogscherm door `LOGIN` in het zoekveld te typen, of `INLOGGEN`, `INLOG` of `USER_RESET`, of door
+  `archief.pl?user=reset` te openen. Daarna heb je een regel met wachtwoord in `permit.lst` nodig. Wie er niet in staat, wordt een
+  externe gebruiker.
 
 ## A6. De programma's
 
@@ -180,7 +184,8 @@ productie, dus voor uploads is dit geen veilige omgeving.
   andere back-up bestaat, bijvoorbeeld van de hoster, is niet bekend.
 - Merges gebeuren door een beheerder met recht 1+. Wie het doet en hoe vaak is niet bekend. De eerste regel in elk updatebestand
   wijst op: archief 7 oktober, beeldbank 14 oktober, library 25 maart, bidprent 2 februari, objecten 26 november 2025.
-- `downloads.txt` op de server noemt als actueel: objecten 4.16a, images.exe 3.62, Images 2.0 1.1.5, pdf2zcbs 1.17, backup 3.7.
+- `downloads.txt` op de server noemt als actueel: objecten 4.16a, images.exe 3.62, Images 2.0 1.1.5, pdf2zcbs 1.17, backup 3.7. De
+  publieke pagina toont onderaan echter versie 4.18s4, dus de server draait een nieuwere versie dan de downloadlijst noemt.
 
 ## A8. Overige opvallende dingen
 
@@ -190,6 +195,24 @@ productie, dus voor uploads is dit geen veilige omgeving.
 - Op 14 oktober 2026 zijn 92 records aangemaakt, 11842 tot en met 11933, zonder dat er daarna een images.exe-sessie voor is gelogd.
   Voor de 104 records van 15 oktober 2025 is er ook geen sessie met dat aantal.
 - Er staat een `phpinfo.php` en een `printenv.pl` op de server.
+
+## A9. Wat zonder inloggen te lezen is
+
+De publieke pagina's van archief laten zien wat een buitenstaander ziet, en dat is nuttig voor de wrapper omdat het zonder login kan.
+
+- De homepage toont **Aantal publicaties op internet** en **Aantal publicaties op intranet**, plus **Laatste update** met datum en tijd,
+  en onderaan de **versie** van het hoofdprogramma. Op 24 oktober 2026 stond daar 1838 en 1908, laatste update 21-10-2026 om 11:42,
+  versie 4.18s4.
+- Het aantal op intranet, 1908, is gelijk aan het aantal records in onze download. De download is dus actueel tot en met 21 oktober.
+  Het verschil van 70 zijn records die niet op internet staan.
+- Een record staat op `archief.pl?ident=10030`, met de velden, de afbeelding en een ingebouwde pdf-viewer als de pdf bestaat.
+- Zoeken en lijsten gaan met parameters als `search`, `veld`, `display=list`, `istart`, `sort` en `inword`, bijvoorbeeld een zoekopdracht
+  in één veld met `misc=12&a8a0=...&a8a1=...`. Een lijst toont 30 records per pagina.
+- De ocr-zoekkeuze staat standaard op Ja, zoals de code aangaf.
+
+Voor de wrapper betekent dat: het versienummer en de teller met de laatste update zijn zonder login uit te lezen en geschikt voor de
+contracttest en om te zien dat er iets is gewijzigd. Interne velden en records die niet op internet staan blijven alleen met een login
+zichtbaar.
 
 ---
 
@@ -325,6 +348,8 @@ Een aparte module, `zcbs`, doet alle HTTP-verkeer met ZCBS. Zo staat de afhankel
   record opende. Is het veranderd, dan volgt een melding en wordt er niet overschreven.
 - **Vergrendeling.** ZCBS blokkeert een record tien minuten voor anderen als het wordt geopend om te bewerken. *Afgeleid*. De app
   opent de bewerkpagina dus alleen als de gebruiker echt gaat bewerken, en leest voor weergave via een andere weg.
+- **Versie en wijzigingen zonder login.** De homepage toont zonder inloggen het versienummer en de teller met de laatste update. Die gebruiken
+  we voor de versiecontrole en om te zien of er iets is veranderd, voordat we gegevens ophalen.
 - **Fragiliteit.** De pagina's zijn HTML zonder contract en kunnen bij een versie-update veranderen. Daarom: parsers klein houden,
   contracttests tegen bewaarde voorbeeldpagina's en tegen de testversie, en een controle op de versie van `objecten.pl`.
 - **Veilig oefenen.** `archief2.pl` schrijft naar `updates2.txt` zonder mail en zonder back-up. Daarmee testen we alles wat records
