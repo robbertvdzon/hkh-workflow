@@ -1,0 +1,3 @@
+sftp naar 
+/domains/historischekringheemskerk.nl/public_html/archief/ocr
+/domains/historischekringheemskerk.nl/public_html/archief/pdf

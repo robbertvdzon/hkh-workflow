@@ -1,0 +1,66 @@
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+Dit ZCBS-hulpprogramma zorgt voor het:
+A. Inlezen en bepalen van de type images.
+B. Automatisch aanmaken van afgeleiden afbeeldingen (small/large/100pct).
+C. Uploaden via ftp van deze images naar de webserver.
+D. Aanmaken van de bijbehorende database records.
+
+Documentatie:
+Zie: www.zcbs.nl/docs/manual-images.pdf
+
+==> Vergeet niet om na afloop de originele afbeeldingen op te slaan!
+
+-------------------------------------------------------------------------------
+Versie 3.27 (13-07-2021) -- 21-01-2022    Info: Gerard van Nes (vannes@zcbs.nl)
+-------------------------------------------------------------------------------
+
+- Huidige map is: c:\ZCBS\Images
+
+  Gevonden 2 bestanden in map (\images) van type: **** A ****
+
+> Type ENTER/RETURN indien OK -- of kies een van de volgende opties/letters -- of breek het programma af:
+   A : Bestandstype A: Vast aantal cijfers (= recordnummer); geen letters en andere tekens
+   B : Bestandstype B: Vast aantal letters + vast alleen cijfers (= recordnummer)
+   C : Bestandstype C: Willekeurig aantal letters en/of cijfers (naast - en _ geen andere tekens)
+a
+
+
+----------------------------------------------------------------------------
+- Resoluties voor aan te maken afgeleide afbeeldingen van de type A images?
+  ----------------------------------------------------------------
+  1 = small: 100x100  -  large: 700x500  -  100pct: ongewijzigd
+  2 = small: 100x100  -  large: 700x500  -  100pct: max. 3000-2000
+  3 = small: 100x100  -  large: 700x500  -  100pct: max. 4000-3000
+  ----------------------------------------------------------------
+  6 = small: 250x250  -  large: 700x500  -  100pct: ongewijzigd
+  7 = small: 250x250  -  large: 700x500  -  100pct: max. 3000-2000
+  8 = small: 250x250  -  large: 700x500  -  100pct: max. 4000-3000
+  ----------------------------------------------------------------
+  Kies  1,2,3 (objecten,boeken,etc),  of kies  6,7,8 (foto's,etc)
+6
+
+- 2 (van de 2) images via Irfanview omgezet en geplaatst in submap: \small
+- 2 (van de 2) images via Irfanview omgezet en geplaatst in submap: \large
+- 2 (van de 2) images via Irfanview omgezet en geplaatst in submap: \100pct
+
+
+----------------------------------------------------------------------------
+> UPLOADEN aangemaakte images in small/large/100pct naar webserver? [J/N]
+n
+
+
+
+----------------------------------------------------------------------------
+> AANMAKEN en UPLOADEN van de bijbehorende 2 nieuwe lege DATABASE RECORDS? [J/N]
+n
+
+
+> VERWIJDEREN (tijdelijk) aangemaakte mappen [small], [large] en [100pct]? [J/N]
+n
+
+
+> VERWIJDEREN inhoud van de map [images] met bron images? [J/N]
+n
+
+> Geef een Return/Enter om dit DOS-window te verlaten
