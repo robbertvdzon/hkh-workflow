@@ -197,11 +197,12 @@ Uit `objecten.pl` (OUTPUT_UPDATE vanaf regel 16997, ZCBS_MENU vanaf 24582, LOCK_
 
 ### Valkuilen die het onderzoek opleverde
 - **Een User-Agent met `curl` wordt volgens de code geweigerd** met een lege pagina (`==Sorry:3==`). Nog niet uitgeprobeerd. Gebruik een eigen naam.
-- **Een filter op de inhoud van het verzoek.** Staat in de GET-regel of in het POST-lichaam een van `onerror`, `onload`, `onclick`, `onfocus`,
-  `onselect`, `onsubmit`, `script` (niet direct na "java"), `style` of `curl`, dan antwoordt ZCBS met een lege pagina (`==Sorry:2==`).
-  Omdat `a0` het hele record meestuurt, geldt dat ook voor tekst die er al staat. In archief gaat het om **2 van 1970 records**:
-  10558 ("kandidaatsscriptie") en 11162 ("inscriptie"). Die zijn ook in ZCBS zelf niet te bewerken. De app moet dit vooraf controleren en melden.
-  Ook nieuwe tekst met "description", "manuscript", "style" enzovoort faalt.
+- **Een filter op de URL en (waarschijnlijk niet) op het POST-lichaam.** `objecten.pl` regel 257 en 270 zoeken in `REQUEST_URI` en in het POST-lichaam naar
+  `onerror`, `onload`, `onclick`, `onfocus`, `onselect`, `onsubmit`, `script` (niet direct na "java"), `style` en `curl`, en antwoorden dan met een lege pagina
+  (`==Sorry:1` of `==Sorry:2`). Het filter op de URL werkt zeker voor alles in de query (zoekwoorden in `search=`). Het filter op het POST-lichaam leest
+  met `read(STDIN, $input, $content_length)`, maar `$content_length` krijgt nergens een waarde in de downloadbare code. Perl leest dan 0 bytes, en dat is
+  ook de reden dat het formulier daarna nog gewoon werkt (anders was `ReadParse` leeg). Dat filter is dus waarschijnlijk uitgeschakeld.
+  Het gevolg zou zijn dat records met "scriptie" of "inscriptie" (10558 en 11162) wel te bewerken zijn. Dit is een afleiding, nog niet uitgeprobeerd.
 - **Velden zonder invoerveld worden gewist** (zie paragraaf 4). In de data zijn er zo'n 14 records met inhoud in veld 17 (zoals
   "|Document niet geheel gescand.") en zo'n 9 met een getal in veld 28. Bewerk je die via het ZCBS-formulier, dan verdwijnt die inhoud.
   De app moet ze meesturen.

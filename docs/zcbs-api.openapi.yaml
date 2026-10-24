@@ -15,8 +15,8 @@ info:
     - Tekens: ISO-8859-1 (latin-1), niet UTF-8.
     - Stuur een eigen `User-Agent`. Een agent met `curl` krijgt een lege pagina (`==Sorry:3==`).
     - Stuur geen `X-Forwarded-For`. ZCBS gebruikt dat als IP-adres.
-    - Elk verzoek (GET of POST) waarvan de URL of het lichaam `onerror`, `onload`, `onclick`, `onfocus`, `onselect`, `onsubmit`,
-      `script`, `style` of `curl` bevat, geeft een lege pagina (`==Sorry:1==` of `==Sorry:2==`).
+    - Een URL met `onerror`, `onload`, `onclick`, `onfocus`, `onselect`, `onsubmit`, `script`, `style` of `curl` geeft een lege pagina (`==Sorry:1==`).
+      Hetzelfde filter bestaat voor het POST-lichaam (`==Sorry:2==`), maar werkt waarschijnlijk niet doordat `$content_length` nergens een waarde krijgt. ONBEVESTIGD.
     - Er is geen fout-statuscode. Alles geeft `200` met HTML. Succes of fout moet je uit de tekst of door terugkijken halen.
 servers:
   - url: https://www.historischekringheemskerk.nl/cgi-bin
