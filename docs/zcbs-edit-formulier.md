@@ -249,3 +249,16 @@ ZCBS bepaalt wie je bent in deze volgorde:
   vergelijk `a0` met wat de gebruiker begon te bewerken, en post direct.
 - Een eigen User-Agent (geen `curl`) en latin-1 voor de velden.
 - Een herkenbare mislukking: het antwoord bevat "Uw sessie is verlopen", "niet herkend", "Tijdelijk geblokkeerd object" of `==Sorry`.
+
+### Aanvulling: HKH zelf en de vergrendeling
+
+- In `permit.lst` staat voor archief een regel `<ROUTER> HKH` met het vaste IPv4-adres van de kring (plus een regel voor een gebruiker die thuis een eigen
+  adres heeft). Iedereen op het HKH-netwerk komt dus met hetzelfde adres binnen en moet zich per persoon aanmelden met het routerformulier
+  (`user` + `pswd` + `veld=access`). Draait de app op het HKH-netwerk en gaat die via hetzelfde publieke adres naar buiten, dan geldt voor de app ook de routerweg
+  (sessie 60 minuten stilstand, opslaan wordt niet geweigerd door een verlopen sessie). Draait de app elders, dan geldt de weg met 10 minuten.
+- Het IP-adres telt voor het inloggen en voor het resetten van een vergrendeling (`upd_form=clr` geldt voor **alle** gebruikers van dat adres). Voor de
+  vergrendeling zelf telt de gebruikersnaam.
+- De vergrendeling wordt gezet bij elk verzoek met `upd_form=edt` en een `ident`: het openen van het formulier en ook het opslaan. Gewoon bekijken
+  (`archief.pl?ident=N` zonder `upd_form`) vergrendelt niet. Elk nieuw verzoek verlengt de vergrendeling met tien minuten. Er is geen automatische
+  vrijgave na het opslaan. De app moet `upd_form=clr` niet gebruiken, omdat dat ook de vergrendelingen van collega's op hetzelfde adres opheft.
+- Tijdelijk geblokkeerd geldt dus alleen voor een andere naam. In de testversie `archief2` is er geen vergrendeling.
