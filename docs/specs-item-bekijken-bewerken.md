@@ -1,10 +1,17 @@
 # Specificatie: item bekijken en bewerken in de workflow
 
-Status: voorstel, 24 oktober 2026. Bedoeld voor de eerste run met Carla in het echte archief, volgende week.
+Status: voorstel, 24 oktober 2026, bijgewerkt na de beslissingen van Robbert (geen login op de app, testen op het echte archief, lock bij openen). Bedoeld voor de eerste run met Carla in het echte archief, volgende week.
 Achtergrond en bewijs staan in [zcbs-edit-formulier.md](zcbs-edit-formulier.md), [zcbs-api.openapi.yaml](zcbs-api.openapi.yaml) en
 [zcbs-analyse-en-wrapper.md](zcbs-analyse-en-wrapper.md). Alles over ZCBS is daar **uit de broncode en de HTML van het bewerkscherm gelezen,
 niet uitgeprobeerd**. Er is vóór de run geen testomgeving beschikbaar. Deze spec gaat daarom uit van veilig falen: als iets niet klopt,
 stopt de app en kan Carla het in ZCBS zelf afmaken.
+
+## 0. Beslissingen van Robbert
+
+- De app krijgt nu **nog geen eigen login**; het is een testversie. Dat komt later.
+- We testen op **het echte archief**, stap voor stap met Carla.
+- Het bewerkscherm wordt gevuld met de gegevens uit ZCBS. Carla vult rustig in. De app houdt haar invoer vast. Bij indienen zet de app opnieuw de lock en post direct daarna.
+- Er wordt nog **niets gebouwd** tot Robbert een sein geeft.
 
 ## 1. Doel en afbakening
 
@@ -87,7 +94,7 @@ Niet bewerkbaar: documentnummer en de stempels (aangemaakt, beschreven, aangepas
 
 **Voorbeeld.** Een lijst "veld, oud, nieuw" met alleen de wijzigingen. Geen wijzigingen: geen opslaan. Daaronder de melding dat opslaan een e-mail naar de beheerder stuurt.
 
-**Na het opslaan.** Een groen scherm "Opgeslagen en gecontroleerd" met de gelezen waarden, of een fout met uitleg (zie 8). Daarna "Volgende record".
+**Na het opslaan.** (zie ook paragraaf 7) Een groen scherm "Opgeslagen en gecontroleerd" met de gelezen waarden, of een fout met uitleg (zie 8). Daarna "Volgende record".
 
 ## 5. Techniek
 
@@ -103,7 +110,11 @@ Nieuwe Spring Modulith-modules, in dezelfde stijl als `sftp` en `testrun`:
   Vaste `User-Agent` (niet `curl`), geen `X-Forwarded-For`, redirects aan, timeouts van 15 seconden, een enkel verzoek tegelijk per sessie.
 - `ZcbsClient`: `login()`, `openForm(nr)`, `save(form)`, `readBack(nr)`.
 - `FormParser`: leest de HTML van het formulier (zie 6) in een `ItemForm`: lijst van velden (naam, label, soort, waarde, opties), de verborgen velden en de
-  oorspronkelijke `a0`. Geen vaste lijst in de code, behalve de bekende namen en de velden die niet in het formulier staan (6.3).
+  oorspronkelijke `a0`. Gebruikt **Jsoup** (geen reguliere expressies): de pagina heeft attributen zonder aanhalingstekens, hoofdletters (`CHECKED`, `SELECTED`,
+  `MULTIPLE`) en `<option>` zonder sluitende tag. Het antwoord wordt als ISO-8859-1 gelezen. Alleen `<form name=zcbsform>` telt; de rest van de pagina wordt genegeerd.
+  Velden worden op `name` gevonden en labels uit de `<th>` van dezelfde rij, niet op de tabelindeling. Geen vaste lijst van velden in de code, behalve de
+  verwachte namen (voor de controle in 6.5) en de velden die niet in het formulier staan (6.3).
+- `RecordRebuilder`: bouwt uit de ingelezen velden het record op zoals ZCBS dat doet (zie 6.5), voor de controle tegen `a0`.
 - `FormEncoder`: bouwt het `multipart/form-data`-lichaam in ISO-8859-1. Een teken dat niet in latin-1 past, geeft een fout met het teken en het veld.
 - `RecordDiff`: vergelijkt twee versies veldsgewijs.
 - `ZcbsErrors`: herkent de bekende antwoorden (6.4).
@@ -144,25 +155,47 @@ Regels die de app moet naleven (details in het andere document):
 | `==Sorry` | verzoek geweigerd door het filter | stoppen, tekst tonen, niet herhalen |
 | geen van de bovenstaande en geen formulier | onbekend | stoppen, het antwoord (zonder gegevens) in het log, link "open in ZCBS" |
 
-## 7. Opslaan: stap voor stap
+### 6.5 Het formulier lezen: veiligheidscontroles
 
-Uitgangspunt: de sessie van een gewoon adres verloopt na 10 minuten stilstand (op het HKH-netwerk 60), dus voor elke opslag wordt opnieuw ingelogd.
+1. **Alles terugsturen.** Elk veld dat ZCBS levert (ook onbekende nieuwe), gaat ongewijzigd terug tenzij de gebruiker het wijzigde. Een nieuw veld in ZCBS breekt dus niets.
+2. **Controle tegen `a0`.** Bij elk gelezen formulier bouwt `RecordRebuilder` het record uit de **ongewijzigde** velden volgens de regels van ZCBS (subvelden `hoofdveld|subveld`,
+   `== Anders ==` vervangen, meerdere keuzes met `; `, regeleinden, tabs, dubbele spaties, `== Nog onbekend ==` en `==Maak uw keuze==` weghalen). Velden 0 t/m 32 moeten gelijk
+   zijn aan `a0`. Verschilt het: de app zegt "ik begrijp dit record niet goed", **slaat niet op**, toont het record alleen-lezen en geeft de link naar ZCBS. Dit voorkomt dat een
+   vreemde waarde of een fout van ons stil verkeerd wordt opgeslagen.
+3. **Controle op veldnamen.** Mist een verwacht veld (`a3` t/m `a27`, `a0`, `a32` t/m `a34`) of staat er een onbekend zichtbaar veld bij, dan komt er een waarschuwing en een regel in het log.
+4. **Nieuwe invoer die niet in latin-1 past.** Veelvoorkomende tekens uit Word worden vervangen (“ ” `"`, ‘ ’ `'`, – en — `-`, … `...`, niet-brekende spatie een spatie). Andere tekens buiten
+   latin-1 blokkeren het opslaan met een melding welk teken in welk veld staat. Een browser zou ze als `&#8220;` opsturen en zo in het archief zetten; de app doet dat niet.
+5. **Wat we in de echte data zagen** (1908 records, 24 oktober): geen tabs, regeleinden, `<br>`, stuurtekens, `<` of `</textarea`; één losse `>`; 19 keer "B&W" (geen entiteit);
+   151 records met `"` en 224 met `'` in Titel en Omschrijving; 294 met tekens als ë en é. Er staat dus niets in dat een HTML-parser laat falen. Lastige gevallen
+   (`&amp;` in een tekstvak, `</textarea>`, een leeg veld, `&quot;`) worden in de parsertests nagebootst.
 
-1. Gebruiker opent het record: `openForm` → `F1` (de basis). De vergrendeling is gezet.
-2. Gebruiker wijzigt velden in de app. Niets gaat naar ZCBS.
-3. **Voorbeeld:** de lijst van wijzigingen. Geen wijzigingen → geen POST.
-4. **Opslaan:**
-   1. Opnieuw inloggen met de gegevens uit het geheugen.
-   2. `openForm` opnieuw → `F2` (ook dit verlengt de vergrendeling).
-   3. **Conflictcontrole:** is `F2.a0` anders dan `F1.a0`, dan heeft iemand anders het record intussen veranderd. Per veld: heeft de gebruiker een veld gewijzigd dat ook
-      in `F2` anders is dan in `F1`, dan is er een conflict. Toon oud, jouw waarde en nieuwe waarde, en laat de gebruiker kiezen. Zonder conflict gaan de eigen wijzigingen op `F2`.
-   4. `FormEncoder` bouwt het verzoek uit `F2` met de wijzigingen. Een teken buiten latin-1: stoppen met de melding.
-   5. `save` (POST). Eén poging; bij een netwerkfout niet automatisch herhalen (de opslag kan toch gelukt zijn): eerst terugleggen.
-   6. `readBack`: formulier opnieuw ophalen en alle velden vergelijken met wat verstuurd is. De vergelijking houdt rekening met wat ZCBS zelf aanpast
-      (tabs, regeleinden, dubbele spaties, `== Anders ==`, samenvoegen van subvelden).
-5. Uitkomst: gelijk → "opgeslagen". Verschilt → "fout", toon per veld verwacht en gelezen. Nooit stil doorgaan.
+## 7. Openen en opslaan: stap voor stap
 
-Bij annuleren gebeurt er niets. De vergrendeling verloopt vanzelf na tien minuten; de app stuurt **nooit** `upd_form=clr`, omdat dat alle vergrendelingen van het HKH-adres opheft.
+Gekozen model: **lock bij openen, hercontrole bij indienen.** Het openen van het formulier levert in één aanroep de gegevens, de verborgen velden (met `a0`) en de keuzelijsten, en zet
+de lock van ZCBS (10 minuten, op de gebruikersnaam). Er is geen aparte lock-vrije bron nodig.
+
+**Openen**
+1. Gebruiker opent het record in de lijst. De app logt in (indien nodig) en haalt het formulier op: `F1`. De lock staat.
+2. De app voert de controles van 6.5 uit en toont het bewerkscherm met de huidige waarden en de keuzelijsten uit `F1`. De eerste `a0` wordt in de run bewaard.
+3. Per sessie wordt maar één record tegelijk geopend. Records die niet worden bewerkt, worden niet geopend (dat zou ze voor anderen vergrendelen).
+
+**Invullen.** Carla vult rustig in; de app doet niets naar ZCBS. Haar invoer staat in de app en gaat niet verloren, ook niet als het langer duurt dan de lock of de ZCBS-sessie.
+
+**Voorbeeld.** Een lijst "veld, oud, nieuw" met alleen de wijzigingen. Geen wijzigingen: geen opslaan.
+
+**Opslaan (indienen)**
+1. Opnieuw inloggen met de gegevens uit het geheugen (de sessie van een gewoon adres verloopt na 10 minuten, op het HKH-netwerk na 60).
+2. Formulier opnieuw ophalen: `F2`. Dat zet de lock opnieuw, ook als de eerste verlopen was, en geeft een verse `a0` en verse lijsten.
+   - Vergrendeld door een ander: status "geblokkeerd", haar invoer blijft staan, de app toont "tot ongeveer hh:mm" en een knop "Probeer opnieuw".
+3. **Conflictcontrole:** is `F2.a0` anders dan `F1.a0`, dan heeft iemand anders het record intussen veranderd. Per veld: heeft de gebruiker een veld gewijzigd dat ook in `F2` anders is dan in `F1`,
+   dan is er een conflict; toon oud, jouw waarde en nieuwe waarde en laat haar kiezen. Zonder conflict gaan haar wijzigingen op `F2`.
+4. Controles van 6.5 op `F2`. `FormEncoder` bouwt het verzoek uit `F2` met de wijzigingen.
+5. `save` (POST), direct na stap 2. Eén poging; bij een netwerkfout niet automatisch herhalen (de opslag kan toch gelukt zijn): eerst terugleggen.
+6. `readBack`: formulier opnieuw ophalen en alle velden vergelijken met wat verstuurd is, rekening houdend met wat ZCBS zelf aanpast.
+7. Uitkomst: gelijk "opgeslagen"; verschilt "fout" met per veld verwacht en gelezen. Nooit stil doorgaan.
+
+**Na het opslaan** blijft de lock nog tien minuten op haar naam staan; een collega die hetzelfde record opent, wordt tot dan geblokkeerd. De app stuurt **nooit** `upd_form=clr`
+(dat geeft alle vergrendelingen van het HKH-adres vrij). De app houdt de lock niet vast met herhaalde aanroepen. Open nooit meer records tegelijk dan nodig.
 
 ## 8. Foutafhandeling en meldingen
 
@@ -175,7 +208,8 @@ Alle meldingen in gewoon Nederlands, zonder technische tekst, met de volgende st
 
 ## 9. Beveiliging en privacy
 
-- Alleen via `https`. De app zelf draait met dezelfde bescherming als nu (nog **geen login** op de app; zie README): minimaal tot de run alleen op het eigen netwerk of `127.0.0.1`.
+- Naar ZCBS alleen via `https`. De app zelf heeft nu **bewust nog geen login** (beslissing Robbert, testversie): iedereen die de app kan bereiken kan met de ZCBS-sessie van Carla werken. Zet daarom
+  `HKH_WORKFLOW_ADDRESS=127.0.0.1` of draai alleen op een beschermd netwerk. Een eigen login volgt later.
 - Het ZCBS-wachtwoord staat alleen in het geheugen van de run, wordt nooit gelogd en niet in meldingen of URL's gezet. Cookies van ZCBS worden niet getoond.
 - Logregels van verzoeken bevatten alleen methode, pad, nummer en uitkomst, niet de velden of de cookies.
 - De app stuurt niet vaker dan één verzoek tegelijk en niet sneller dan één per seconde.
@@ -191,6 +225,9 @@ Tot de run bij HKH is er niets tegen ZCBS te testen. Wat wel kan:
 - `blocked.html`, `session-expired.html`, `login-ok.html`, `login-fail.html`: nagemaakt volgens de code. Ze zijn aannames en staan zo gelabeld.
 
 **Eenheidstests**
+- Lastige HTML voor `FormParser`: `&quot;`, `&amp;` en `&copy` in een tekstvak, `</textarea>` in een waarde, een tekstvak dat met een regeleinde begint, lege waarden, een `<` in een attribuut, hoofdletters en niet-gesloten `<option>`.
+- `RecordRebuilder`: het ongewijzigde 11387 geeft precies `a0`; varianten met `== Anders ==`, meerdere keuzes en subvelden.
+- Tekens uit Word en tekens buiten latin-1 in `FormEncoder`.
 - `FormParser`: alle velden, de selects met niet-gesloten `<option>`, de meerkeuze `a24`, `== Anders ==` met `a3b`, de radio `a21`, de verborgen velden en `a0` met de tabs.
 - `FormEncoder`: latin-1, tabs en regeleinden, een teken buiten latin-1, `a24` als meerdere delen, velden zonder invoerveld uit `a0`.
 - `RecordDiff` en de terugvergelijking met de aanpassingen van ZCBS.
@@ -220,10 +257,11 @@ de ontvangen velden zodat de test kan controleren wat er is verstuurd. Dient ook
 6. Dat velden zonder invoerveld (`a17`, ...) bij meesturen behouden blijven.
 7. Of het woordfilter op het POST-lichaam echt niet werkt (`$content_length` is leeg).
 8. Of de nepfixtures voor de foutantwoorden lijken op de echte pagina's.
+9. Of `RecordRebuilder` voor alle bestaande records exact `a0` geeft (te meten op de eerste run en daarna steekproefsgewijs).
 
 ## 13. Bouwvolgorde
 
-1. `zcbs`: parser en encoder met de fixture (geen netwerk), eenheidstests.
+1. `zcbs`: parser (Jsoup), `RecordRebuilder` en encoder met de fixture (geen netwerk), eenheidstests.
 2. `zcbs`: sessie en client, nepserver, tests.
 3. `items`: lijst, recordpagina, voorbeeld, opslaan; koppeling aan de testrun (nummers van de batch).
 4. Controle vooraf (stap 3) en na stap 4 (bestaat het record).
