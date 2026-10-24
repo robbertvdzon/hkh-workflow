@@ -221,3 +221,31 @@ Uit `objecten.pl` (OUTPUT_UPDATE vanaf regel 16997, ZCBS_MENU vanaf 24582, LOCK_
 5. Een record met veld 17 gevuld, om te zien dat het blijft staan als de app `a17` meestuurt.
 6. Een record met een lange omschrijving en regeleinden, en tekens als `ë`, `"` en `&`.
 7. Wat de respons is bij een geblokkeerd record en bij het filter.
+
+## 11. Inloggen vanuit de app (Kotlin)
+
+Uit `AUTORISATIE` in `objecten.pl` (vanaf regel 18570). Niets uitgeprobeerd.
+
+ZCBS bepaalt wie je bent in deze volgorde:
+1. **IP-adres** (eerste adres uit `X-Forwarded-For`, anders `REMOTE_ADDR`) staat in `permit.lst`: dan ben je de gebruiker van die regel, zonder wachtwoord. Staat er
+   `<ROUTER>` bij, dan deelt het adres meerdere gebruikers en moet je met naam en wachtwoord kiezen (zie punt 3). Stuur dus **nooit zelf een `X-Forwarded-For`-header mee**.
+2. **Cookie** `zcbs-user=<naam>|<hash>` (naast `zcbs-date` en `zcbs-rout`). Een cookie met een andere gebruiker dan de IP-regel gaat voor op het IP-adres.
+3. **Inloggen** met `user` en `pswd`.
+
+### Inloggen
+- `POST /cgi-bin/archief.pl` met `application/x-www-form-urlencoded` en de velden `user` en `pswd` (het formulier van `archief.pl?user=reset`;
+  wachtwoord alleen `A-Za-z0-9_`). Er is geen token.
+- Klopt het, dan staat in het antwoord "Gebruikersnaam/wachtwoord combinatie herkend" en komen er `Set-Cookie`-regels:
+  `zcbs-user=<naam>|<crypt(wachtwoord,99)>`, `zcbs-rout`, `zcbs-date=<minuten>` en `zcbs-app-user` (24 uur). Klopt het niet, dan ben je "extern" met
+  "onjuist" in de tekst, en dan kun je niets bewerken.
+- Achter een router-adres is het formulier anders: een keuzerondje `user` met de naam, `pswd`, en verborgen `veld=access`.
+
+### Wat de app moet doen
+- Eén `HttpClient` met een cookiebeheerder **per gebruiker**, alleen in het geheugen. Stuur bij elke aanroep de cookies mee en neem elke nieuwe `Set-Cookie` over,
+  want `zcbs-date` wordt bij elk antwoord ververst.
+- Bij een gewoon (niet-router) adres verloopt de sessie na **10 minuten stilstand** (`$SESSION_EXT`), ook bij opslaan. Voor router-adressen is dat 60 minuten
+  en geldt een uitzondering voor opslaan. Wie langer dan tien minuten bewerkt, verliest zijn opslag en krijgt een inlogscherm.
+- Log daarom vlak voor het opslaan opnieuw in met de naam en het wachtwoord in het geheugen, haal het formulier opnieuw op (dat ververst ook de vergrendeling),
+  vergelijk `a0` met wat de gebruiker begon te bewerken, en post direct.
+- Een eigen User-Agent (geen `curl`) en latin-1 voor de velden.
+- Een herkenbare mislukking: het antwoord bevat "Uw sessie is verlopen", "niet herkend", "Tijdelijk geblokkeerd object" of `==Sorry`.
