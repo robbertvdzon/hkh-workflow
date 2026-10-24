@@ -1,0 +1,261 @@
+openapi: 3.0.3
+info:
+  title: ZCBS archief (Perl/CGI) zoals de HKH-workflow-app het aanroept
+  version: 0.1.0-onbevestigd
+  description: |
+    Beschrijving van de bestaande ZCBS-aanroepen voor lezen, vergrendelen en wijzigen van een record in de collectie `archief`.
+    Dit is geen echte REST-API. Het is één Perl-script dat HTML teruggeeft, en dezelfde URL doet verschillende dingen afhankelijk van
+    de parameters. Dit bestand is **afgeleid uit de broncode (`objecten.pl`) en de HTML van het bewerkscherm**, en is nog niet uitgeprobeerd.
+    Wat onbevestigd is, staat als "ONBEVESTIGD" bij de operatie.
+
+    OpenAPI kan niet twee operaties met hetzelfde pad en dezelfde methode onderscheiden. Daarom staat er achter het pad een
+    `?parameter` als label. Dat is een hulpmiddel: de echte URL is steeds `/cgi-bin/archief.pl`.
+
+    Algemene regels
+    - Tekens: ISO-8859-1 (latin-1), niet UTF-8.
+    - Stuur een eigen `User-Agent`. Een agent met `curl` krijgt een lege pagina (`==Sorry:3==`).
+    - Stuur geen `X-Forwarded-For`. ZCBS gebruikt dat als IP-adres.
+    - Elk verzoek (GET of POST) waarvan de URL of het lichaam `onerror`, `onload`, `onclick`, `onfocus`, `onselect`, `onsubmit`,
+      `script`, `style` of `curl` bevat, geeft een lege pagina (`==Sorry:1==` of `==Sorry:2==`).
+    - Er is geen fout-statuscode. Alles geeft `200` met HTML. Succes of fout moet je uit de tekst of door terugkijken halen.
+servers:
+  - url: https://www.historischekringheemskerk.nl/cgi-bin
+    description: Productie
+  - url: https://www.historischekringheemskerk.nl/cgi-bin
+    description: Testversie is hetzelfde pad met `archief2.pl` in plaats van `archief.pl` (heeft eigen bestanden en geen vergrendeling)
+security:
+  - zcbsCookies: []
+components:
+  securitySchemes:
+    zcbsCookies:
+      type: apiKey
+      in: cookie
+      name: zcbs-user
+      description: |
+        Na inloggen zet ZCBS `zcbs-user=<naam>|<hash>`, `zcbs-rout`, `zcbs-date` en `zcbs-app-user`. Bewaar alle cookies per gebruiker en neem na elk
+        antwoord de nieuwe `Set-Cookie` over (`zcbs-date` wordt steeds ververst). Sessie: 10 minuten stilstand (gewoon adres) of 60 minuten (router-adres).
+  parameters:
+    ident:
+      name: ident
+      in: query
+      required: true
+      description: Recordnummer, 5 cijfers.
+      schema: { type: string, pattern: '^\d{5}$', example: '11387' }
+  schemas:
+    LoginForm:
+      type: object
+      required: [user, pswd]
+      properties:
+        user: { type: string, description: 'Naam zoals in permit.lst. Bij een router-adres de gekozen naam uit het keuzerondje.', example: 'Carla van Noort' }
+        pswd: { type: string, description: 'Alleen A-Za-z0-9_', format: password }
+        veld:
+          type: string
+          enum: [access]
+          description: Alleen bij een router-adres (zoals het HKH-netwerk).
+    EditForm:
+      type: object
+      description: |
+        Alle velden van het bewerkformulier (`multipart/form-data`, latin-1). Haal de waarden uit het formulier dat je met GET kreeg. Verborgen velden stuur je
+        ongewijzigd terug. Velden die de gebruiker niet wijzigt, stuur je met de oude waarde mee: ZCBS leest het nieuwe record alleen uit deze velden.
+      required: [ident, upd_form, write, a0, a32, a33, a34]
+      properties:
+        ident:      { type: string, example: '11387' }
+        upd_form:   { type: string, enum: [edt], description: 'Bewerken (andere stand: new, cop, del, clr).' }
+        write:      { type: string, enum: ['1', '2'], description: '1 is opslaan en het record tonen. 2 is opslaan en het volgende bewerken (met ident_next).' }
+        ident_next: { type: string, example: '11387', description: 'Bij write=1 gelijk aan ident.' }
+        misc:       { type: string, example: '1' }
+        misc2:      { type: string }
+        search:     { type: string, example: 'VELD number 11387' }
+        search_dt:  { type: string }
+        bool:       { type: string, example: and }
+        inword:     { type: string, example: '1' }
+        ocr:        { type: string, example: '1' }
+        display:    { type: string, example: list }
+        istart:     { type: string, example: '1' }
+        sort:       { type: string, example: '02' }
+        onload:     { type: string, example: '11387' }
+        veld:       { type: string }
+        conf:       { type: string }
+        spec:       { type: string }
+        sub:        { type: string }
+        a0:
+          type: string
+          description: Het hele oude record, 35 velden gescheiden door tab-tekens. Ongewijzigd terugsturen, alleen ter vergelijking (is er iets veranderd?).
+        a32: { type: string, example: '260107-10:00|system', description: 'Aangemaakt (stempel jjmmdd-uu:mm|naam).' }
+        a33: { type: string, example: '260107-11:47|<naam>', description: 'Laatst beschreven.' }
+        a34: { type: string, example: '261024-19:46|<naam>', description: 'Aangepast: tijdstip van het openen van het formulier en de gebruiker.' }
+        a3:  { type: string, description: 'Type publicatie (keuzelijst)' }
+        a3b: { type: string, description: 'Tekst bij `== Anders ==`' }
+        a4:  { type: string, description: Trefwoord }
+        a5:  { type: string, description: Titel }
+        a6:  { type: string, description: 'Omschrijving. Regeleinden worden `<br>`.' }
+        a7:  { type: string, description: 'Auteur(s)' }
+        a8:  { type: string, description: 'Datum, bijvoorbeeld 03-09-1970' }
+        a9:  { type: string, description: 'Uitgever (keuzelijst)' }
+        a9b: { type: string }
+        a10:  { type: string, description: Conditie }
+        a10x: { type: string, description: 'Wordt `a10|a10x` als gevuld.' }
+        a11: { type: string, description: "Totaal aantal pagina's" }
+        a12: { type: string, description: Verwerving }
+        a13: { type: string, description: Eigenaar }
+        a14: { type: string, description: 'ZCBS inv.nr.' }
+        a15:  { type: string, description: Map nummer }
+        a15x: { type: string, description: 'Tijdelijk. Wordt `a15|a15x` als gevuld.' }
+        a16: { type: string, description: Doos nummer }
+        a17: { type: string, description: 'Heeft geen invoerveld in het formulier maar bevat data (bijvoorbeeld `|Document niet geheel gescand.`). Meesturen uit a0.' }
+        a18: { type: string, description: Aanvullend beschikbaar materiaal }
+        a19: { type: string, description: Interne opmerking }
+        a20: { type: string, description: 'Geen invoerveld. Meesturen uit a0.' }
+        a21: { type: string, example: '9679', description: 'Plaatsing op internet: 0 (neen) of een dagcode (aantal dagen sinds 9 juli 1999). Neem de waarde uit het formulier.' }
+        a22:  { type: string, description: 'Oorspronkelijk archief (keuzelijst)' }
+        a22b: { type: string }
+        a23: { type: string, description: 'Geen invoerveld. Meesturen uit a0.' }
+        a24:
+          type: array
+          items: { type: string }
+          description: 'Thema, meervoudige keuze. Stuur één deel `a24` per gekozen optie; ZCBS maakt er `x; y` van.'
+        a24b: { type: string }
+        a25:  { type: string, description: 'Plaats (keuzelijst)' }
+        a25b: { type: string }
+        a26:  { type: string, description: Straatnaam }
+        a27:  { type: string, description: Locatie op PC }
+        a28:  { type: string, description: 'Geen invoerveld; bevat soms 1 of 2. Meesturen uit a0.' }
+        a29:  { type: string, description: 'Geen invoerveld. Meesturen uit a0.' }
+        a30:  { type: string, description: 'Geen invoerveld. Meesturen uit a0.' }
+        a31:  { type: string, description: 'Geen invoerveld. Meesturen uit a0.' }
+        add_copy:  { type: string, description: 'Bijlage: bestaande kiezen. Leeg laten.' }
+        add_file:  { type: string, format: binary, description: 'Bijlage: bestand. Leeg laten.' }
+        add_ident: { type: string, description: 'Bijlage: naam. Leeg laten.' }
+        add_inter: { type: string, enum: ['0', '1'], default: '1', description: 'Bijlage: 0 is op internet, 1 niet.' }
+        add_title: { type: string, description: 'Bijlage: titel. Leeg laten.' }
+    HtmlPage:
+      type: string
+      description: HTML (latin-1).
+paths:
+  /archief.pl?login:
+    post:
+      operationId: login
+      summary: Inloggen
+      description: |
+        Vraagt cookies aan. ONBEVESTIGD: de exacte antwoordtekst. Volgens de code staat bij succes "combinatie herkend" in de pagina en volgen
+        de `Set-Cookie`-regels. Bij een fout ben je "extern" en staat er "onjuist" of "niet herkend".
+        Hoeft niet als het IP-adres van de app al in `permit.lst` staat en geen router is.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/LoginForm' }
+      responses:
+        '200':
+          description: HTML, met `Set-Cookie` bij succes.
+          headers:
+            Set-Cookie: { schema: { type: string }, description: 'zcbs-user, zcbs-rout, zcbs-date, zcbs-app-user' }
+          content:
+            text/html: { schema: { $ref: '#/components/schemas/HtmlPage' } }
+
+  /archief.pl?ident:
+    get:
+      operationId: viewRecord
+      summary: Gegevens van een item ophalen (alleen lezen, geen vergrendeling)
+      description: |
+        De gewone recordpagina. Geeft HTML terug met de weergave van het record. Dit zet **geen** vergrendeling, omdat er geen `upd_form` in staat.
+        Voor het ophalen met alle velden zie `exportRecord`.
+      parameters:
+        - $ref: '#/components/parameters/ident'
+      responses:
+        '200':
+          description: HTML met het record.
+          content:
+            text/html: { schema: { $ref: '#/components/schemas/HtmlPage' } }
+
+  /archief.pl?search=EXPORT:
+    get:
+      operationId: exportRecord
+      summary: Alle 35 velden van een record als tekst (ONBEVESTIGD)
+      description: |
+        Volgens de code (`objecten.pl` regel 2114 en 3318) geeft `EXPORT <zoekopdracht>` voor een gebruiker met rechten 1 of 2 de gevonden records terug als
+        tab-gescheiden regels met alle velden 0 t/m 34 en de oorspronkelijke kopregel. Subvelden staan weer als `veld|subveld`.
+        Niet bekend: of de tekst direct in het antwoord staat of als bestand in `/archief/download/` komt, en de exacte zoekopdracht voor één nummer
+        (het formulier gebruikt `VELD number 11387`).
+      parameters:
+        - name: search
+          in: query
+          required: true
+          schema: { type: string, example: 'EXPORT VELD number 11387' }
+        - name: velden
+          in: query
+          required: false
+          description: Veldnummers, bijvoorbeeld `0-34` (standaard alles).
+          schema: { type: string, example: '0-34' }
+      responses:
+        '200':
+          description: Tekst of HTML met tab-gescheiden regels.
+          content:
+            text/plain: { schema: { type: string } }
+            text/html: { schema: { $ref: '#/components/schemas/HtmlPage' } }
+
+  /archief.pl?upd_form=edt:
+    get:
+      operationId: openEditForm
+      summary: Bewerkformulier openen en het record vergrendelen
+      description: |
+        Geeft het bewerkformulier en **zet de vergrendeling** (10 minuten, op de gebruikersnaam). Elk verzoek met `upd_form=edt` en `ident` verlengt hem.
+        Is het record door een andere gebruiker geopend, dan komt "Tijdelijk geblokkeerd object" en is er geen formulier.
+        Geen vergrendeling in de testversie `archief2.pl`.
+        Uit het formulier haal je: de verborgen velden (waaronder `a0`, `a32`, `a33`, `a34`), de huidige waarden, en de `<option>`-regels van de
+        keuzelijsten (de keuzelijsten staan in de config van de collectie).
+        ONBEVESTIGD: of `ident` en `upd_form` genoeg zijn. De pagina zelf gebruikt een langere URL met zoekparameters.
+      parameters:
+        - $ref: '#/components/parameters/ident'
+        - name: upd_form
+          in: query
+          required: true
+          schema: { type: string, enum: [edt] }
+      responses:
+        '200':
+          description: |
+            HTML met `<form name="zcbsform" method="POST" enctype="multipart/form-data" accept-charset="ISO-8859-1" action="/cgi-bin/archief.pl">`
+            of de pagina "Tijdelijk geblokkeerd object".
+          content:
+            text/html: { schema: { $ref: '#/components/schemas/HtmlPage' } }
+    post:
+      operationId: saveRecord
+      summary: Een wijziging opslaan
+      description: |
+        Slaat het record op in `updates.txt` (`updates2.txt` in de testversie). In productie komt er ook een regel in `backup1/upd-cumm.txt` en gaat er een e-mail naar de beheerder.
+        Controleert de vergrendeling en de rechten (`1`, binnen het nummerbereik van de gebruiker).
+        Het nieuwe record wordt gebouwd uit de losse velden (niet uit `a0`). Zijn de velden 0 t/m 32 gelijk aan `a0`, dan wordt er niets opgeslagen.
+        Er is geen statuscode voor succes of fout: lees het record daarna terug (`exportRecord` of `viewRecord`).
+        Het antwoord is HTML. Bekende fouttekst: "Uw sessie is verlopen" (sessie), "niet herkend" (inlog), "Tijdelijk geblokkeerd object" (vergrendeling) en `==Sorry` (filter).
+        Let op: log vlak voor het opslaan opnieuw in en haal het formulier opnieuw op, want de sessie van een gewoon adres verloopt na 10 minuten.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/EditForm' }
+            encoding:
+              a24: { style: form, explode: true }
+              add_file: { contentType: application/octet-stream }
+      responses:
+        '200':
+          description: HTML (het getoonde record bij `write=1`, of het volgende formulier bij `write=2`) of een foutpagina.
+          content:
+            text/html: { schema: { $ref: '#/components/schemas/HtmlPage' } }
+
+  /archief.pl?upd_form=clr:
+    get:
+      operationId: clearLocks
+      summary: Vergrendelingen vrijgeven (NIET GEBRUIKEN door de app)
+      description: |
+        "Reset blokkering". Geeft alle vergrendelingen van **hetzelfde IP-adres** vrij, op HKH dus ook die van collega's.
+      parameters:
+        - name: upd_form
+          in: query
+          required: true
+          schema: { type: string, enum: [clr] }
+      responses:
+        '200':
+          description: HTML.
+          content:
+            text/html: { schema: { $ref: '#/components/schemas/HtmlPage' } }
