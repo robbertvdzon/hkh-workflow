@@ -415,9 +415,9 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
    een echte console ziet (lost ook verborgen wachtwoordinvoer op).
 3. Uitzoeken: bij uploaden vraagt images.exe in welke submap de afbeeldingen moeten (kies 0-1, of een nieuwe submap). Als de
    uitkomst vast is, een instelling of antwoordregel toevoegen; nu stopt de app bij die vraag en antwoord je zelf.
-4. **Records aanmaken.** Nu doet Carla dat vooraf met `NEWRECORD`. Beslissen of de app dat doet (via het ZCBS-web, met een
-   ingelogde beheerder) of alleen controleert dat de records van de batch bestaan. Tot dan: stap 0 met de hand, zie
-   [testen-bij-hkh.md](testen-bij-hkh.md).
+4. **Records aanmaken.** Volgens het stappenplan doet images.exe dat zelf (stap D). De app controleert alleen vooraf dat de nummers van de
+   batch nog niet bestaan en erna dat ze bestaan; zie [specs-item-bekijken-bewerken.md](specs-item-bekijken-bewerken.md).
+4a. **Item bekijken en bewerken** met het ZCBS-formulier, voor de eerste run met Carla: [specs-item-bekijken-bewerken.md](specs-item-bekijken-bewerken.md).
 4b. **Overschrijven per run** (derde vinkje, standaard uit) voor het opnieuw uploaden van een batch.
 5. De vingerafdruk van de sftp-server vergelijken met wat Total Commander of de hostingprovider toont, voordat je hem vastzet.
 6. Testcollectie: Gerard van Nes antwoordde dat je die zelf moet aanmaken (aparte map aan beide kanten van `/cgi-bin`, dan
