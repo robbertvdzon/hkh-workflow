@@ -13,8 +13,8 @@ Dit is een **specificatie**. Er is niets van uitgeprobeerd tegen de server. Name
 - Het adres is `https://www.historischekringheemskerk.nl/cgi-bin/archief.pl`.
 - Het is `multipart/form-data` en de tekens gaan als **ISO-8859-1**. De client moet latin-1 sturen, geen UTF-8.
 - Er is **geen sessie- of csrf-token** in het formulier. De server herkent de gebruiker aan de cookies van de inlog, of aan het IP-adres.
-- De knop VERWERK heeft geen naam en stuurt dus zelf geen veld mee. De knop "+ edit volgende" zet via JavaScript `write=2`,
-  `misc=0` en `ident_next` op het volgende nummer.
+- De knop VERWERK heeft geen naam en stuurt dus zelf geen veld mee. De knop "+ edit volgende" (`write=2`) staat in de HTML van archief **uitgecommentarieerd**:
+  de app gebruikt dus `write=1`.
 
 ## 2. Het formulier ophalen
 

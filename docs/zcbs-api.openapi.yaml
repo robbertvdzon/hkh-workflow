@@ -61,7 +61,7 @@ components:
       properties:
         ident:      { type: string, example: '11387' }
         upd_form:   { type: string, enum: [edt], description: 'Bewerken (andere stand: new, cop, del, clr).' }
-        write:      { type: string, enum: ['1', '2'], description: '1 is opslaan en het record tonen. 2 is opslaan en het volgende bewerken (met ident_next).' }
+        write:      { type: string, enum: ['1'], description: '1 is opslaan en het record tonen. (2 = opslaan en volgende bewerken bestaat in de code, maar de knop is in archief uitgecommentarieerd.)' }
         ident_next: { type: string, example: '11387', description: 'Bij write=1 gelijk aan ident.' }
         misc:       { type: string, example: '1' }
         misc2:      { type: string }
