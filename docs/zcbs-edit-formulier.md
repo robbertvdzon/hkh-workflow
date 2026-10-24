@@ -128,8 +128,8 @@ versie wint. De app moet dat zelf voor het opslaan controleren, bijvoorbeeld met
 
 Een aanpassing van alleen de titel, met de overige velden zoals ontvangen. Alle waarden zijn voorbeelden.
 
-Let op: dit voorbeeld werkt **niet** met echte curl. Het script weigert verzoeken met `curl` in de User-Agent en antwoordt dan met een
-lege pagina (`==Sorry:3==`). Zet een eigen User-Agent, bijvoorbeeld `-A "hkh-workflow"`.
+Let op: volgens de code (`objecten.pl`, rond regel 280) weigert het script verzoeken met `curl` in de User-Agent met een lege pagina (`==Sorry:3==`).
+Dat is uit de code gelezen en nog niet uitgeprobeerd. Daarom staat er een eigen User-Agent in dit voorbeeld, bijvoorbeeld `-A "hkh-workflow"`.
 
 ```bash
 curl -b cookies.txt -A "hkh-workflow" https://www.historischekringheemskerk.nl/cgi-bin/archief.pl \
@@ -196,7 +196,7 @@ Uit `objecten.pl` (OUTPUT_UPDATE vanaf regel 16997, ZCBS_MENU vanaf 24582, LOCK_
 10. Een succes of fout staat niet in een aparte code. Lees het record daarna terug.
 
 ### Valkuilen die het onderzoek opleverde
-- **Een User-Agent met `curl` wordt geweigerd** met een lege pagina (`==Sorry:3==`). Gebruik een eigen naam.
+- **Een User-Agent met `curl` wordt volgens de code geweigerd** met een lege pagina (`==Sorry:3==`). Nog niet uitgeprobeerd. Gebruik een eigen naam.
 - **Een filter op de inhoud van het verzoek.** Staat in de GET-regel of in het POST-lichaam een van `onerror`, `onload`, `onclick`, `onfocus`,
   `onselect`, `onsubmit`, `script` (niet direct na "java"), `style` of `curl`, dan antwoordt ZCBS met een lege pagina (`==Sorry:2==`).
   Omdat `a0` het hele record meestuurt, geldt dat ook voor tekst die er al staat. In archief gaat het om **2 van 1970 records**:
