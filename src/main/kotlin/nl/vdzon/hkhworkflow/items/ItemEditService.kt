@@ -146,6 +146,25 @@ class ItemEditService(private val settingsService: SettingsService) {
         return numbers.filter { c.exists(it) == false }
     }
 
+    /**
+     * Controleert of de nummers nog vrij zijn: images.exe maakt de records aan en mag ze niet nog eens aanmaken.
+     * @return een melding als een nummer al bestaat of niet te controleren is, anders null.
+     */
+    @Synchronized
+    fun checkNumbersFree(numbers: List<String>): String? {
+        val c = client ?: return "Log eerst in bij ZCBS."
+        val taken = mutableListOf<String>()
+        for (n in numbers) {
+            when (runCatching { c.exists(n) }.getOrNull()) {
+                true -> taken += n
+                null -> return "Kan niet controleren of record $n al bestaat. Is je sessie bij ZCBS verlopen, of is ZCBS niet bereikbaar?"
+                false -> {}
+            }
+        }
+        return if (taken.isEmpty()) null else
+            "Record ${taken.take(5).joinToString(", ")}${if (taken.size > 5) " en ${taken.size - 5} andere" else ""} bestaat al in ZCBS. images.exe zou een bestaand record niet mogen aanmaken. Kies een hoger beginnummer."
+    }
+
     // ---- Openen ----
 
     private fun openPage(number: String): Page {

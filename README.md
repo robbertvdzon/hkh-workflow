@@ -30,6 +30,11 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
 
 - **Te verwerken, Batch controleren, Batch bezig/klaar, Batches** — de schermen uit `docs/ZcbsServer UX.pdf`,
   nog met **demo-gegevens**.
+- **Batch** — het hoofdscherm: de batch zoals Carla hem doorloopt, in acht fasen, precies zoals in de demo hieronder maar echt:
+  inloggen bij ZCBS, bestanden ophalen van de server (kiezen en naar de invoermap kopiëren; de map toont wie het gescand heeft),
+  voorbereiden (het volgende nummer uit ZCBS met `LAST`, controle dat de nummers nog niet bestaan, hernoemen), pdf2zcbs, images.exe, upload
+  van tekst en pdf, de records bewerken, en afsluiten (opruimen en archiveren). Elke fase begint met een overzicht van wat hij gaat doen en wat
+  de app al controleerde, en start pas na jouw knop. De pagina **Test (technisch)** toont dezelfde stappen per bestand, met de logs.
 - **Hele flow (demo)** — klikbare demo van wat Carla gaat doen: inloggen bij ZCBS, nieuwe bestanden, voorbereiden, pdf2zcbs, images.exe,
   upload, de records één voor één bewerken en afsluiten. Alleen nepdata; er wordt niets naar ZCBS, de exe's of de sftp-server gestuurd.
   Open `/demo-flow`; **Opnieuw beginnen** zet alles terug.

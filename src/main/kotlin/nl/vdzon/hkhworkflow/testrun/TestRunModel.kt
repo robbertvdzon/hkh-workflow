@@ -131,3 +131,13 @@ data class TestRunView(
     val stepTypes: List<String>,
     val next: StepView?,
 )
+
+
+/** Eén fase in de balk bovenaan de batchpagina. [state] is done, now of todo. */
+data class PhaseView(val nr: Int, val title: String, val state: String, val note: String?)
+
+/**
+ * De batch zoals Carla hem ziet: acht fasen (inloggen, bestanden ophalen, voorbereiden, pdf2zcbs, images.exe, upload,
+ * bewerken, afsluiten). [current] is de fase die aan de beurt is, of 9 als alles klaar is.
+ */
+data class BatchView(val phases: List<PhaseView>, val current: Int, val finished: Boolean, val run: TestRunView?)

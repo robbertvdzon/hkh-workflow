@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Batch')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div class="head">
+            <div>
+                <h1>Batch</h1>
+                <p class="sub">Van de server naar ZCBS, stap voor stap. Elke stap start je zelf, na een overzicht van wat hij gaat doen.
+                    <span th:if="${zcbsLoggedIn}"> Ingelogd bij ZCBS als <b th:text="${zcbsUser}"></b> · <span class="mono" th:text="${settings.zcbsBaseUrl}"></span><span th:unless="${zcbsLocal}" style="color:var(--err);font-weight:600"> (het echte archief)</span>.</span></p>
+            </div>
+            <div class="row-actions">
+                <form th:if="${zcbsLoggedIn}" method="post" th:action="@{/zcbs/logout}"><input type="hidden" name="terug" value="/batch"><button class="btn btn-s btn-sm" type="submit">Uitloggen bij ZCBS</button></form>
+                <form th:if="${batch.run != null}" method="post" th:action="@{/batch/opnieuw}" onsubmit="return confirm('Opnieuw beginnen? De batch op deze pagina wordt gewist; bestanden op schijf blijven staan.')"><button class="btn btn-s btn-sm" type="submit" title="Stopt een nog lopend programma en begint opnieuw">Opnieuw beginnen</button></form>
+            </div>
+        </div>
+
+        <div class="alert alert-err" th:if="${error}" th:text="${error}" style="white-space:pre-line"></div>
+        <div class="alert alert-ok" th:if="${info}" th:text="${info}"></div>
+
+        <div class="strip">
+            <span class="it" th:each="p : ${batch.phases}" th:classappend="${p.state}">
+                <span class="n" th:text="${p.state == 'done'} ? '✓' : ${p.nr}">1</span>
+                <span th:text="${p.title}">Fase</span>
+                <span class="s" th:if="${p.note != null}" th:text="${p.note}"></span>
+            </span>
+        </div>
+
+        <!-- 1. Inloggen -->
+        <section class="card pad stack" th:if="${batch.current == 1}" style="max-width:560px">
+            <h2>1. Inloggen bij ZCBS</h2>
+            <p class="muted" style="margin:0">Dit zijn dezelfde gegevens als op de ZCBS-website. De app bewaart ze alleen zolang hij draait en schrijft ze nergens op.</p>
+            <div class="alert alert-info" th:if="${settings.zcbsBaseUrl == ''}">Het adres van ZCBS is nog niet ingesteld. Doe dat eerst bij <a th:href="@{/instellingen}">Instellingen</a> (voor oefenen: <span class="mono">http://localhost:8081</span>).</div>
+            <form method="post" th:action="@{/zcbs/login}" class="stack" autocomplete="off">
+                <input type="hidden" name="terug" value="/batch">
+                <div class="field"><label class="f" for="naam">Naam</label><input type="text" id="naam" name="naam" autocomplete="off"><span class="hint">Typ je naam precies zoals in ZCBS.</span></div>
+                <div class="field"><label class="f" for="wachtwoord">Wachtwoord</label><input type="password" id="wachtwoord" name="wachtwoord" autocomplete="new-password" style="height:44px;padding:0 12px;border:1px solid #b9b09c;border-radius:8px;font:14px var(--sans)"></div>
+                <div><button class="btn btn-p" type="submit">Inloggen</button></div>
+            </form>
+        </section>
+
+        <!-- 2. Bestanden ophalen -->
+        <section class="card pad stack" th:if="${batch.current == 2 and sourceConfigured and pdfs.isEmpty()}">
+            <h2>2. Bestanden ophalen</h2>
+            <p class="muted" style="margin:0">Ria geeft aan welke bestanden verwerkt moeten worden. Ze staan in <span class="mono" th:text="${settings.sourceFolder}"></span>, in een map per persoon. Vink aan wat je wilt verwerken; de app kopieert het naar de invoermap <span class="mono" th:text="${settings.testFolder}"></span>. De bestanden op de server blijven staan.</p>
+            <div th:if="${sourceGroups.isEmpty()}" class="warn">Geen pdf's gevonden in de bronmap.</div>
+            <form th:unless="${sourceGroups.isEmpty()}" method="post" th:action="@{/batch/bestanden/kopieer}" class="stack">
+                <div class="table" th:each="g : ${sourceGroups}">
+                    <div class="tr grouphead" style="grid-template-columns:minmax(0,1fr)"><span><b th:text="${g.value[0].by != ''} ? ${g.value[0].by} : '(zonder persoon)'">Ria</b> <span class="mono muted" th:text="${g.key}"></span></span></div>
+                    <label class="tr" th:each="f : ${g.value}" style="grid-template-columns:28px minmax(0,1fr) 90px 150px;cursor:pointer">
+                        <input type="checkbox" name="files" th:value="${f.relPath}">
+                        <span style="display:flex;gap:10px;align-items:center"><span class="pdf">PDF</span><span class="mono" th:text="${f.name}">scan.pdf</span></span>
+                        <span class="muted" th:text="${f.sizeKb} + ' kB'">12 kB</span><span class="muted" th:text="'gescand ' + ${f.modified}">gescand</span>
+                    </label>
+                </div>
+                <div><button class="btn btn-p" type="submit">Kopieer de aangevinkte bestanden naar de invoermap</button></div>
+            </form>
+        </section>
+        <section class="card pad stack" th:if="${batch.current == 2 and (!sourceConfigured or !pdfs.isEmpty())}">
+            <h2>2. Bestanden ophalen</h2>
+            <p class="muted" style="margin:0" th:if="${!sourceConfigured}">De bronmap op de server is niet ingesteld (<a th:href="@{/instellingen}">Instellingen</a>). Zet de pdf's zelf in de invoermap <span class="mono" th:text="${settings.testFolder}"></span>.</p>
+            <p class="muted" style="margin:0" th:if="${sourceConfigured}"><b th:text="${pdfs.size()}">12</b> bestanden staan in de invoermap <span class="mono" th:text="${settings.testFolder}"></span>. Controleer of dit de bestanden zijn die je wilt verwerken.</p>
+            <div class="warn" th:if="${pdfs.isEmpty()}">Er staan geen pdf's in de invoermap.</div>
+            <div class="table" th:unless="${pdfs.isEmpty()}">
+                <div class="tr th" style="grid-template-columns:minmax(0,1fr) 120px minmax(0,1.2fr)"><span>Bestand</span><span>Gescand door</span><span>Van de server</span></div>
+                <div class="tr" th:each="f : ${pdfs}" style="grid-template-columns:minmax(0,1fr) 120px minmax(0,1.2fr)">
+                    <span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="pdf">PDF</span><span class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.name}">scan.pdf</span></span>
+                    <span th:text="${f.by != ''} ? ${f.by} : '–'">Ria</span>
+                    <span class="mono muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.folder != ''} ? ${f.folder} : '–'" th:title="${f.folder}">K:\</span>
+                </div>
+            </div>
+            <div class="row-actions">
+                <form th:action="@{/batch/bestanden/bevestig}" method="post"><button class="btn btn-p" type="submit" th:disabled="${pdfs.isEmpty()}">Klopt, verder</button></form>
+            </div>
+        </section>
+
+        <!-- 3. Voorbereiden -->
+        <section class="card pad stack" th:if="${batch.current == 3}">
+            <h2>3. Voorbereiden</h2>
+            <p class="muted" style="margin:0">
+                <span th:if="${suggestion != null}">De app zocht in ZCBS het hoogste recordnummer (<span class="mono">LAST</span>); het volgende nummer is <b class="mono" th:text="${suggestion}"></b>.</span>
+                <span th:if="${suggestion == null}">De app kon het hoogste nummer in ZCBS niet vinden. Typ zelf het eerste nummer.</span>
+                De <b th:text="${pdfCount}">12</b> bestanden krijgen opeenvolgende nummers; je kunt het beginnummer aanpassen.</p>
+            <form th:action="@{/batch/voorbereiden}" method="post" class="stack">
+                <div class="field" style="max-width:240px"><label class="f" for="start">Eerste recordnummer</label>
+                    <input type="text" id="start" name="start" class="mono" inputmode="numeric" th:value="${suggestion}" required></div>
+                <ul class="checks-list"><li>De nummers mogen nog niet in ZCBS bestaan (de app controleert dat)</li><li th:text="'Er zijn precies ' + ${pdfCount} + ' nummers nodig'">Er zijn precies 12 nummers nodig</li></ul>
+                <p class="hint" style="margin:0">De app maakt kopieën met het recordnummer als naam in de submap <span class="mono">werk</span>. De originelen blijven staan.</p>
+                <div class="row-actions">
+                    <button class="btn btn-p" type="submit">Hernoem de kopieën en ga verder</button>
+                    <button class="btn btn-s" type="submit" formaction="/batch/bestanden/andere" formnovalidate>Andere bestanden kiezen</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- 4 t/m 7: een stap met overzicht, goedkeuring en controle -->
+        <th:block th:if="${batch.current >= 4 and batch.current <= 7 and run != null}">
+            <h2 th:text="${batch.current} + '. ' + ${batch.phases[batch.current - 1].title}">Stap</h2>
+            <section th:replace="~{test :: nextstep}"></section>
+            <section th:replace="~{test :: consolesection}"></section>
+            <div class="row-actions" th:if="${batch.current == 7 and run.next != null and run.next.status == 'RUNNING'}"><a class="btn btn-p" th:href="@{/records}">Naar de records</a></div>
+        </th:block>
+
+        <!-- 8. Afsluiten -->
+        <th:block th:if="${batch.current == 8 and run != null}">
+            <section class="card pad stack" th:if="${run.next != null and run.next.status == 'PENDING'}">
+                <h2>8. Afsluiten</h2>
+                <p class="muted" style="margin:0">Alles is klaar. De app ruimt de werkmappen op en archiveert de originelen.</p>
+                <div><b>Dit gaat de app doen</b>
+                    <ul class="plan-list">
+                        <li th:each="l : ${run.next.plan}" th:text="${l}"></li>
+                        <li th:text="'Verplaatst daarna de ' + ${run.fileCount} + ' originele pdf\'s uit de invoermap naar de archived-map.'"></li>
+                    </ul></div>
+                <ul class="checks-list" th:unless="${run.next.problems.isEmpty()}"><li th:each="p : ${run.next.problems}" th:text="${p}" style="color:var(--err)"></li></ul>
+                <div class="alert alert-info" th:each="w : ${run.next.warnings}" th:text="${w}"></div>
+                <form th:action="@{/batch/afsluiten}" method="post"><button class="btn btn-p" type="submit" th:disabled="${!run.next.problems.isEmpty()}">Sluit de batch af</button></form>
+            </section>
+            <th:block th:if="${run.next != null and run.next.status != 'PENDING'}"><section th:replace="~{test :: nextstep}"></section></th:block>
+        </th:block>
+
+        <!-- Klaar -->
+        <section class="card pad stack" th:if="${batch.finished and run != null}">
+            <h2>Batch klaar</h2>
+            <p class="muted" style="margin:0">Alle stappen zijn klaar of overgeslagen. <span th:text="${run.fileCount}">12</span> bestanden zijn verwerkt.</p>
+            <div class="row-actions"><a class="btn btn-s" th:href="@{/records}">Bekijk de records</a>
+                <form th:action="@{/batch/opnieuw}" method="post"><button class="btn btn-p" type="submit">Nieuwe batch starten</button></form></div>
+        </section>
+
+        <!-- per bestand: wat is er klaar en wat staat er -->
+        <th:block th:if="${run != null and batch.current >= 4}">
+            <section th:replace="~{test :: filetable}"></section>
+            <p class="hint" style="margin:0">Werkmap: <span class="mono" th:text="${run.workDir}"></span> · beginnummer <span class="mono" th:text="${run.startNumber}"></span> · technische weergave en logs: <a th:href="@{/test}">pagina Test</a></p>
+        </th:block>
+    </main>
+</div>
+</body>
+</html>

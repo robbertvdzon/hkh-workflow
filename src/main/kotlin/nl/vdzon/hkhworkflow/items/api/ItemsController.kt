@@ -20,7 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 @Controller
 class ItemsController(private val items: ItemEditService) {
 
-    private fun back(target: String): String = if (target == "/records") "redirect:/records" else "redirect:/test"
+    private fun back(target: String): String = when (target) { "/records" -> "redirect:/records"; "/batch" -> "redirect:/batch"; else -> "redirect:/test" }
 
     @PostMapping("/zcbs/login")
     fun login(

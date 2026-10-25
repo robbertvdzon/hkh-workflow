@@ -64,9 +64,9 @@
 
         <th:block th:if="${run != null}">
             <!-- Volgende stap -->
-            <section class="next" th:if="${run.next != null}">
+            <section class="next" th:fragment="nextstep" th:if="${run.next != null}">
                 <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:0">
-                    <span class="hint" th:text="'Stap ' + (${run.doneCount} + 1) + ' van ' + ${run.totalCount}"></span>
+                    <span class="hint" th:unless="${returnTo == '/batch'}" th:text="'Stap ' + (${run.doneCount} + 1) + ' van ' + ${run.totalCount}"></span>
                     <span class="q" th:text="${run.next.question}"></span>
                     <ul class="plan" th:if="${run.next.status == 'PENDING' and !run.next.plan.isEmpty()}">
                         <li th:each="line : ${run.next.plan}" th:text="${line}"></li>
@@ -82,19 +82,19 @@
                         <span class="hint" th:if="${zcbsLoggedIn}">Ingelogd bij ZCBS als <b th:text="${zcbsUser}"></b> · <span class="mono" th:text="${settings.zcbsBaseUrl}"></span>
                             <span th:unless="${zcbsLocal}" style="color:var(--err);font-weight:600"> (het echte archief)</span></span>
                         <form th:unless="${zcbsLoggedIn}" method="post" th:action="@{/zcbs/login}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end" autocomplete="off">
-                            <input type="hidden" name="terug" value="/test">
+                            <input type="hidden" name="terug" th:value="${returnTo}">
                             <div class="field" style="width:200px"><label class="f" for="zcbsNaam">ZCBS-naam</label><input type="text" id="zcbsNaam" name="naam" autocomplete="off"></div>
                             <div class="field" style="width:180px"><label class="f" for="zcbsWachtwoord">Wachtwoord</label><input type="password" id="zcbsWachtwoord" name="wachtwoord" autocomplete="new-password" style="height:44px;padding:0 12px;border:1px solid #b9b09c;border-radius:8px;font:14px var(--sans)"></div>
                             <button class="btn btn-p" type="submit">Inloggen bij ZCBS</button>
                         </form>
-                        <form th:if="${zcbsLoggedIn}" method="post" th:action="@{/zcbs/logout}"><input type="hidden" name="terug" value="/test"><button class="btn btn-s btn-sm" type="submit">Uitloggen bij ZCBS</button></form>
+                        <form th:if="${zcbsLoggedIn}" method="post" th:action="@{/zcbs/logout}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s btn-sm" type="submit">Uitloggen bij ZCBS</button></form>
                     </div>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'PENDING'}" style="align-items:flex-end;flex-direction:column;gap:10px">
-                    <form th:unless="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}">
+                    <form th:unless="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}">
                         <button class="btn btn-p" type="submit" name="mode" value="IN_APP" th:disabled="${!run.next.problems.isEmpty()}">Uitvoeren</button>
                     </form>
-                    <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}" style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
+                    <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}" style="display:flex;flex-direction:column;gap:10px;align-items:flex-end"><input type="hidden" name="terug" th:value="${returnTo}">
                         <div th:if="${run.next.type == 'IMAGES'}" style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fffaf0;max-width:380px">
                             <b style="font-size:13px">Alleen bij Automatisch uitvoeren. Dit schrijft in de echte collectie:</b>
                             <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" name="upload" value="true" id="opt-upload" style="margin-top:2px"> Afbeeldingen uploaden naar de server (FTP)</label>
@@ -107,22 +107,22 @@
                             <button class="btn btn-p" type="submit" name="auto" value="true" th:disabled="${!run.next.problems.isEmpty()}" title="De app geeft zelf de antwoorden uit Instellingen">Automatisch uitvoeren</button>
                         </div>
                     </form>
-                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit" title="Sla deze stap over, bijvoorbeeld omdat je hem zelf met de hand doet">Overslaan</button></form>
+                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit" title="Sla deze stap over, bijvoorbeeld omdat je hem zelf met de hand doet">Overslaan</button></form>
                 </div>
                 <div class="row-actions" th:if="${run.next.type == 'EDIT' and run.next.status == 'RUNNING'}" style="align-items:flex-end;flex-direction:column;gap:10px">
                     <a class="btn btn-p" th:href="@{/records}">Naar de records</a>
-                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit" title="Sla de rest van deze stap over">Overslaan</button></form>
+                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit" title="Sla de rest van deze stap over">Overslaan</button></form>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'FAILED'}">
-                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit">Overslaan</button></form>
-                    <form method="post" th:action="@{/test/steps/{id}/done(id=${run.next.id})}"><button class="btn btn-s" type="submit" title="Alleen als je zelf hebt gecontroleerd dat het goed is gegaan">Toch klaar</button></form>
-                    <form method="post" th:action="@{/test/steps/{id}/retry(id=${run.next.id})}"><button class="btn btn-p" type="submit">Opnieuw</button></form>
+                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit">Overslaan</button></form>
+                    <form method="post" th:action="@{/test/steps/{id}/done(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit" title="Alleen als je zelf hebt gecontroleerd dat het goed is gegaan">Toch klaar</button></form>
+                    <form method="post" th:action="@{/test/steps/{id}/retry(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-p" type="submit">Opnieuw</button></form>
                 </div>
             </section>
             <div class="alert alert-ok" th:if="${run.next == null}">Alle stappen zijn klaar of overgeslagen.</div>
 
             <!-- Console: alleen zolang er een programma draait. Daarna staat het resultaat bij de stap en het log onder Runs. -->
-            <section th:if="${console != null and console.running}" style="display:flex;flex-direction:column;gap:10px">
+            <section th:fragment="consolesection" th:if="${console != null and console.running}" style="display:flex;flex-direction:column;gap:10px">
                 <div th:fragment="console" id="console"
                      th:attr="hx-get=${console != null and console.running} ? @{/test/console} : null,
                               hx-trigger=${console != null and console.running} ? 'every 1s' : null"
@@ -167,7 +167,7 @@
             </section>
 
             <!-- Overzicht: per bestand de stappen, met daaronder de controle of de bestanden er echt zijn -->
-            <section class="table">
+            <section class="table" th:fragment="filetable">
                 <div class="tr th" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(7,minmax(0,1fr))">
                     <span>Origineel</span><span>Nummer</span>
                     <span th:each="t : ${run.stepTypes}" th:text="${t}"></span>

@@ -229,6 +229,52 @@ class TestRunServiceTest {
         assertNull(service.view()!!.next)
     }
 
+    // ---- de batch in acht fasen ----
+
+    @Test
+    fun `de batch loopt in acht fasen van inloggen tot afsluiten`() {
+        assertEquals(1, service.batchView().current, "eerst inloggen")
+        assertEquals(null, items.login("Test Beheerder", "Beheer1"))
+        assertEquals(2, service.batchView().current, "dan de bestanden")
+        service.confirmFiles()
+        assertEquals(3, service.batchView().current, "dan voorbereiden")
+
+        // een nummer dat al bestaat in ZCBS wordt geweigerd; er is dan niets gekopieerd
+        zcbs.addRecord("edit-leeg.html", "90000010")
+        assertTrue(service.prepare("90000010")!!.contains("bestaat al"))
+        assertEquals(3, service.batchView().current)
+        assertFalse(Files.exists(inbox.resolve("werk")))
+
+        zcbs.records.remove("90000010")
+        assertEquals(null, service.prepare("90000010"))
+        assertEquals(listOf("90000010.pdf", "90000011.pdf"), filesIn(inbox.resolve("werk")))
+        assertEquals(4, service.batchView().current)
+        assertEquals(listOf("done", "done", "done", "now", "todo", "todo", "todo", "todo"), service.batchView().phases.map { it.state })
+
+        repeat(3) { assertEquals("DONE", runNext().status) }
+        assertEquals(7, service.batchView().current, "pdf2zcbs, images en upload zijn klaar")
+        zcbs.addRecord("edit-leeg.html", "90000010")
+        zcbs.addRecord("edit-leeg.html", "90000011")
+        service.execute(next().id, RunMode.IN_APP)
+        items.later("90000010")
+        items.later("90000011")
+        assertEquals(8, service.batchView().current)
+
+        assertEquals(null, service.finish())
+        val done = service.batchView()
+        assertTrue(done.finished)
+        assertEquals(9, done.current)
+        assertEquals(listOf("xx01.pdf", "xx02.pdf"), filesIn(archived))
+        assertEquals(listOf("90000010.jpg", "90000011.jpg"), filesIn(backup))
+    }
+
+    @Test
+    fun `afsluiten stopt als er nog een stap voor ligt`() {
+        assertEquals(null, items.login("Test Beheerder", "Beheer1"))
+        assertEquals(null, service.prepare("90000020"))
+        assertTrue(service.finish()!!.contains("nog een stap"))
+    }
+
     // ---- een stap is pas klaar als de bestanden er zijn ----
 
     @Test

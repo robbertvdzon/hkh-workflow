@@ -35,6 +35,7 @@ class TestController(
     fun page(model: Model): String {
         val settings = settingsService.get()
         model.addAttribute("active", "test")
+        model.addAttribute("returnTo", "/test")
         model.addAttribute("settings", settings)
         model.addAttribute("problems", settingsService.check(settings) + settingsService.checkExtras(settings))
         model.addAttribute("pdfs", testRunService.pdfsInTestFolder().map { PdfRow(it.fileName.toString(), sourceFiles.origin(it.fileName.toString())?.by.orEmpty()) })
@@ -115,32 +116,33 @@ class TestController(
 
     @PostMapping("/test/steps/{id}/run")
     fun run(
+        @RequestParam("terug", defaultValue = "/test") back: String,
         @PathVariable("id") id: Int,
         @RequestParam("mode", defaultValue = "IN_APP") mode: RunMode,
         @RequestParam("auto", defaultValue = "false") auto: Boolean,
         @RequestParam("upload", defaultValue = "false") upload: Boolean,
         @RequestParam("records", defaultValue = "false") records: Boolean,
         redirect: RedirectAttributes,
-    ): String = attempt(redirect) { testRunService.execute(id, mode, auto, StepOptions(upload, records)) }
+    ): String = attempt(redirect, back) { testRunService.execute(id, mode, auto, StepOptions(upload, records)) }
 
     @PostMapping("/test/steps/{id}/skip")
-    fun skip(@PathVariable("id") id: Int, redirect: RedirectAttributes): String =
-        attempt(redirect) { testRunService.skip(id) }
+    fun skip(@PathVariable("id") id: Int, @RequestParam("terug", defaultValue = "/test") back: String, redirect: RedirectAttributes): String =
+        attempt(redirect, back) { testRunService.skip(id) }
 
     @PostMapping("/test/steps/{id}/done")
-    fun done(@PathVariable("id") id: Int, redirect: RedirectAttributes): String =
-        attempt(redirect) { testRunService.markDone(id) }
+    fun done(@PathVariable("id") id: Int, @RequestParam("terug", defaultValue = "/test") back: String, redirect: RedirectAttributes): String =
+        attempt(redirect, back) { testRunService.markDone(id) }
 
     @PostMapping("/test/steps/{id}/retry")
-    fun retry(@PathVariable("id") id: Int, redirect: RedirectAttributes): String =
-        attempt(redirect) { testRunService.retry(id) }
+    fun retry(@PathVariable("id") id: Int, @RequestParam("terug", defaultValue = "/test") back: String, redirect: RedirectAttributes): String =
+        attempt(redirect, back) { testRunService.retry(id) }
 
-    private fun attempt(redirect: RedirectAttributes, action: () -> Unit): String {
+    private fun attempt(redirect: RedirectAttributes, back: String = "/test", action: () -> Unit): String {
         try {
             action()
         } catch (e: Exception) {
             redirect.addFlashAttribute("error", e.message ?: e.javaClass.simpleName)
         }
-        return "redirect:/test"
+        return if (back == "/batch") "redirect:/batch" else "redirect:/test"
     }
 }

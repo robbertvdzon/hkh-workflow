@@ -101,3 +101,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 .strip .it.done{color:var(--ok);background:var(--ok-bg);border-color:#c7ddc7} .strip .it.done .n{background:#2f6b3a;border-color:#2f6b3a;color:#fff}
 .strip .it.now{color:var(--accent);border:1.5px solid var(--accent);background:var(--accent-soft);font-weight:600} .strip .it.now .n{border-color:var(--accent);color:var(--accent)}
 .strip .it .s{font-size:12px;font-weight:500}
+
+.next{flex-wrap:wrap}
+.next>div:first-child{flex:1 1 380px !important}
+.next>.row-actions{flex:0 1 auto}

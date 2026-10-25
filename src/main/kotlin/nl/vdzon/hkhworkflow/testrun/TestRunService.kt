@@ -51,6 +51,16 @@ class TestRunService(
     @Volatile
     private var run: TestRun? = null
 
+    /** Heeft de gebruiker de lijst met pdf's in de invoermap bevestigd (fase Bestanden ophalen)? */
+    @Volatile
+    private var filesConfirmed: Boolean = false
+
+    @Synchronized
+    fun confirmFiles() { filesConfirmed = true }
+
+    @Synchronized
+    fun reopenFiles() { filesConfirmed = false }
+
     /** Pdf's die nu in de testmap staan (alleen de map zelf, geen submappen). */
     fun pdfsInTestFolder(): List<Path> {
         val folder = settingsService.get().testFolder
@@ -89,6 +99,71 @@ class TestRunService(
     fun reset() {
         stopPrevious()
         run = null
+        filesConfirmed = false
+    }
+
+    /**
+     * Fase Voorbereiden: controleert dat de nummers nog niet in ZCBS bestaan, start de run en maakt van elk bestand een
+     * kopie met het nummer in `werk` (het origineel blijft staan).
+     * @return een melding als het niet kan, anders null.
+     */
+    @Synchronized
+    fun prepare(startNumber: String): String? {
+        val pdfs = pdfsInTestFolder()
+        if (pdfs.isEmpty()) return "Er staan geen pdf's in de testmap."
+        val numbers = try { sequenceNumbers(startNumber, pdfs.size) } catch (e: Exception) { return "Geef een beginnummer van alleen cijfers op." }
+        itemEditService.checkNumbersFree(numbers)?.let { return it }
+        return try {
+            start(startNumber)
+            while (true) {
+                val next = run!!.nextStep() ?: break
+                if (next.type != StepType.RENAME) break
+                execute(next.id, RunMode.IN_APP)
+                if (next.status != StepStatus.DONE) return next.message ?: "Hernoemen is mislukt."
+            }
+            null
+        } catch (e: Exception) {
+            e.message ?: e.javaClass.simpleName
+        }
+    }
+
+    /** Fase Afsluiten: opruimen en archiveren, na één goedkeuring. Stopt bij de eerste stap die niet lukt. @return een melding of null. */
+    @Synchronized
+    fun finish(): String? {
+        val current = run ?: return "Er is geen batch gestart."
+        while (true) {
+            val next = current.nextStep() ?: return null
+            if (next.type != StepType.CLEANUP && next.type != StepType.ARCHIVE) return "Er is nog een stap voor het afsluiten: ${next.type.label}."
+            execute(next.id, RunMode.IN_APP)
+            if (next.status != StepStatus.DONE) return next.message ?: "${next.type.label} is mislukt."
+        }
+    }
+
+    /** De batch in acht fasen, zoals de gebruiker hem ziet. */
+    @Synchronized
+    fun batchView(): BatchView {
+        val v = view()
+        val loggedIn = itemEditService.loggedIn()
+        val nextType = v?.next?.type
+        val current = when {
+            !loggedIn -> 1
+            v == null && !filesConfirmed -> 2
+            v == null -> 3
+            nextType == null -> 9
+            nextType == "RENAME" -> 3
+            nextType == "PDF2ZCBS" -> 4
+            nextType == "IMAGES" -> 5
+            nextType == "UPLOAD" -> 6
+            nextType == "EDIT" -> 7
+            else -> 8
+        }
+        val titles = listOf("Inloggen", "Bestanden ophalen", "Voorbereiden", "pdf2zcbs", "images.exe", "Upload ocr en pdf", "Bewerken", "Afsluiten")
+        val phases = titles.mapIndexed { i, title ->
+            val nr = i + 1
+            val note = if (nr == 7 && itemEditService.records().isNotEmpty()) "${itemEditService.handledCount()}/${itemEditService.records().size}" + (itemEditService.laterCount().takeIf { it > 0 }?.let { " · $it later" } ?: "") else null
+            PhaseView(nr, title, when { nr < current -> "done"; nr == current -> "now"; else -> "todo" }, note)
+        }
+        return BatchView(phases, current, current == 9, v)
     }
 
     /** Een nieuwe test begint schoon: een nog lopend programma wordt gestopt en de console leeggemaakt. */
