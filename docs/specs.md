@@ -429,3 +429,12 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 10. Aanbevelingen uit §3 (OCR, recordnummers, mappingtabel, per-collectie-config, back-up).
 11. De testrun staat alleen in het geheugen. Na een herstart van de app midden in een run begint de test opnieuw; de controles
     vooraf (oude resultaten in `output\` en de map van images.exe) weigeren dan te starten, zodat er niets verloren gaat.
+
+## 10. Toekomstideeën (niet gepland)
+
+- **Zonder images.exe en pdf2zcbs.exe werken** (bijvoorbeeld in Docker op een Linux-server of in de cloud, waar de Windows-exe's niet draaien):
+  het record aanmaken met `NEWRECORD <begin> <eind> x` of het formulier voor een nieuw record (`upd_form=new`), en zelf small (100×100 of 250×250),
+  large (700×500) en 100pct (`cgi-bin/archief/100pct/`) maken met 40% compressie en per sftp uploaden, naast pdf en ocr. De pdf- en ocr-aanmaak van
+  pdf2zcbs zou dan ook vervangen moeten worden. Eerst naast images.exe uitproberen en de resultaten vergelijken. Details en afwegingen:
+  [zcbs-analyse-en-wrapper.md](zcbs-analyse-en-wrapper.md) en de uitleg bij `NEWRECORD` in `objecten.pl` (regel 1433). Voor een aparte, beperkte
+  sftp-account (alleen ocr, pdf en afbeeldingen) is een aparte FTP-account nodig; nu bestaat alleen `hkhadmin`.
