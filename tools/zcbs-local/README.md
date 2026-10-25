@@ -1,7 +1,7 @@
 # Lokale ZCBS (om tegen te testen)
 
 De echte ZCBS-code (Gerard van Nes, niet in git) draait in Docker op `http://localhost:8081/cgi-bin/archief.pl`, met een kopie van de archiefdata en eigen testgebruikers.
-Niets gaat naar de echte server en er worden geen e-mails verstuurd.
+Niets gaat naar de echte server en er worden geen e-mails verstuurd: alle adressen in de lokale kopie zijn `xxx@x.nl`, en een nep-`/usr/sbin/sendmail` zet elke mail in `run/mailbox.txt`.
 
 ## Wat er nodig is
 
@@ -16,7 +16,7 @@ cd tools/zcbs-local && docker compose up --build -d
 docker compose down                            # stoppen
 ```
 
-Draai `prepare.sh` opnieuw om met schone data te beginnen (opslagen zijn dan weg). Mails komen in `run/mailbox.txt`; opslagen in `run/cgi-bin/archief/updates.txt`, logs in `run/archief/logging/`.
+Draai `prepare.sh` opnieuw om met schone data te beginnen (opslagen zijn dan weg). Mails (naar `xxx@x.nl`) komen in `run/mailbox.txt`; opslagen in `run/cgi-bin/archief/updates.txt`, logs in `run/archief/logging/`.
 
 ## Testgebruikers (verzonnen)
 
@@ -34,3 +34,23 @@ Draai `prepare.sh` opnieuw om met schone data te beginnen (opslagen zijn dan weg
 - Stuur een eigen `User-Agent` (niet `curl`); zie `docs/zcbs-lokaal-testresultaten.md`.
 - Verzoeken zonder cookie worden per IP begrensd (7 per 10 seconden).
 - De code en data in `run/` zijn niet bedoeld om te delen. `run/` staat in `.gitignore`.
+
+## Wat er in de container zit
+
+Alleen de collectie `archief`. `prepare.sh` kopieert uit `docs/server/`: de code (`archief.pl`, `archief2.pl`, `objecten.pl`, de modules in `misc/`, `cgi-lib.pl`, `malware.lst`, `whitelist.txt`), de config en data van archief
+(`cfg-cbs.pl`, `layout.html`, `info-beheer.html`, `archief.txt`, `updates.txt`), een paar voorbeeldbestanden (`large`, `small`, `ocr`, `pdf`, `100pct`) en lege mappen die ZCBS verwacht. De map `run/` is als
+`public_html` in de container gemonteerd, dus wat je daar neerzet of wat ZCBS schrijft, zie je meteen aan beide kanten. De andere collecties (beeldbank, bidprent, library, ...), de logs van de echte server en de
+`.htaccess`-bestanden worden niet gebruikt.
+
+## Sftp (om de upload te testen)
+
+Dezelfde mapindeling als de echte server, en dezelfde map als ZCBS gebruikt: wat je uploadt naar `archief/ocr`, `archief/pdf`, `archief/small` of `archief/large` staat meteen in de lokale ZCBS.
+
+| Instelling | Waarde |
+|---|---|
+| Host, poort | `localhost`, `2222` |
+| Gebruiker, wachtwoord | `hkhadmin`, `hkhtest` |
+| Basismap | `/domains/historischekringheemskerk.nl/public_html` |
+| Vingerafdruk | `ssh-keyscan -p 2222 -t ed25519 localhost 2>/dev/null \| ssh-keygen -lf -` (verandert niet zolang de container blijft bestaan) |
+
+Gewone FTP (poort 21) is er niet. images.exe heeft zijn eigen hostlijst en kan hier niet naartoe wijzen; de nep-images.exe uploadt niets.

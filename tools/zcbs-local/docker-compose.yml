@@ -6,3 +6,14 @@ services:
       - "127.0.0.1:8081:80"
     volumes:
       - ./run:/usr/local/apache2/htdocs
+
+  # sftp-server met dezelfde mapindeling als de echte server: /domains/historischekringheemskerk.nl/public_html
+  # Wat je hier uploadt, staat meteen in de lokale ZCBS (zelfde map als hierboven).
+  sftp:
+    image: atmoz/sftp:alpine
+    container_name: zcbs-sftp
+    command: hkhadmin:hkhtest:1001
+    ports:
+      - "127.0.0.1:2222:22"
+    volumes:
+      - ./run:/home/hkhadmin/domains/historischekringheemskerk.nl/public_html
