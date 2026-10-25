@@ -55,8 +55,8 @@ Eigenschappen van de hele flow:
 1. "Afsluiten" (opruimen en archiveren) komt **ná** het bewerken. De batch is pas klaar als elk record is bewerkt of door Carla als *later* is gemarkeerd.
 2. Carla kan een record **overslaan** en markeren als "later". Die records blijven in de batch zichtbaar met die markering. (Aanname, te bevestigen: sluit ze de batch af met "later"-records, dan komen die
    in een lijst "Nog te bewerken" die ook na de batch bewaard blijft.)
-3. Het **beginnummer zoekt de app zelf met `LAST`** (het hoogste nummer plus één). Carla ziet het voorgestelde bereik en kan het aanpassen voor ze doorgaat. Het formaat van het antwoord van `LAST` is nog niet
-   bevestigd (uit de code gelezen: het geeft de hoogste nummers uit master en updates, zonder verwijderde records).
+3. Het **beginnummer zoekt de app zelf met `LAST`** (het hoogste nummer plus één). Carla ziet het voorgestelde bereik en kan het aanpassen voor ze doorgaat. Lokaal bevestigd: ingelogd geeft `?search=LAST` het hoogste nummer **inclusief lege records** (`ident=<nr>`-links en
+   `zcbs_archief = "0000 <nr> 0000"`); zonder inlog ontbreken de lege records. Zie [zcbs-lokaal-testresultaten.md](zcbs-lokaal-testresultaten.md), rij 19.
 4. Het **sftp- en het FTP-wachtwoord staan in de Instellingen** van de app. De app draait op een eigen server waar niemand anders bij kan. Alleen het ZCBS-wachtwoord van Carla blijft per run in het geheugen.
 5. De **logs naar de server van Robbert** komen in een latere fase.
 
@@ -298,7 +298,7 @@ gedrag bij een niet bestaand nummer, de meerkeuze `a24`, tekens en regeleinden, 
 2. De hostinginstellingen (LiteSpeed, proxy, Project Honey Pot voor dat IP-adres).
 3. Dat de echte configuratie niet afwijkt van de gedownloade (config, versie van `objecten.pl`).
 4. De foutpagina's (vergrendeld, verlopen sessie, `==Sorry`) komen nu uit de lokale ZCBS-code en niet uit aannames; de echte server kan alleen afwijken als de config of versie afwijkt.
-5. Of `RecordRebuilder` voor alle 1908 bestaande records exact `a0` geeft. Dat is lokaal te meten, tegen de lokale ZCBS, zonder risico.
+5. Of `RecordRebuilder` voor alle 1908 bestaande records exact `a0` geeft. Lokaal gemeten op 363 records (rij 23 in de testresultaten): gelijk, behalve veld 28 en veld 21 bij lege records. De overige records zijn nog te meten.
 
 ## 13. Bouwvolgorde
 
