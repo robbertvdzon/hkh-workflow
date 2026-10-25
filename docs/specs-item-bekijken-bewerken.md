@@ -38,25 +38,27 @@ Carla opent de browser, gaat naar de app en werkt de batch van begin tot eind do
 |---|---|---|---|---|---|
 | 1 | **Inloggen** | Typt haar ZCBS-naam en wachtwoord | Logt in bij ZCBS (POST), bewaart sessie en wachtwoord alleen in het geheugen | cookie van ZCBS met haar naam | niet verder zonder inlog |
 | 2 | **Nieuwe bestanden** | Ziet de pdf's die in de invoermap klaarstaan en controleert de lijst | Toont de bestanden en waarschuwt voor losse bestanden, oude resultaten van een vorige run en een ontbrekende back-upmap | lijst klopt, geen oude resten | opruimen met de hand |
-| 3 | **Voorbereiden** | Geeft of bevestigt het beginnummer | Stelt het hoogste nummer plus één voor (indien uit ZCBS te lezen), hernoemt kopieën naar recordnummers in een werkmap, en controleert dat die nummers nog **niet** in ZCBS bestaan | nummers vrij, kopieën aanwezig | hernoemen met de hand |
+| 3 | **Voorbereiden** | Bevestigt het voorgestelde bereik, of past het aan | Zoekt met `LAST` het hoogste nummer in ZCBS en stelt het volgende bereik voor, hernoemt kopieën naar recordnummers in een werkmap, en controleert dat die nummers nog **niet** in ZCBS bestaan | nummers vrij, kopieën aanwezig | hernoemen met de hand |
 | 4 | **pdf2zcbs** | Keurt de stap goed | Draait pdf2zcbs één keer voor de hele batch; antwoordt de vragen zelf | per bestand: tekst, pdf, small, large | exe zelf draaien |
 | 5 | **images.exe** | Keurt de stap goed (zet upload en records bewust aan) | Draait images.exe met de large-jpg's; antwoordt de vragen (FTP-wachtwoord uit de instellingen) | small, large, 100pct aanwezig; de records bestaan nu in ZCBS | exe zelf draaien |
 | 6 | **Upload ocr en pdf** | Keurt de stap goed | Uploadt per sftp naar `archief/ocr` en `archief/pdf`; overschrijft nooit | grootte op de server gelijk aan lokaal | Total Commander |
-| 7 | **Bewerken** | Opent de records één voor één, vult de velden in en dient in | Haalt het formulier op (lock), toont de velden, bij indienen opnieuw inloggen en formulier ophalen, conflictcontrole, posten, terugleggen | per record: opgeslagen en teruggecontroleerd | "open in ZCBS" |
-| 8 | **Afsluiten** | Keurt de stap goed | Maakt een back-up van de 100pct, ruimt de mappen van de programma's op, archiveert de originelen, en stuurt de logs naar de server van Robbert | alles opgeruimd, logs verstuurd | met de hand |
+| 7 | **Bewerken** | Opent de records één voor één, vult de velden in en dient in, of markeert een record als *later* | Haalt het formulier op (lock), toont de velden, bij indienen opnieuw inloggen en formulier ophalen, conflictcontrole, posten, terugleggen | per record: opgeslagen en teruggecontroleerd | "open in ZCBS" |
+| 8 | **Afsluiten** | Keurt de stap goed | Maakt een back-up van de 100pct, ruimt de mappen van de programma's op en archiveert de originelen (logs versturen volgt in een latere fase) | alles opgeruimd | met de hand |
 
 Eigenschappen van de hele flow:
 - Elke fase begint pas na een **goedkeuring van Carla** en een groen resultaat van de vorige fase. Gaat er iets mis, dan stopt de app en maakt ze de rest op de oude manier af.
-- De batch heeft één status die door de fasen loopt: *klaar om te starten, voorbereid, pdf2zcbs klaar, images.exe klaar, geüpload, bewerken (x van y), afsluiten, klaar*. Ze kan **niet** naar "klaar" voordat elk record is bewerkt of bewust is overgeslagen.
+- De batch heeft één status die door de fasen loopt: *klaar om te starten, voorbereid, pdf2zcbs klaar, images.exe klaar, geüpload, bewerken (x van y), afsluiten, klaar*. Ze kan **niet** naar "klaar" voordat elk record is bewerkt of door haar als *later* is gemarkeerd.
 - De status moet een herstart van de app overleven (bestand in de werkmap), want een batch kan een hele dag duren. Nu staat de status nog in het geheugen.
 - Het ZCBS-wachtwoord blijft in het geheugen; na een herstart van de app logt Carla opnieuw in.
 
-**Keuzes die nog openstaan** (voorstel tussen haakjes):
-1. Moet "Afsluiten" (opruimen en archiveren) vóór of ná het bewerken? (Ná: de originelen en de mappen blijven staan tot alles klopt. Nadeel: een nieuwe batch kan pas starten als de vorige is afgesloten.)
-2. Mag een record worden overgeslagen en later worden bewerkt, of moet alles in dezelfde run? (Overslaan toestaan, met een duidelijke markering.)
-3. Het beginnummer: uit ZCBS lezen (het commando `LAST`, nog niet uitgeprobeerd) of altijd door Carla typen? (Voorstel: voorstellen, Carla bevestigt.)
-4. Het sftp- en FTP-wachtwoord: bewaren in de instellingen of per run vragen? (Nu bewaren; later per run.)
-5. De logs naar de server van Robbert: waar naartoe en welk protocol? (Open.)
+**Beslissingen (Robbert, 25 oktober 2026)**
+1. "Afsluiten" (opruimen en archiveren) komt **ná** het bewerken. De batch is pas klaar als elk record is bewerkt of door Carla als *later* is gemarkeerd.
+2. Carla kan een record **overslaan** en markeren als "later". Die records blijven in de batch zichtbaar met die markering. (Aanname, te bevestigen: sluit ze de batch af met "later"-records, dan komen die
+   in een lijst "Nog te bewerken" die ook na de batch bewaard blijft.)
+3. Het **beginnummer zoekt de app zelf met `LAST`** (het hoogste nummer plus één). Carla ziet het voorgestelde bereik en kan het aanpassen voor ze doorgaat. Het formaat van het antwoord van `LAST` is nog niet
+   bevestigd (uit de code gelezen: het geeft de hoogste nummers uit master en updates, zonder verwijderde records).
+4. Het **sftp- en het FTP-wachtwoord staan in de Instellingen** van de app. De app draait op een eigen server waar niemand anders bij kan. Alleen het ZCBS-wachtwoord van Carla blijft per run in het geheugen.
+5. De **logs naar de server van Robbert** komen in een latere fase.
 
 ## 2. Uitgangspunten
 
@@ -105,6 +107,7 @@ Tabel met per record: nummer, bestandsnaam, status, knop.
 | opgeslagen | opgeslagen en teruggecontroleerd |
 | fout | opslaan mislukt of terugcontrole klopt niet |
 | geblokkeerd | door een andere gebruiker vergrendeld |
+| later | door Carla overgeslagen; komt later aan de beurt |
 
 Verder: teller (x van y bewerkt), per record de link "open in ZCBS", en een knop "Verder met opruimen". De status staat in het geheugen
 van de run en gaat na een herstart verloren; de bron van waarheid is ZCBS zelf.
