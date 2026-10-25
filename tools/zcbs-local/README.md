@@ -51,6 +51,6 @@ Dezelfde mapindeling als de echte server, en dezelfde map als ZCBS gebruikt: wat
 | Host, poort | `localhost`, `2222` |
 | Gebruiker, wachtwoord | `hkhadmin`, `hkhtest` |
 | Basismap | `/domains/historischekringheemskerk.nl/public_html` |
-| Vingerafdruk | `ssh-keyscan -p 2222 -t ed25519 localhost 2>/dev/null \| ssh-keygen -lf -` (verandert niet zolang de container blijft bestaan) |
+| Vingerafdruk | `docker exec zcbs-sftp sh -c 'ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub'` (verandert als de container opnieuw wordt gemaakt) |
 
 Gewone FTP (poort 21) is er niet. images.exe heeft zijn eigen hostlijst en kan hier niet naartoe wijzen; de nep-images.exe uploadt niets.
