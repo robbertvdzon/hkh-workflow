@@ -137,6 +137,7 @@ installatie door de auteur of aangewezen persoon; bronvermelding verplicht; geen
   Uitvoer: `output/ocr/<naam>.txt`, `output/small/<naam>.jpg` (eerste pagina, max 250×250), eventueel
   `output/updates.txt`, log in `output/log/`.
 - Bestandsnamen: alleen kleine letters, cijfers, `-` en `_`.
+- **Bij HKH staat `pdf2zcbs.ini` ingesteld (Robbert, 25 oktober 2026): dan toont het programma helemaal niets en wacht het nergens op.** De vragen zijn al beantwoord. De automatische antwoorden in de app zijn voor die situatie niet nodig; een stap is klaar als de bestanden in `output\` er zijn. De nep-versie in `tools/mock/pdf2zcbs` doet hetzelfde zolang `pdf2zcbs.ini` ernaast staat.
 - **`pdf2zcbs.ini`:** antwoorden `SP` (splitsen), `OP` (output-prefix), `LP` (loze pagina's), `PN` (paginanummers),
   `TJ` (txt+jpg), `PS` (presentatieslides); `OCR -raw`; velden `00` (afk. instelling) en `01` (instellingsnummer) →
   dan wordt `updates.txt` gemaakt, plus vaste veldwaarden; `$INSERT_DB` met `$file`, `$str`, `%IN{"nn"}`.

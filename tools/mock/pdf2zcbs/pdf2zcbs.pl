@@ -1,16 +1,23 @@
 #!/usr/bin/perl
-# Nep-pdf2zcbs.exe om de workflow op Mac/Linux te testen. Stelt dezelfde vragen als pdf2zcbs.exe
-# (zie docs/050.pdf, hoofdstuk 3). Haalt tekst uit de pdf met pdftotext als dat geïnstalleerd is.
+# Nep-pdf2zcbs.exe om de workflow op Mac/Linux te testen. Haalt tekst uit de pdf met pdftotext als dat geïnstalleerd is.
+#
+# Net als de echte pdf2zcbs.exe bij HKH: staat er een pdf2zcbs.ini naast het programma (dat is hier zo), dan zijn de
+# vragen al beantwoord en toont het programma **niets** en wacht het nergens op. Zonder dat bestand stelt het dezelfde
+# vragen als pdf2zcbs.exe (zie docs/050.pdf, hoofdstuk 3) en toont het zijn voortgang.
 # Buffert zijn uitvoer zoals een gewoon Perl-programma; MOCK_UNBUFFERED=1 zet dat uit.
 use strict; use warnings; use File::Copy; use File::Path qw(make_path remove_tree);
 $| = 1 if $ENV{MOCK_UNBUFFERED};
-sub ask { my ($q) = @_; print $q; my $a = <STDIN>; $a = '' unless defined $a; $a =~ s/[\r\n]+$//; return $a; }
+use FindBin qw($RealBin);
+# Met pdf2zcbs.ini naast het programma: geen vragen en geen uitvoer (zoals de echte exe bij HKH).
+my $silent = -f "$RealBin/pdf2zcbs.ini";
+sub say_ { print @_ unless $silent; }
+sub ask { my ($q) = @_; return '' if $silent; print $q; my $a = <STDIN>; $a = '' unless defined $a; $a =~ s/[\r\n]+$//; return $a; }
 
-print "-" x 76, "\n pdf2zcbs: versie MOCK  Info: hkh-workflow\n", "-" x 76, "\n";
+say_("-" x 76, "\n pdf2zcbs: versie MOCK  Info: hkh-workflow\n", "-" x 76, "\n");
 # Net als de echte pdf2zcbs.exe (handleiding 050, hfdst 11.14): bij elke run wordt de map output geleegd.
-if (-d "output") { remove_tree("output"); print " Map output geleegd (vorige resultaten zijn weg).\n"; }
+if (-d "output") { remove_tree("output"); say_(" Map output geleegd (vorige resultaten zijn weg).\n"); }
 opendir(my $dh, ".") or die; my @pdfs = sort grep { /\.pdf$/i && -f $_ } readdir($dh); closedir($dh);
-if (!@pdfs) { print " Geen PDF gevonden in de huidige map.\n"; ask(" Type return to exit\n"); exit 1; }
+if (!@pdfs) { say_(" Geen PDF gevonden in de huidige map.\n"); ask(" Type return to exit\n"); exit 1; }
 make_path("output/pdf", "output/ocr", "output/small", "output/large", "output/log");
 # Eerste pagina als jpg met de gegeven hoogte; zonder pdftoppm (of bij een kapotte pdf) een klein nep-bestand.
 sub jpg {
@@ -23,7 +30,7 @@ sub jpg {
   }
 }
 if (@pdfs == 1) {
-  print " Aanwezige PDF in de huidige map:\n - $pdfs[0]\n";
+  say_(" Aanwezige PDF in de huidige map:\n - $pdfs[0]\n");
   my $s = ask(" > Deze PDF splitsen in (groepen van) losse pagina's (default = N)?\n");
 }
 move($_, "output/pdf/$_") for @pdfs;
@@ -34,12 +41,12 @@ for my $p (@pdfs) {
   my $text = `pdftotext output/pdf/$p - 2>/dev/null` // '';
   my @zinnen = grep { /\S/ } split(/(?<=[.!?])\s+/, $text);
   open(my $fh, '>', "output/ocr/$base.txt") or die; print $fh "$_\n" for @zinnen; close $fh;
-  print " Verwerking: $p : bevat ", scalar(@zinnen), " zinnen --> output/ocr/$base.txt)\n";
+  say_(" Verwerking: $p : bevat ", scalar(@zinnen), " zinnen --> output/ocr/$base.txt)\n");
   jpg("output/pdf/$p", "output/small/$base.jpg", 193);
   jpg("output/pdf/$p", "output/large/$base.jpg", 500);
   sleep 1;
 }
-print " Tevens de small- en large-images van de 1e pagina van de PDF's aangemaakt --> output/small/*.jpg en output/large/*.jpg\n";
-print "-" x 76, "\n That's all folks\n";
+say_(" Tevens de small- en large-images van de 1e pagina van de PDF's aangemaakt --> output/small/*.jpg en output/large/*.jpg\n");
+say_("-" x 76, "\n That's all folks\n");
 ask(" Type return to exit\n");
 exit 0;

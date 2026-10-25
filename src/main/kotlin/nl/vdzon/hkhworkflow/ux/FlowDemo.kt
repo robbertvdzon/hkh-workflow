@@ -79,7 +79,7 @@ object FlowDemoData {
             "pdf2zcbs maakt van elke pdf een doorzoekbare pdf, een tekstbestand en twee plaatjes.",
             listOf(
                 "Kopieert de {n} hernoemde pdf's naar de map van pdf2zcbs",
-                "Draait pdf2zcbs één keer voor de hele batch en beantwoordt de vragen zelf",
+                "Draait pdf2zcbs één keer voor de hele batch (de vragen zijn al ingesteld in pdf2zcbs.ini, het programma toont niets)",
                 "Controleert per bestand of tekst, pdf, small en large er zijn",
             ),
             listOf("De map pdf2zcbs\\output is leeg", "{n} hernoemde pdf's staan klaar", "Geen losse pdf's in de programmamap"),
