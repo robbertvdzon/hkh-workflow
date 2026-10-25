@@ -97,9 +97,10 @@
                     <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}" style="display:flex;flex-direction:column;gap:10px;align-items:flex-end"><input type="hidden" name="terug" th:value="${returnTo}">
                         <div th:if="${run.next.type == 'IMAGES'}" style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fffaf0;max-width:380px">
                             <b style="font-size:13px">Alleen bij Automatisch uitvoeren. Dit schrijft in de echte collectie:</b>
-                            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" name="upload" value="true" id="opt-upload" style="margin-top:2px"> Afbeeldingen uploaden naar de server (FTP)</label>
-                            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" name="records" value="true" id="opt-records" style="margin-top:2px"> Lege records aanmaken in ZCBS</label>
-                            <span class="hint">Beide staan standaard uit. Bij Handmatig uitvoeren antwoord je zelf.</span>
+                            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" name="upload" value="true" id="opt-upload" style="margin-top:2px" th:checked="${returnTo == '/batch'}"> Afbeeldingen uploaden naar de server (FTP)</label>
+                            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" name="records" value="true" id="opt-records" style="margin-top:2px" th:checked="${returnTo == '/batch'}"> Lege records aanmaken in ZCBS</label>
+                            <span class="hint" th:if="${returnTo != '/batch'}">Beide staan standaard uit. Bij Handmatig uitvoeren antwoord je zelf.</span>
+                            <span class="hint" th:if="${returnTo == '/batch'}"><b>Zonder deze twee vinkjes werken de volgende fasen niet:</b> de afbeeldingen staan dan niet op de server en er zijn geen records om te bewerken. Bij Handmatig uitvoeren antwoord je zelf.</span>
                         </div>
                         <div style="display:flex;gap:8px;align-items:center">
                             <button class="btn btn-s" type="submit" name="mode" value="WINDOW" th:disabled="${!run.next.problems.isEmpty()}" title="Opent het programma in een cmd-venster op de computer waar de jar draait (alleen Windows)">In cmd-venster op de server</button>

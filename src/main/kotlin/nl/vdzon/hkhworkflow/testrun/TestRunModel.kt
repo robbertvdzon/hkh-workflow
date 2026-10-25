@@ -48,6 +48,10 @@ class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
     @Volatile
     var message: String? = null
 
+    /** De keuzes waarmee een images-stap is gestart (uploaden en records aanmaken). */
+    @Volatile
+    var options: StepOptions? = null
+
     /** Paden op de server die in deze run zijn geüpload en gecontroleerd (alleen bij de uploadstap). */
     val uploaded: MutableSet<String> = ConcurrentHashMap.newKeySet()
 

@@ -318,6 +318,12 @@ class TestRunService(
                 if (s.zcbsBaseUrl.isBlank()) add("Het adres van ZCBS is niet ingesteld (Instellingen).")
                 if (s.collection.isBlank()) add("Collectie is niet ingesteld (Instellingen).")
                 if (!itemEditService.loggedIn()) add("Log eerst in bij ZCBS met je eigen naam en wachtwoord.")
+                else {
+                    val missing = itemEditService.missingInZcbs(step.files.map { it.number })
+                    if (missing.isNotEmpty()) {
+                        add("Deze records bestaan nog niet in ZCBS: ${names(missing)}. Ze worden door images.exe aangemaakt, met het vinkje \"Lege records aanmaken\" bij die stap.")
+                    }
+                }
             }
 
             StepType.CLEANUP -> buildList {
@@ -365,6 +371,7 @@ class TestRunService(
 
     private fun runImages(step: Step, s: WorkflowSettings, mode: RunMode, auto: Boolean, options: StepOptions) {
         check(!options.records || options.upload) { "Lege records aanmaken kan alleen samen met uploaden." }
+        step.options = options
         if (auto && options.upload) {
             check(s.imagesAnswers.any { it.pattern.contains("FTP wachtwoord", ignoreCase = true) && it.answer.isNotEmpty() }) {
                 "Voor uploaden met automatisch uitvoeren moet bij Instellingen het FTP-wachtwoord staan (regel 'FTP wachtwoord'). Gebruik anders Handmatig uitvoeren."
@@ -427,7 +434,7 @@ class TestRunService(
                     val missing = expected.filter { !it.second.present() }
                     if (missing.isEmpty()) {
                         step.status = StepStatus.DONE
-                        step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt."
+                        step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt." + imagesNote(step)
                     } else {
                         step.status = StepStatus.FAILED
                         step.message = "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: " +
@@ -436,6 +443,15 @@ class TestRunService(
                 }
             }
         }
+    }
+
+    /** Wat images.exe niet heeft gedaan, omdat de gebruiker het niet had aangevinkt. De volgende fasen hebben dat wel nodig. */
+    private fun imagesNote(step: Step): String {
+        val o = step.options ?: return ""
+        return buildList {
+            if (!o.upload) add(" Let op: de afbeeldingen zijn niet naar de server geüpload.")
+            if (!o.records) add(" Let op: er zijn geen records aangemaakt, dus de stap Records bewerken kan nog niet.")
+        }.joinToString("")
     }
 
     private fun upload(step: Step, s: WorkflowSettings) {
