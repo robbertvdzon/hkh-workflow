@@ -129,7 +129,12 @@ Volledig beschreven in [zcbs-edit-formulier.md](zcbs-edit-formulier.md); formeel
 ### 6.1 Inloggen
 `POST /cgi-bin/archief.pl`, `application/x-www-form-urlencoded`, velden `user` en `pswd`. Cookies uit het antwoord bewaren en bij elk volgend verzoek meesturen.
 Op een router-adres (het HKH-netwerk) kan ZCBS in plaats daarvan het routerformulier geven (`veld=access`); de app herkent dat aan de pagina en probeert dan die variant.
-**Onbevestigd:** de precieze antwoordtekst. Het inlogsucces wordt dus niet uit de tekst afgeleid maar door daarna het formulier van het eerste record te krijgen.
+**Controle of naam en wachtwoord kloppen** (er is geen aparte controle-aanroep; de inlog zelf is de controle). Volgens de code geeft een geslaagde inlog:
+`Set-Cookie: zcbs-user=<naam>|<hash>` (de naam is niet leeg en niet `extern`), de tekst "Gebruikersnaam/wachtwoord combinatie herkend!" en de links "Uitloggen" (rechten 1 t/m 4) en
+`upd_form=clr` ("Reset blokkering", alleen bij recht 1). Een mislukte inlog geeft geen `zcbs-user`-cookie met een echte naam, en de tekst "niet herkend" of "onjuist".
+De app gebruikt de cookie als hoofdsignaal en de tekst als tweede signaal, en bevestigt het bij het eerste echte formulier. Altijd met een **POST** (nooit met naam en wachtwoord
+in de URL, want die komen in de toegangslogs). Een mislukte poging komt met de ingetypte naam en het ingetypte wachtwoord in het ZCBS-log; probeer dus nooit wachtwoorden van andere
+systemen. **Onbevestigd:** de precieze antwoordtekst en de cookies.
 
 ### 6.2 Formulier ophalen (zet de vergrendeling)
 `GET /cgi-bin/archief.pl?ident=<nr>&upd_form=edt`. Antwoord: de pagina met `<form name="zcbsform" ...>`, of "Tijdelijk geblokkeerd object", of een inlogpagina.
