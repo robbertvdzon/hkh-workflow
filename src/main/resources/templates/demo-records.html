@@ -15,10 +15,10 @@
         <div class="alert alert-ok" th:if="${saved != null}" th:text="'Record ' + ${saved} + ' is opgeslagen en teruggecontroleerd. De beheerder krijgt een e-mail met het record.'"></div>
         <div class="bar"><span th:style="'width:' + ${state.handled() * 100 / state.records.size()} + '%'"></span></div>
         <section class="table">
-            <div class="tr th" style="grid-template-columns:70px 130px minmax(0,1fr) 140px 150px"><span>Nummer</span><span>Bestand</span><span>Titel</span><span>Status</span><span></span></div>
-            <div class="tr" th:each="r : ${state.records}" style="grid-template-columns:70px 130px minmax(0,1fr) 140px 150px">
+            <div class="tr th" style="grid-template-columns:70px 170px minmax(0,1fr) 140px 150px"><span>Nummer</span><span>Bestand</span><span>Titel</span><span>Status</span><span></span></div>
+            <div class="tr" th:each="r : ${state.records}" style="grid-template-columns:70px 170px minmax(0,1fr) 140px 150px">
                 <span class="mono" th:text="${r.nr}">11934</span>
-                <span class="mono muted" th:text="${r.file}" style="font-size:12.5px">scan.pdf</span>
+                <span style="min-width:0"><span class="mono muted" th:text="${r.file}" style="font-size:12.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:title="${r.file}">scan.pdf</span><span class="hint" th:text="'door ' + ${r.by}">door Ria</span></span>
                 <span th:text="${r.title.isEmpty()} ? '(nog leeg)' : ${r.title}" th:classappend="${r.title.isEmpty()} ? 'muted'" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" th:title="${r.title}">Titel</span>
                 <span><span class="chip" th:classappend="'c-' + ${r.status.kind}" th:text="${r.status.label}">status</span></span>
                 <span class="row-actions" style="justify-content:flex-end">

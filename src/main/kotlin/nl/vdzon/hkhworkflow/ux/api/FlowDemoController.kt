@@ -23,7 +23,7 @@ class FlowDemoController(private val state: FlowDemoState) {
         model.addAttribute("state", state)
         model.addAttribute("phases", FlowDemoData.phases)
         model.addAttribute("zcbsBase", DemoData.ZCBS_BASE)
-        model.addAttribute("inputFiles", FlowDemoData.inputFiles)
+        model.addAttribute("groups", FlowDemoData.available.groupBy { it.folder })
     }
 
     @GetMapping("/demo-flow")
@@ -55,6 +55,18 @@ class FlowDemoController(private val state: FlowDemoState) {
         if (state.finished) response.setHeader("HX-Redirect", "/demo-flow/klaar")
         return "demo-flow :: stage"
     }
+
+    @PostMapping("/demo-flow/ophalen")
+    fun fetch(@RequestParam("files", required = false) files: List<Int>?, model: Model): String {
+        val error = state.copyFiles(files.orEmpty())
+        if (error == null) return "redirect:/demo-flow"
+        common(model)
+        model.addAttribute("fetchError", error)
+        return "demo-flow"
+    }
+
+    @PostMapping("/demo-flow/andere-keuze")
+    fun reselect(): String { state.backToSelection(); return "redirect:/demo-flow" }
 
     @PostMapping("/demo-flow/bestanden")
     fun confirmFiles(): String { state.confirmFiles(); return "redirect:/demo-flow" }

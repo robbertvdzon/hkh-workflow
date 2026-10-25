@@ -9,7 +9,7 @@
         <div class="head">
             <div>
                 <h1>Record <span class="mono" th:text="${r.nr}">11934</span> <span class="demo">Demo</span></h1>
-                <p class="sub"><span class="mono" th:text="${r.file}">scan.pdf</span> · record <span th:text="${position}">1</span> van <span th:text="${state.records.size()}">12</span>
+                <p class="sub"><span class="mono" th:text="${r.file}">scan.pdf</span> · gescand door <b th:text="${r.by}">Ria</b> (<span class="mono" th:text="${r.folder}">K:\</span>) · record <span th:text="${position}">1</span> van <span th:text="${state.records.size()}">12</span>
                     <span th:if="${panel != 'onveilig'}"> · geopend om <span th:text="${lockFrom}">14:32</span>, voor anderen vergrendeld tot <span th:text="${lockUntil}">14:42</span></span></p>
             </div>
             <a class="btn btn-s btn-sm" th:href="${zcbsBase} + '/archief.pl?ident=' + ${r.nr} + '&upd_form=edt'" target="_blank">Open in ZCBS</a>

@@ -17,12 +17,15 @@ enum class RecStatus(val label: String, val kind: String) {
     ONVEILIG("niet veilig", "err"),
 }
 
-class DemoRecord(val nr: Int, val file: String, val pages: Int) {
+class DemoRecord(val nr: Int, val file: String, val pages: Int, val by: String = "", val folder: String = "") {
     var status: RecStatus = RecStatus.OPEN
     var values: Map<String, String> = emptyMap()
     var themes: List<String> = emptyList()
     val title: String get() = values["a5"].orEmpty()
 }
+
+/** Een pdf op de server (K:\scabslelly\<persoon>\<map>), zoals Ria hem klaargezet heeft. */
+data class DemoInput(val idx: Int, val name: String, val pages: Int, val by: String, val folder: String, val scanned: String, val preselected: Boolean)
 
 data class DemoField(
     val name: String,
@@ -48,41 +51,49 @@ data class RunRow(val label: String, val state: String, val stateLabel: String)
 
 object FlowDemoData {
     const val HIGHEST_IN_ZCBS = 11933
-    const val FILE_COUNT = 12
     /** Zo staat een nieuw (leeg) record in ZCBS: het formulier heeft al enkele standaardkeuzes. */
     val DEFAULT_VALUES = mapOf("a21" to "neen", "a25" to "Heemskerk", "a22" to "HKH Jan de Ruijter", "a9" to "Historische Kring Heemskerk")
 
     const val THEIR_TITLE = "Heemskrink 1981 (aangepast door een collega)"
 
-    /** De pdf's in de invoermap: bestandsnaam, aantal pagina's, gescand door. */
-    val inputFiles = (0 until FILE_COUNT).map { i ->
-        Triple("scan_%04d.pdf".format(412 + i), listOf(2, 1, 4, 1, 2, 3, 1, 5, 2, 1, 3, 2)[i], if (i < 7) "Ria" else "Kees")
+    private const val RIA = "K:\\scabslelly\\Ria\\map57"
+    private const val KEES = "K:\\scabslelly\\Kees\\raadhuis"
+    private const val RIA2 = "K:\\scabslelly\\Ria\\map58"
+
+    /** Wat er op de server staat. Ria geeft aan welke bestanden verwerkt moeten worden; de voorselectie is dat. */
+    val available: List<DemoInput> = buildList {
+        val ria = listOf(2, 1, 4, 1, 2, 3, 1)
+        ria.forEachIndexed { i, p -> add(DemoInput(size, "scan_%04d.pdf".format(412 + i), p, "Ria", RIA, "25 okt, 09:%02d".format(10 + i * 4), true)) }
+        listOf("raadhuis-1932-voorgevel.pdf" to 1, "raadhuis-1932-plattegrond.pdf" to 3, "raadhuis-bouwvergunning.pdf" to 5,
+            "raadhuis-1951-uitbreiding.pdf" to 2, "raadhuis-interieur-1960.pdf" to 1)
+            .forEachIndexed { i, (n, p) -> add(DemoInput(size, n, p, "Kees", KEES, "24 okt, 16:%02d".format(40 + i * 4), true)) }
+        listOf(2, 1, 6, 2).forEachIndexed { i, p -> add(DemoInput(size, "scan_%04d.pdf".format(430 + i), p, "Ria", RIA2, "25 okt, 13:%02d".format(40 + i * 3), false)) }
     }
 
     val phases = listOf(
         PhaseDef(1, "Inloggen", "", emptyList(), emptyList(), emptyList(), ""),
-        PhaseDef(2, "Nieuwe bestanden", "", emptyList(), emptyList(), emptyList(), ""),
+        PhaseDef(2, "Bestanden ophalen", "", emptyList(), emptyList(), emptyList(), ""),
         PhaseDef(3, "Voorbereiden", "", emptyList(), emptyList(), emptyList(), ""),
         PhaseDef(
             4, "pdf2zcbs",
             "pdf2zcbs maakt van elke pdf een doorzoekbare pdf, een tekstbestand en twee plaatjes.",
             listOf(
-                "Kopieert de 12 hernoemde pdf's naar de map van pdf2zcbs",
+                "Kopieert de {n} hernoemde pdf's naar de map van pdf2zcbs",
                 "Draait pdf2zcbs één keer voor de hele batch en beantwoordt de vragen zelf",
                 "Controleert per bestand of tekst, pdf, small en large er zijn",
             ),
-            listOf("De map pdf2zcbs\\output is leeg", "12 hernoemde pdf's staan klaar", "Geen losse pdf's in de programmamap"),
+            listOf("De map pdf2zcbs\\output is leeg", "{n} hernoemde pdf's staan klaar", "Geen losse pdf's in de programmamap"),
             listOf("Tekst", "PDF", "Small", "Large"), "Start pdf2zcbs",
         ),
         PhaseDef(
             5, "images.exe",
             "images.exe maakt de afbeeldingen voor de website, zet ze met FTP op de server en maakt de lege records aan in ZCBS.",
             listOf(
-                "Kopieert de 12 large-jpg's naar de map van images.exe",
+                "Kopieert de {n} large-jpg's naar de map van images.exe",
                 "Maakt small, large en 100pct en uploadt ze met FTP",
-                "Maakt 12 lege records aan (stap D van images.exe)",
+                "Maakt {n} lege records aan (stap D van images.exe)",
             ),
-            listOf("12 jpg's in de map images", "De nummers bestaan nog niet in ZCBS", "Geen oude resultaten in small, large en 100pct", "Het FTP-wachtwoord staat in de instellingen"),
+            listOf("{n} jpg's in de map images", "De nummers bestaan nog niet in ZCBS", "Geen oude resultaten in small, large en 100pct", "Het FTP-wachtwoord staat in de instellingen"),
             listOf("Small", "Large", "100pct", "Upload", "Record"), "Start images.exe",
         ),
         PhaseDef(
@@ -90,10 +101,10 @@ object FlowDemoData {
             "De tekst en de pdf's gaan met sftp naar de map archief/ocr en archief/pdf op de server. Bestaande bestanden worden nooit overschreven.",
             listOf(
                 "Controleert de twee doelmappen op de server",
-                "Uploadt 12 tekstbestanden naar archief/ocr",
-                "Uploadt 12 pdf's naar archief/pdf en vergelijkt de grootte",
+                "Uploadt {n} tekstbestanden naar archief/ocr",
+                "Uploadt {n} pdf's naar archief/pdf en vergelijkt de grootte",
             ),
-            listOf("Verbinding met de server en vingerafdruk kloppen", "Geen van de 24 bestanden bestaat al op de server"),
+            listOf("Verbinding met de server en vingerafdruk kloppen", "Geen van de {n2} bestanden bestaat al op de server"),
             listOf("Tekst (ocr)", "PDF", "Grootte gelijk"), "Start upload",
         ),
         PhaseDef(7, "Bewerken", "", emptyList(), emptyList(), emptyList(), ""),
@@ -159,6 +170,8 @@ class FlowDemoState {
     var loginAttempts = 0
     var startNr = FlowDemoData.HIGHEST_IN_ZCBS + 1
     var records: List<DemoRecord> = emptyList()
+    var files: List<DemoInput> = emptyList()
+    var copied = false
     var failPhase5 = false
     var scenario = "normaal"
     private val done = mutableSetOf<Int>()
@@ -168,7 +181,7 @@ class FlowDemoState {
     @Synchronized
     fun reset() {
         user = null; current = 1; finished = false; loginAttempts = 0
-        startNr = FlowDemoData.HIGHEST_IN_ZCBS + 1; records = emptyList()
+        startNr = FlowDemoData.HIGHEST_IN_ZCBS + 1; records = emptyList(); files = emptyList(); copied = false
         failPhase5 = false; scenario = "normaal"
         done.clear(); runningSince = null; failedAt = null
     }
@@ -186,26 +199,41 @@ class FlowDemoState {
         return null
     }
 
+    fun count() = files.size
+    fun count2() = files.size * 2
+
+    /** @return een foutmelding, of null als de gekozen bestanden naar de invoermap zijn gekopieerd. */
+    @Synchronized
+    fun copyFiles(indexes: List<Int>): String? {
+        val chosen = FlowDemoData.available.filter { it.idx in indexes }
+        if (chosen.isEmpty()) return "Kies minstens één bestand."
+        files = chosen; copied = true
+        return null
+    }
+
+    @Synchronized
+    fun backToSelection() { if (current == 2) { copied = false; files = emptyList() } }
+
     @Synchronized
     fun confirmFiles() {
-        if (current == 2) { done += 2; current = 3 }
+        if (current == 2 && copied) { done += 2; current = 3 }
     }
 
     /** @return een foutmelding, of null als de nummers vrij zijn en de bestanden zijn hernoemd. */
     @Synchronized
     fun prepare(start: String): String? {
         val nr = start.trim().toIntOrNull() ?: return "Geef een nummer van vijf cijfers op."
-        if (nr < 10000 || nr > 99999 - FlowDemoData.FILE_COUNT) return "Een recordnummer heeft vijf cijfers."
+        if (nr < 10000 || nr > 99999 - files.size) return "Een recordnummer heeft vijf cijfers."
         if (nr <= FlowDemoData.HIGHEST_IN_ZCBS) return "Record $nr bestaat al in ZCBS. images.exe zou een bestaand record niet mogen aanmaken. Kies $startNr of hoger."
         startNr = nr
-        records = (0 until FlowDemoData.FILE_COUNT).map { i ->
-            DemoRecord(nr + i, FlowDemoData.inputFiles[i].first, FlowDemoData.inputFiles[i].second).also { it.values = FlowDemoData.DEFAULT_VALUES }
+        records = files.mapIndexed { i, f ->
+            DemoRecord(nr + i, f.name, f.pages, f.by, f.folder).also { it.values = FlowDemoData.DEFAULT_VALUES }
         }
         done += 3; current = 4
         return null
     }
 
-    private fun rowCount(phase: Int) = FlowDemoData.phases[phase - 1].rows?.size ?: FlowDemoData.FILE_COUNT
+    private fun rowCount(phase: Int) = FlowDemoData.phases[phase - 1].rows?.size ?: files.size
 
     @Synchronized
     fun start() {
@@ -224,6 +252,9 @@ class FlowDemoState {
     @Synchronized
     fun phaseDone(nr: Int): Boolean { tick(); return nr in done }
 
+    /** Bij welk bestand de gesimuleerde upload mislukt: het 9e, of het laatste als er minder zijn. */
+    fun failIndex(): Int = minOf(8, files.size - 1).coerceAtLeast(0)
+
     private fun progress(): Int {
         val since = runningSince ?: return 0
         return ((System.currentTimeMillis() - since) / stepMillis).toInt()
@@ -232,8 +263,8 @@ class FlowDemoState {
     private fun tick() {
         if (runningSince == null) return
         val n = rowCount(current)
-        if (current == 5 && failPhase5 && progress() >= 8) {
-            failedAt = 8; runningSince = null; return
+        if (current == 5 && failPhase5 && progress() >= failIndex()) {
+            failedAt = failIndex(); runningSince = null; return
         }
         if (progress() >= n) { done += current; runningSince = null; if (current == 8) finished = true }
     }
@@ -278,7 +309,7 @@ class FlowDemoState {
     /** Zet de lock en de status bij het openen van een record. */
     @Synchronized
     fun open(r: DemoRecord) {
-        if (r === records.last() && r.status == RecStatus.OPEN) r.status = RecStatus.ONVEILIG
+        if (records.size >= 3 && r === records.last() && r.status == RecStatus.OPEN) r.status = RecStatus.ONVEILIG
         else if (r.status == RecStatus.OPEN) r.status = RecStatus.BEZIG
     }
 

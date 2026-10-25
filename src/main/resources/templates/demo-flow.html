@@ -22,30 +22,51 @@
                 </span>
             </div>
 
-            <!-- Fase 2: nieuwe bestanden -->
-            <section class="card pad stack" th:if="${state.current == 2}">
-                <h2>2. Nieuwe bestanden</h2>
-                <p class="muted" style="margin:0">Deze 12 pdf's staan klaar in de invoermap <span class="mono">c:\zcbs\invoer</span>. Controleer of dit de bestanden zijn die je wilt verwerken.</p>
+            <!-- Fase 2: bestanden ophalen van de server -->
+            <section class="card pad stack" th:if="${state.current == 2 and !state.copied}">
+                <h2>2. Bestanden ophalen</h2>
+                <p class="muted" style="margin:0">Ria geeft aan welke bestanden verwerkt moeten worden. Die staan op de server in <span class="mono">K:\scabslelly</span>, in een map per persoon. Vink aan wat je wilt verwerken; de app kopieert het naar <span class="mono">c:\zcbs\invoer</span>. De bestanden op de server blijven staan.</p>
+                <div class="alert alert-err" th:if="${fetchError}" th:text="${fetchError}"></div>
+                <form th:action="@{/demo-flow/ophalen}" method="post" class="stack">
+                    <div class="table" th:each="g : ${groups}">
+                        <div class="tr grouphead" style="grid-template-columns:minmax(0,1fr)"><span><b th:text="${g.value[0].by}">Ria</b> <span class="mono muted" th:text="${g.key}">K:\scabslelly\Ria\map57</span></span></div>
+                        <label class="tr" th:each="f : ${g.value}" style="grid-template-columns:28px minmax(0,1fr) 90px 150px;cursor:pointer">
+                            <input type="checkbox" name="files" th:value="${f.idx}" th:checked="${f.preselected}">
+                            <span style="display:flex;gap:10px;align-items:center"><span class="pdf">PDF</span><span class="mono" th:text="${f.name}">scan.pdf</span></span>
+                            <span class="muted" th:text="${f.pages} + ' pag.'">2 pag.</span><span class="muted" th:text="'gescand ' + ${f.scanned}">gescand</span>
+                        </label>
+                    </div>
+                    <div><button class="btn btn-p" type="submit">Kopieer de aangevinkte bestanden naar c:\zcbs\invoer</button></div>
+                    <p class="hint" style="margin:0">Wie het gescand heeft, zie je aan de map waarin het staat.</p>
+                </form>
+            </section>
+
+            <section class="card pad stack" th:if="${state.current == 2 and state.copied}">
+                <h2>2. Bestanden ophalen</h2>
+                <p class="muted" style="margin:0"><b th:text="${state.count()}">12</b> bestanden zijn gekopieerd naar de invoermap <span class="mono">c:\zcbs\invoer</span>. Controleer of dit de bestanden zijn die je wilt verwerken.</p>
                 <div class="table">
-                    <div class="tr th" style="grid-template-columns:minmax(0,1fr) 110px 120px"><span>Bestand</span><span>Pagina's</span><span>Gescand door</span></div>
-                    <div class="tr" th:each="f : ${inputFiles}" style="grid-template-columns:minmax(0,1fr) 110px 120px">
-                        <span style="display:flex;gap:10px;align-items:center"><span class="pdf">PDF</span><span class="mono" th:text="${f.first}">scan.pdf</span></span>
-                        <span th:text="${f.second}">2</span><span th:text="${f.third}">Ria</span>
+                    <div class="tr th" style="grid-template-columns:minmax(0,1fr) 80px 110px minmax(0,1.2fr)"><span>Bestand</span><span>Pag.</span><span>Gescand door</span><span>Van de server</span></div>
+                    <div class="tr" th:each="f : ${state.files}" style="grid-template-columns:minmax(0,1fr) 80px 110px minmax(0,1.2fr)">
+                        <span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="pdf">PDF</span><span class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.name}">scan.pdf</span></span>
+                        <span th:text="${f.pages}">2</span><span th:text="${f.by}">Ria</span><span class="mono muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.folder}" th:title="${f.folder}">K:\</span>
                     </div>
                 </div>
-                <ul class="checks-list"><li>Geen losse bestanden naast de pdf's</li><li>Geen resultaten van een vorige batch in de werkmappen</li><li>De back-upmap bestaat</li></ul>
-                <form th:action="@{/demo-flow/bestanden}" method="post"><button class="btn btn-p" type="submit">Klopt, verder</button></form>
+                <ul class="checks-list"><li>Geen losse bestanden naast de pdf's in de invoermap</li><li>Geen resultaten van een vorige batch in de werkmappen</li><li>De back-upmap bestaat</li></ul>
+                <div class="row-actions">
+                    <form th:action="@{/demo-flow/bestanden}" method="post"><button class="btn btn-p" type="submit">Klopt, verder</button></form>
+                    <form th:action="@{/demo-flow/andere-keuze}" method="post"><button class="btn btn-s" type="submit">Andere bestanden kiezen</button></form>
+                </div>
             </section>
 
             <!-- Fase 3: voorbereiden -->
             <section class="card pad stack" th:if="${state.current == 3}">
                 <h2>3. Voorbereiden</h2>
-                <p class="muted" style="margin:0">De app zocht in ZCBS het hoogste recordnummer (<span class="mono">LAST</span>): <b class="mono">11933</b>. De 12 bestanden krijgen daarom de nummers hieronder. Je kunt het beginnummer aanpassen.</p>
+                <p class="muted" style="margin:0">De app zocht in ZCBS het hoogste recordnummer (<span class="mono">LAST</span>): <b class="mono">11933</b>. De <span th:text="${state.count()}">12</span> bestanden krijgen daarom de nummers hieronder. Je kunt het beginnummer aanpassen.</p>
                 <div class="alert alert-err" th:if="${prepError}" th:text="${prepError}"></div>
                 <form th:action="@{/demo-flow/voorbereiden}" method="post" class="stack">
                     <div class="field" style="max-width:240px"><label class="f" for="start">Eerste recordnummer</label>
                         <input type="text" id="start" name="start" class="mono" th:value="${startInput} ?: ${state.startNr}"></div>
-                    <ul class="checks-list"><li>De nummers bestaan nog niet in ZCBS</li><li>Er zijn precies 12 nummers nodig</li></ul>
+                    <ul class="checks-list"><li>De nummers bestaan nog niet in ZCBS</li><li th:text="'Er zijn precies ' + ${state.count()} + ' nummers nodig'">Er zijn precies 12 nummers nodig</li></ul>
                     <p class="hint" style="margin:0">De app maakt kopieën met het recordnummer als naam in een werkmap. De originele bestanden blijven staan.</p>
                     <div><button class="btn btn-p" type="submit">Hernoem de kopieën en ga verder</button></div>
                 </form>
@@ -59,11 +80,11 @@
 
                 <div th:if="${!state.running() and !state.phaseDone(state.current) and !state.failed()}" class="stack">
                     <div><b>Dit gaat de app doen</b>
-                        <ul class="plan-list"><li th:each="l : ${def.plan}" th:text="${l}"></li></ul></div>
+                        <ul class="plan-list"><li th:each="l : ${def.plan}" th:text="${#strings.replace(#strings.replace(l, '{n}', '' + state.count()), '{n2}', '' + state.count2())}"></li></ul></div>
                     <div><b>Dit controleerde de app al</b>
-                        <ul class="checks-list"><li th:each="c : ${def.checks}" th:text="${c}"></li></ul></div>
+                        <ul class="checks-list"><li th:each="c : ${def.checks}" th:text="${#strings.replace(#strings.replace(c, '{n}', '' + state.count()), '{n2}', '' + state.count2())}"></li></ul></div>
                     <form th:action="@{/demo-flow/start}" method="post" class="stack">
-                        <label th:if="${state.current == 5}" class="hint" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="falen" value="ja"> Demo: laat de upload bij het 9e bestand mislukken</label>
+                        <label th:if="${state.current == 5}" class="hint" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="falen" value="ja"> Demo: laat de upload halverwege mislukken (bij het 9e bestand)</label>
                         <div class="row-actions"><button class="btn btn-p" type="submit" th:text="${def.runLabel}">Start</button>
                             <span class="hint" style="align-self:center">Gaat er iets mis, dan stopt de app en maak je de rest op de oude manier af.</span></div>
                     </form>
@@ -83,7 +104,7 @@
                     </div>
                     <div class="alert alert-info" th:if="${state.running()}">Bezig… deze pagina ververst vanzelf.</div>
                     <div class="alert alert-err stack" th:if="${state.failed()}" style="gap:10px">
-                        <b>De app is gestopt bij record <span class="mono" th:text="${state.records[8].nr}">11942</span>.</b>
+                        <b>De app is gestopt bij record <span class="mono" th:text="${state.records[state.failIndex()].nr}">11942</span>.</b>
                         <span>Upload mislukt: de verbinding met de website is verbroken. Voor dit en de volgende bestanden is geen record aangemaakt. Er is niets gewijzigd aan bestanden die al klaar zijn.</span>
                         <span>Je kunt het opnieuw proberen, of de rest op de oude manier afmaken met images.exe zelf.</span>
                         <form th:action="@{/demo-flow/opnieuw-proberen}" method="post"><button class="btn btn-p btn-sm" type="submit">Opnieuw proberen</button></form>

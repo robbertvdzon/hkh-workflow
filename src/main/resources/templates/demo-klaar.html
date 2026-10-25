@@ -13,7 +13,7 @@
             <form th:action="@{/demo-flow/opnieuw}" method="post"><button class="btn btn-p" type="submit">Nieuwe batch starten</button></form>
         </div>
         <div class="stats">
-            <div class="stat"><span class="muted">Bestanden verwerkt</span><b th:text="${state.records.size()}">12</b></div>
+            <div class="stat"><span class="muted">Bestanden verwerkt</span><b th:text="${state.count()}">12</b></div>
             <div class="stat"><span class="muted">Records opgeslagen</span><b th:text="${state.handled()}">11</b></div>
             <div class="stat"><span class="muted">Nog te bewerken (later)</span><b th:text="${state.later()}">1</b></div>
         </div>
@@ -30,8 +30,8 @@
         <section class="card pad stack">
             <h2>Wat is er gebeurd</h2>
             <ul class="checks-list" style="flex-direction:column">
-                <li>12 pdf's hernoemd naar 11934 t/m 11945</li><li>Tekst, pdf, small en large gemaakt met pdf2zcbs</li>
-                <li>Afbeeldingen geüpload en 12 records aangemaakt met images.exe</li><li>Tekst en pdf geüpload naar archief/ocr en archief/pdf</li>
+                <li th:text="${state.count()} + ' pdf\'s van de server gekopieerd naar c:\\zcbs\\invoer en hernoemd naar ' + ${state.startNr} + ' t/m ' + (${state.startNr} + ${state.count()} - 1)">pdf's hernoemd</li><li>Tekst, pdf, small en large gemaakt met pdf2zcbs</li>
+                <li th:text="'Afbeeldingen geüpload en ' + ${state.count()} + ' records aangemaakt met images.exe'">Afbeeldingen geüpload</li><li>Tekst en pdf geüpload naar archief/ocr en archief/pdf</li>
                 <li><span th:text="${state.handled()}">11</span> records ingevuld en opgeslagen in ZCBS</li><li>100pct een back-up gegeven, werkmappen opgeruimd, originelen gearchiveerd</li>
             </ul>
         </section>

@@ -37,7 +37,7 @@ Carla opent de browser, gaat naar de app en werkt de batch van begin tot eind do
 | # | Fase | Wat Carla doet | Wat de app doet | Controle (vinkjes) | Terugvaloptie |
 |---|---|---|---|---|---|
 | 1 | **Inloggen** | Typt haar ZCBS-naam en wachtwoord | Logt in bij ZCBS (POST), bewaart sessie en wachtwoord alleen in het geheugen | cookie van ZCBS met haar naam | niet verder zonder inlog |
-| 2 | **Nieuwe bestanden** | Ziet de pdf's die in de invoermap klaarstaan en controleert de lijst | Toont de bestanden en waarschuwt voor losse bestanden, oude resultaten van een vorige run en een ontbrekende back-upmap | lijst klopt, geen oude resten | opruimen met de hand |
+| 2 | **Bestanden ophalen** | Kiest welke bestanden verwerkt worden (Ria geeft dat aan; ze staan op de server in `K:\scabslelly\<persoon>\<map>`) en controleert daarna de lijst in de invoermap | Toont de bestanden per persoon en map, kopieert de gekozen naar `c:\zcbs\invoer` (de originelen op de server blijven staan), onthoudt per bestand wie het gescand heeft (de map) en waarschuwt voor losse bestanden, oude resten en een ontbrekende back-upmap | lijst klopt, geen oude resten | kopiëren met de hand |
 | 3 | **Voorbereiden** | Bevestigt het voorgestelde bereik, of past het aan | Zoekt met `LAST` het hoogste nummer in ZCBS en stelt het volgende bereik voor, hernoemt kopieën naar recordnummers in een werkmap, en controleert dat die nummers nog **niet** in ZCBS bestaan | nummers vrij, kopieën aanwezig | hernoemen met de hand |
 | 4 | **pdf2zcbs** | Keurt de stap goed | Draait pdf2zcbs één keer voor de hele batch; antwoordt de vragen zelf | per bestand: tekst, pdf, small, large | exe zelf draaien |
 | 5 | **images.exe** | Keurt de stap goed (zet upload en records bewust aan) | Draait images.exe met de large-jpg's; antwoordt de vragen (FTP-wachtwoord uit de instellingen) | small, large, 100pct aanwezig; de records bestaan nu in ZCBS | exe zelf draaien |
@@ -46,7 +46,9 @@ Carla opent de browser, gaat naar de app en werkt de batch van begin tot eind do
 | 8 | **Afsluiten** | Keurt de stap goed | Maakt een back-up van de 100pct, ruimt de mappen van de programma's op en archiveert de originelen (logs versturen volgt in een latere fase) | alles opgeruimd | met de hand |
 
 Eigenschappen van de hele flow:
-- Elke fase begint pas na een **goedkeuring van Carla** en een groen resultaat van de vorige fase. Gaat er iets mis, dan stopt de app en maakt ze de rest op de oude manier af.
+- Wie een bestand gescand heeft, staat niet in de pdf zelf (de eigenschappen noemen alleen het scanprogramma, bij het voorbeeld NAPS2). Het is de map op de server waarin Ria, Kees of een ander het zette; de app onthoudt die bij het kopiëren en toont hem bij het controleren en bij elk record. Wat er met de bestanden op de server gebeurt na het verwerken, is nog niet bekend (nu blijven ze staan).
+
+Elke fase begint pas na een **goedkeuring van Carla** en een groen resultaat van de vorige fase. Gaat er iets mis, dan stopt de app en maakt ze de rest op de oude manier af.
 - De batch heeft één status die door de fasen loopt: *klaar om te starten, voorbereid, pdf2zcbs klaar, images.exe klaar, geüpload, bewerken (x van y), afsluiten, klaar*. Ze kan **niet** naar "klaar" voordat elk record is bewerkt of door haar als *later* is gemarkeerd.
 - De status moet een herstart van de app overleven (bestand in de werkmap), want een batch kan een hele dag duren. Nu staat de status nog in het geheugen.
 - Het ZCBS-wachtwoord blijft in het geheugen; na een herstart van de app logt Carla opnieuw in.
@@ -317,3 +319,13 @@ gedrag bij een niet bestaand nummer, de meerkeuze `a24`, tekens en regeleinden, 
 - Een record met gevulde velden zonder invoerveld (zoals veld 17) behoudt die inhoud.
 - Bij een fout (sessie, vergrendeld, onverwacht antwoord) staat er een duidelijke melding en een link naar ZCBS, en gaat er niets verloren.
 - Geen wachtwoorden in logs of schermen.
+
+
+## 15. Aanvulling: de testpagina (`/test`) krijgt twee stappen
+
+De bestaande testflow (hernoemen, pdf2zcbs, images.exe, upload, opruimen, archiveren) volgt nog Carla's papieren stappenplan en mist twee stappen van de nieuwe flow:
+
+1. **Een stap vooraf: bestanden ophalen** van de server (`K:\scabslelly\...`) naar de testmap `c:\zcbs\invoer`, met de keuze welke bestanden. Het is nu aan de gebruiker om ze eerst zelf in de testmap te zetten. Nieuwe instelling: de bronmap op de server.
+2. **Een stap na de upload: records bewerken.** Dezelfde stap als in de demo (fase 7), maar echt: inloggen bij ZCBS, per record het formulier ophalen, wijzigen, voorbeeld, opslaan en teruglezen. Net als de andere stappen met een plan vooraf, problemen en waarschuwingen (bijvoorbeeld: record bestaat niet, ongelezen veld, vergrendeld) en vinkjes per record. Nieuwe instellingen: de basis-URL van ZCBS (lokale kopie `http://localhost:8081/cgi-bin/archief.pl` of de echte site) en het script. De ZCBS-naam en het wachtwoord worden bij het starten van de stap gevraagd en blijven in het geheugen.
+
+Het testen van deze stap kan eerst volledig tegen de lokale ZCBS in Docker (zie [zcbs-lokaal-testresultaten.md](zcbs-lokaal-testresultaten.md)), zonder iets aan productie te veranderen. De bouw ervan is dezelfde als de echte bewerkfunctie (paragraaf 5 en 7) en wacht op het sein van Robbert.

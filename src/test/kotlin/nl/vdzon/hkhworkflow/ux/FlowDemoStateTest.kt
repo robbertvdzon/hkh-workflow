@@ -13,10 +13,13 @@ class FlowDemoStateTest {
         Thread.sleep(rows * s.stepMillis + 100L)
     }
 
+    private val preselected = FlowDemoData.available.filter { it.preselected }.map { it.idx }
+
     private fun loggedInAndPrepared(): FlowDemoState {
         val s = FlowDemoState()
         s.stepMillis = 10
         assertNull(s.login("Carla van Noort", "geheim"))
+        assertNull(s.copyFiles(preselected))
         s.confirmFiles()
         assertNull(s.prepare("11934"))
         return s
@@ -32,9 +35,24 @@ class FlowDemoStateTest {
     }
 
     @Test
+    fun `bestanden kiezen vraagt minstens een bestand en onthoudt wie het scande`() {
+        val s = FlowDemoState()
+        s.login("Carla", "x")
+        assertNotNull(s.copyFiles(emptyList()))
+        assertNull(s.copyFiles(listOf(0, 12)))
+        assertEquals(listOf("Ria", "Ria"), s.files.map { it.by })
+        s.confirmFiles()
+        assertNull(s.prepare("11934"))
+        assertEquals(2, s.records.size)
+        assertEquals("Ria", s.records.first().by)
+        assertEquals(1, s.failIndex())
+    }
+
+    @Test
     fun `bestaande recordnummers worden geweigerd`() {
         val s = FlowDemoState()
         s.login("Carla", "x")
+        s.copyFiles(preselected)
         s.confirmFiles()
         assertTrue(s.prepare("11930")!!.contains("bestaat al"))
         assertNotNull(s.prepare("abc"))
