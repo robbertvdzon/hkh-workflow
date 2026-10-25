@@ -1,0 +1,11 @@
+# Kopieer naar images-mock.ini (staat in .gitignore) om de nep-images.exe echt naar een FTP-server te laten uploaden.
+# Zonder dit bestand uploadt hij niets. Het wachtwoord vraagt hij zoals het echte programma (via de vraag).
+ftp_host = localhost
+ftp_port = 2121
+ftp_user = hkhadmin
+ftp_base = domains/historischekringheemskerk.nl/public_html
+id1 = HKH
+id2 = 997
+pc_user = Carla
+# Titel van de lege records. Weglaten = "Een nog niet beschreven record (jjmmdd)" zoals in de handleiding.
+# record_title =

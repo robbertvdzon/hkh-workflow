@@ -39,3 +39,24 @@ argument een poortnummer mee als je na een herstart dezelfde poort wilt houden; 
 de vingerafdruk gelijk. Zet bij Instellingen
 host `localhost`, die poort, basismap `/public_html` en klik Test verbinding; zet de vingerafdruk vast.
 
+
+## images.pl met echte FTP-upload en records (tegen de lokale ZCBS)
+
+Zonder verdere instelling uploadt `images.pl` niets. Wil je dat hij net als de echte images.exe via FTP uploadt en de lege records in `updates.txt` zet, start dan de lokale ZCBS
+(`tools/zcbs-local/README.md`, met gewone FTP op poort 2121) en kopieer het voorbeeldbestand:
+
+```bash
+cp tools/mock/images-werk/images-mock.ini.example tools/mock/images-werk/images-mock.ini    # staat in .gitignore
+```
+
+Het programma doet dan, na J op de vragen:
+
+- vraagt het FTP-wachtwoord (`hkhtest`) en controleert dat door te verbinden; bij een fout wachtwoord vraagt hij opnieuw;
+- toont de ZCBS-toepassingen op de server en laat je er een kiezen (`archief`);
+- vraagt, als er al bestanden met dezelfde naam staan, "Oude images ... OVERSCHRIJVEN? [J/N]" en slaat die bij N over;
+- zet small en large in `<toepassing>/small` en `/large` en de 100pct in `cgi-bin/<toepassing>/100pct`;
+- bij "AANMAKEN en UPLOADEN van de bijbehorende records" J: haalt `cgi-bin/<toepassing>/updates.txt` van de server, voegt de lege records toe (titel "Een nog niet beschreven record (jjmmdd)",
+  stempel `system`, 35 velden), zet het terug en meldt "Oude/Nieuwe update database ... bevat ... records". Het controleert niet of de records al bestaan, net als de echte (zie handleiding, stap D);
+- zet een regel in `cgi-bin/misc/images.log` op de server.
+
+Zet in de app bij Instellingen het automatische antwoord op "FTP wachtwoord" op `hkhtest`. De sftp-instellingen voor tekst en pdf's (poort 2222) staan in `tools/zcbs-local/README.md`.

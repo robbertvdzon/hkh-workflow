@@ -17,3 +17,13 @@ services:
       - "127.0.0.1:2222:22"
     volumes:
       - ./run:/home/hkhadmin/domains/historischekringheemskerk.nl/public_html
+
+  # Gewone FTP, zoals images.exe die gebruikt (Net::FTP). Zelfde map als hierboven.
+  ftp:
+    build: ./ftp
+    container_name: zcbs-ftp
+    ports:
+      - "127.0.0.1:2121:21"
+      - "127.0.0.1:30000-30009:30000-30009"
+    volumes:
+      - ./run:/home/hkhadmin/domains/historischekringheemskerk.nl/public_html

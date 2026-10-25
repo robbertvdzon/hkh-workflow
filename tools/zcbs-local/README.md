@@ -54,7 +54,11 @@ Dezelfde mapindeling als de echte server, en dezelfde map als ZCBS gebruikt: wat
 | Basismap | `/domains/historischekringheemskerk.nl/public_html` |
 | Vingerafdruk | `docker exec zcbs-sftp sh -c 'ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub'` (verandert als de container opnieuw wordt gemaakt) |
 
-Gewone FTP (poort 21) is er niet. images.exe heeft zijn eigen hostlijst en kan hier niet naartoe wijzen; de nep-images.exe uploadt niets.
+## FTP (voor de nep-images.exe)
+
+Gewone FTP, zoals het echte images.exe gebruikt, op `localhost:2121` (passief, poorten 30000-30009), gebruiker `hkhadmin`, wachtwoord `hkhtest`, dezelfde map als sftp en ZCBS
+(login in de map `/home/hkhadmin`; de werkmap `domains/historischekringheemskerk.nl/public_html` is `run/`). De nep-images.exe (`tools/mock/images-werk/images.pl`, zie `tools/mock/README.md`) uploadt hier
+naartoe en zet de lege records in `updates.txt`, waarna ze in de lokale ZCBS verschijnen. Het echte images.exe kan hier niet naartoe wijzen: het heeft een eigen hostlijst.
 
 ## Inhoud van server-files/
 

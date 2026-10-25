@@ -13,3 +13,5 @@ tools/mock/images-werk/100pct/
 # Bestanden van de ZCBS-server en de Windows-pc bij HKH (alleen lokaal); zie docs/server/README.md
 docs/server/*
 !docs/server/README.md
+tools/mock/images-werk/images-mock.ini
+tools/mock/images-werk/log-*.txt
