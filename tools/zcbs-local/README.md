@@ -5,13 +5,14 @@ Niets gaat naar de echte server en er worden geen e-mails verstuurd: alle adress
 
 ## Wat er nodig is
 
-- De gedownloade serverbestanden in `docs/server/` (zie `docs/server/README.md`), onder andere `cgi-bin/objecten.pl`, `archief.pl`, `cgi-bin/archief/…`, `zcbs_frontend/cgi-lib.pl`.
+- De serverbestanden in `tools/zcbs-local/server-files/` (gitignored, los van `docs/server/`): de ZCBS-code en de data en config van archief, in dezelfde indeling als op de server (22 bestanden, 4,7 MB).
+  Eenmalig vullen uit `docs/server/` met `./import-from-docs-server.sh`, of zelf neerzetten uit een verse download. Zie de lijst hieronder.
 - Docker.
 
 ## Starten
 
 ```bash
-tools/zcbs-local/prepare.sh                    # bouwt de werkmap run/ (gitignored) uit docs/server
+tools/zcbs-local/prepare.sh                    # bouwt de werkmap run/ (gitignored) uit server-files/
 cd tools/zcbs-local && docker compose up --build -d
 docker compose down                            # stoppen
 ```
@@ -37,7 +38,7 @@ Draai `prepare.sh` opnieuw om met schone data te beginnen (opslagen zijn dan weg
 
 ## Wat er in de container zit
 
-Alleen de collectie `archief`. `prepare.sh` kopieert uit `docs/server/`: de code (`archief.pl`, `archief2.pl`, `objecten.pl`, de modules in `misc/`, `cgi-lib.pl`, `malware.lst`, `whitelist.txt`), de config en data van archief
+Alleen de collectie `archief`. `prepare.sh` kopieert uit `server-files/`: de code (`archief.pl`, `archief2.pl`, `objecten.pl`, de modules in `misc/`, `cgi-lib.pl`, `malware.lst`, `whitelist.txt`), de config en data van archief
 (`cfg-cbs.pl`, `layout.html`, `info-beheer.html`, `archief.txt`, `updates.txt`), een paar voorbeeldbestanden (`large`, `small`, `ocr`, `pdf`, `100pct`) en lege mappen die ZCBS verwacht. De map `run/` is als
 `public_html` in de container gemonteerd, dus wat je daar neerzet of wat ZCBS schrijft, zie je meteen aan beide kanten. De andere collecties (beeldbank, bidprent, library, ...), de logs van de echte server en de
 `.htaccess`-bestanden worden niet gebruikt.
@@ -54,3 +55,14 @@ Dezelfde mapindeling als de echte server, en dezelfde map als ZCBS gebruikt: wat
 | Vingerafdruk | `docker exec zcbs-sftp sh -c 'ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub'` (verandert als de container opnieuw wordt gemaakt) |
 
 Gewone FTP (poort 21) is er niet. images.exe heeft zijn eigen hostlijst en kan hier niet naartoe wijzen; de nep-images.exe uploadt niets.
+
+## Inhoud van server-files/
+
+```
+cgi-bin/archief.pl, archief2.pl, objecten.pl
+cgi-bin/misc/        config.pm, materialen.pm, techniek.pm, httpbl.pm, replace.txt, cgi-lib.pl, malware.lst, whitelist.txt
+cgi-bin/archief/     archief.txt, updates.txt, misc/{cfg-cbs.pl, layout.html, info-beheer.html}, 100pct/ (voorbeeld)
+archief/             large/, small/, ocr/, pdf/ (voorbeelden)
+```
+
+Niet nodig en niet erin: `permit.lst` (we gebruiken een eigen testbestand), `sendmail.pm` (nep-versie), `guest.lst`, logs, de andere collecties.

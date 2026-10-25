@@ -1,12 +1,12 @@
 #!/bin/bash
-# Bouwt de werkmap run/ uit de gedownloade serverbestanden (docs/server) en onze eigen testinstellingen.
-# De originelen in docs/server worden niet aangepast. Draai dit opnieuw om weer met schone data te beginnen.
+# Bouwt de werkmap run/ uit server-files/ (de serverbestanden in deze map) en onze eigen testinstellingen.
+# De originelen in server-files/ worden niet aangepast. Draai dit opnieuw om weer met schone data te beginnen.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-src="$here/../../docs/server"
+src="$here/server-files"
 run="$here/run"
 
-[ -f "$src/cgi-bin/objecten.pl" ] || { echo "Geen $src/cgi-bin/objecten.pl: zie docs/server/README.md"; exit 1; }
+[ -f "$src/cgi-bin/objecten.pl" ] || { echo "Geen $src/cgi-bin/objecten.pl: zet de serverbestanden in server-files/ (zie README.md, of draai import-from-docs-server.sh)"; exit 1; }
 docker compose -f "$here/docker-compose.yml" down >/dev/null 2>&1 || true
 rm -rf "$run"
 mkdir -p "$run/cgi-bin/misc" "$run/cgi-bin/archief/misc" "$run/archief"
@@ -14,8 +14,8 @@ mkdir -p "$run/cgi-bin/misc" "$run/cgi-bin/archief/misc" "$run/archief"
 # Code
 cp "$src/cgi-bin/archief.pl" "$src/cgi-bin/archief2.pl" "$src/cgi-bin/objecten.pl" "$run/cgi-bin/"
 for f in config.pm materialen.pm techniek.pm httpbl.pm replace.txt; do cp "$src/cgi-bin/misc/$f" "$run/cgi-bin/misc/"; done
-cp "$src/zcbs_frontend/cgi-lib.pl" "$run/cgi-bin/misc/cgi-lib.pl"
-cp "$src/cgi-bin/malware.lst" "$src/cgi-bin/whitelist.txt" "$run/cgi-bin/misc/" 2>/dev/null || true
+cp "$src/cgi-bin/misc/cgi-lib.pl" "$run/cgi-bin/misc/cgi-lib.pl"
+cp "$src/cgi-bin/misc/malware.lst" "$src/cgi-bin/misc/whitelist.txt" "$run/cgi-bin/misc/" 2>/dev/null || true
 
 # Onze eigen testbestanden
 cp "$here/overrides/sendmail.pm" "$run/cgi-bin/misc/sendmail.pm"
