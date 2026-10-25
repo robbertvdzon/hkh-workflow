@@ -103,8 +103,9 @@ installatie door de auteur of aangewezen persoon; bronvermelding verplicht; geen
   100pct ongewijzigd / max 3000×2000 / max 4000×3000.
 - **Upload (C):** vraagt nummer/naam/plaats instelling (HKH: `4`), FTP-wachtwoord (gecontroleerd door te verbinden),
   toont de ZCBS-toepassingen op de server → kies collectie (= uploadmap), kies (sub)map of maak er een.
-  FTP-gebruikersnaam zit in het programma. Eén FTP-wachtwoord voor de hele server: wie images.exe kan gebruiken, kan
-  alles op de server.
+  De handleiding noemt geen FTP-gebruikersnaam en vraagt er ook niet om; waar die vandaan komt (waarschijnlijk vast in het programma, per
+  instelling), staat nergens. Het is gewone FTP (`Net::FTP`), dus niet versleuteld. Eén FTP-wachtwoord voor de hele server: wie images.exe
+  kan gebruiken, kan alles op de server.
 - **Records (D):** maakt lege records ("Een nog niet beschreven record (datum)") en zet ze in de **update-database op de
   server**. Uitvoer: "Oude update database op webserver bevatte: 26 records / Nieuwe … bevat nu: 32". Afleiding: het haalt
   `updates.txt` via FTP op, voegt toe en zet het terug. Roept geen pl-script aan.
