@@ -131,21 +131,23 @@ Volledig beschreven in [zcbs-edit-formulier.md](zcbs-edit-formulier.md); formeel
 Op een router-adres (het HKH-netwerk) kan ZCBS in plaats daarvan het routerformulier geven (`veld=access`); de app herkent dat aan de pagina en probeert dan die variant.
 **Controle of naam en wachtwoord kloppen** (er is geen aparte controle-aanroep; de inlog zelf is de controle). Volgens de code geeft een geslaagde inlog:
 `Set-Cookie: zcbs-user=<naam>|<hash>` (de naam is niet leeg en niet `extern`), de tekst "Gebruikersnaam/wachtwoord combinatie herkend!" en de links "Uitloggen" (rechten 1 t/m 4) en
-`upd_form=clr` ("Reset blokkering", alleen bij recht 1). Een mislukte inlog geeft geen `zcbs-user`-cookie met een echte naam, en de tekst "niet herkend" of "onjuist".
-De app gebruikt de cookie als hoofdsignaal en de tekst als tweede signaal, en bevestigt het bij het eerste echte formulier. Altijd met een **POST** (nooit met naam en wachtwoord
+`upd_form=clr` ("Reset blokkering", alleen bij recht 1). Een mislukte inlog geeft de tekst "niet herkend" of "onjuist" (de cookie komt dan ook, maar met een andere hash).
+**Gecorrigeerd na de lokale test:** de cookie is geen betrouwbaar signaal (ook bij een fout wachtwoord zet ZCBS `zcbs-user` met de naam); de tekst "combinatie herkend!" (geslaagd) of
+"combinatie niet herkend!" / "Onjuist wachtwoord ingevuld!" (routeradres) is dat wel. De app gebruikt de tekst als hoofdsignaal en bevestigt het bij het eerste echte formulier. Altijd met een **POST** (nooit met naam en wachtwoord
 in de URL, want die komen in de toegangslogs). Een mislukte poging komt met de ingetypte naam en het ingetypte wachtwoord in het ZCBS-log; probeer dus nooit wachtwoorden van andere
 systemen. **Onbevestigd:** de precieze antwoordtekst en de cookies.
 
 ### 6.2 Formulier ophalen (zet de vergrendeling)
 `GET /cgi-bin/archief.pl?ident=<nr>&upd_form=edt`. Antwoord: de pagina met `<form name="zcbsform" ...>`, of "Tijdelijk geblokkeerd object", of een inlogpagina.
-Een niet bestaand nummer: gedrag onbevestigd; de app behandelt een antwoord zonder formulier en zonder bekende melding als "niet gevonden / onbekend" en toont de tekst.
+Een niet bestaand nummer (lokaal getest): geen bewerkformulier (er is geen veld `a0`) maar de pagina van een leeg record. **Een POST op zo'n nummer maakt het record aan**, dus de app bewerkt alleen als `a0`
+aanwezig is en niet leeg.
 
 ### 6.3 Opslaan
 `POST /cgi-bin/archief.pl`, `multipart/form-data`, latin-1. De velden zijn alle velden van het formulier (verborgen en zichtbaar) met `write=1`.
 Regels die de app moet naleven (details in het andere document):
 - De verborgen velden en `a0` ongewijzigd terugsturen. Het stempel `a34` is van het openen van het formulier.
 - Velden die de gebruiker niet wijzigt, met hun oude waarde sturen. ZCBS bouwt het record alleen uit de velden die het ontvangt.
-- **Velden zonder invoerveld meesturen:** `a17`, `a20`, `a23`, `a28` t/m `a31`, met de waarde uit `a0` (anders worden ze leeg).
+- **Velden zonder invoerveld meesturen:** elk veld `a3` t/m `a31` dat niet in het formulier staat (ook niet als `…b` of `…x`), met de waarde uit `a0`. Lokaal bevestigd voor `a28`; `a17` staat wel in het formulier als het gevuld is.
 - `a24` (Thema): één deel per gekozen optie. `== Anders ==` met de tekst in `aNb`. `a10x` en `a15x` blijven los (ZCBS maakt `hoofdveld|subveld`).
 - `a21`: de waarde uit het formulier (0 of de dagcode); de gebruiker kiest alleen ja of neen.
 - Bijlagevelden leeg met `add_inter=1`.
@@ -157,7 +159,9 @@ Regels die de app moet naleven (details in het andere document):
 | geen `zcbsform`, wel tekst "Tijdelijk geblokkeerd object" | vergrendeld door een ander | status "geblokkeerd", toon de tekst, opnieuw proberen na enkele minuten |
 | tekst "Uw sessie is verlopen" of een inlogscherm | sessie weg | opnieuw inloggen met het geheugen en één keer herhalen |
 | "niet herkend" of "onjuist" bij inloggen | verkeerde naam of wachtwoord | melding, opnieuw invoeren |
-| `==Sorry` | verzoek geweigerd door het filter | stoppen, tekst tonen, niet herhalen |
+| `==Sorry:4` of `==Sorry:5` | een veld bevat een geweigerd woord (SQL-achtige hoofdletterwoorden, `onclick`, `permit.lst`, ...) | niets opgeslagen; toon welk veld en welk woord; laat de gebruiker aanpassen |
+| `==Sorry:1` of `==Sorry:3` | URL of User-Agent geweigerd | stoppen, niet herhalen (fout in de app) |
+| "Access ZCBS denied: using too many requests" | snelheidsbegrenzing (zonder cookie) | even wachten, cookies meesturen |
 | geen van de bovenstaande en geen formulier | onbekend | stoppen, het antwoord (zonder gegevens) in het log, link "open in ZCBS" |
 
 ### 6.5 Het formulier lezen: veiligheidscontroles
@@ -225,9 +229,12 @@ Alle meldingen in gewoon Nederlands, zonder technische tekst, met de volgende st
 
 Tot de run bij HKH is er niets tegen ZCBS te testen. Wat wel kan:
 
+**Lokale ZCBS (`tools/zcbs-local`, Docker).** De echte ZCBS-code met een kopie van de archiefdata, een eigen `permit.lst` met testgebruikers en zonder e-mail. De client en de app worden hiertegen getest;
+dat vervangt de aannames over antwoorden. Zie [zcbs-lokaal-testresultaten.md](zcbs-lokaal-testresultaten.md). De fixtures hieronder zijn opnames van die antwoorden.
+
 **Fixtures** (in `src/test/resources/zcbs/`, namen van personen vervangen door neutrale):
 - `edit-11387.html`: de geplakte pagina van record 11387.
-- `blocked.html`, `session-expired.html`, `login-ok.html`, `login-fail.html`: nagemaakt volgens de code. Ze zijn aannames en staan zo gelabeld.
+- `blocked.html`, `session-expired.html`, `login-ok.html`, `login-fail.html`, `rate-limited.html`: opgenomen uit de lokale ZCBS.
 
 **Eenheidstests**
 - Lastige HTML voor `FormParser`: `&quot;`, `&amp;` en `&copy` in een tekstvak, `</textarea>` in een waarde, een tekstvak dat met een regeleinde begint, lege waarden, een `<` in een attribuut, hoofdletters en niet-gesloten `<option>`.
@@ -254,15 +261,13 @@ de ontvangen velden zodat de test kan controleren wat er is verstuurd. Dient ook
 
 ## 12. Onbevestigde punten (eerste run bevestigt ze)
 
-1. Het inlogverzoek en het antwoord, ook op het routeradres van HKH.
-2. Dat `ident` en `upd_form=edt` genoeg zijn om het formulier te krijgen.
-3. Wat ZCBS toont voor een niet bestaand record.
-4. De meervoudige keuze (`a24`) als meerdere delen.
-5. Het gedrag van tekens als `ë`, `"`, `&` en `<` en van regeleinden.
-6. Dat velden zonder invoerveld (`a17`, ...) bij meesturen behouden blijven.
-7. Of het woordfilter op het POST-lichaam echt niet werkt (`$content_length` is leeg).
-8. Of de nepfixtures voor de foutantwoorden lijken op de echte pagina's.
-9. Of `RecordRebuilder` voor alle bestaande records exact `a0` geeft (te meten op de eerste run en daarna steekproefsgewijs).
+Lokaal bevestigd op de echte ZCBS-code (zie [zcbs-lokaal-testresultaten.md](zcbs-lokaal-testresultaten.md)): het inlogverzoek en de antwoorden (ook de routerweg), dat `ident` en `upd_form=edt` genoeg zijn, het
+gedrag bij een niet bestaand nummer, de meerkeuze `a24`, tekens en regeleinden, het wissen van velden zonder invoerveld, en de woordfilters. **Nog onbevestigd tegen de echte server:**
+1. Het gedrag van het IP-adres van de HKH-pc: staat het in `permit.lst`, welke routerregel geldt, en wat de proxy met `X-Forwarded-For` doet.
+2. De hostinginstellingen (LiteSpeed, proxy, Project Honey Pot voor dat IP-adres).
+3. Dat de echte configuratie niet afwijkt van de gedownloade (config, versie van `objecten.pl`).
+4. De foutpagina's (vergrendeld, verlopen sessie, `==Sorry`) komen nu uit de lokale ZCBS-code en niet uit aannames; de echte server kan alleen afwijken als de config of versie afwijkt.
+5. Of `RecordRebuilder` voor alle 1908 bestaande records exact `a0` geeft. Dat is lokaal te meten, tegen de lokale ZCBS, zonder risico.
 
 ## 13. Bouwvolgorde
 

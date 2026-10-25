@@ -1,0 +1,8 @@
+services:
+  zcbs:
+    build: .
+    container_name: zcbs-local
+    ports:
+      - "127.0.0.1:8081:80"
+    volumes:
+      - ./run:/usr/local/apache2/htdocs

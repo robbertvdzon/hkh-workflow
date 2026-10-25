@@ -79,9 +79,9 @@ De naam `aN` hoort bij veld `N` van het record. De namen komen uit de config van
 
 - Niet te bewerken zijn het documentnummer en de stempels voor aangepast en aangemaakt. Veld 0, 1 en 2 komen alleen via `a0` mee.
 - Voor de velden 17, 20, 23 en 28 tot en met 31 staat geen invoerveld in het formulier, omdat ze in de config geen naam hebben. **ZCBS
-  neemt ze bij het opslaan niet over uit `a0`, maar leest ze uit het formulier. Zonder invoerveld worden ze dus leeg opgeslagen.**
-  Zie paragraaf 10: dat gaat bij ongeveer 23 records echt data kosten. De app moet deze velden zelf als `a17`, `a20`, `a23` en
-  `a28` t/m `a31` meesturen, met de waarde uit `a0`.
+  neemt ze bij het opslaan niet over uit `a0`, maar leest ze uit het formulier. Zonder invoerveld worden ze dus leeg opgeslagen**
+  (lokaal bevestigd voor veld 28; veld 17 verschijnt in het formulier als het gevuld is). Zie paragraaf 10. De app moet deze velden
+  zelf meesturen, met de waarde uit `a0`.
 - **Veld 27, Locatie op PC, is bewerkbaar.** De app kan daar de originele bestandsnaam in zetten, zoals het UX-ontwerp wil.
 
 ## 5. Keuzelijsten en subvelden
@@ -197,15 +197,21 @@ Uit `objecten.pl` (OUTPUT_UPDATE vanaf regel 16997, ZCBS_MENU vanaf 24582, LOCK_
 
 ### Valkuilen die het onderzoek opleverde
 - **Een User-Agent met `curl` wordt volgens de code geweigerd** met een lege pagina (`==Sorry:3==`). Nog niet uitgeprobeerd. Gebruik een eigen naam.
-- **Een filter op de URL en (waarschijnlijk niet) op het POST-lichaam.** `objecten.pl` regel 257 en 270 zoeken in `REQUEST_URI` en in het POST-lichaam naar
-  `onerror`, `onload`, `onclick`, `onfocus`, `onselect`, `onsubmit`, `script` (niet direct na "java"), `style` en `curl`, en antwoorden dan met een lege pagina
-  (`==Sorry:1` of `==Sorry:2`). Het filter op de URL werkt zeker voor alles in de query (zoekwoorden in `search=`). Het filter op het POST-lichaam leest
-  met `read(STDIN, $input, $content_length)`, maar `$content_length` krijgt nergens een waarde in de downloadbare code. Perl leest dan 0 bytes, en dat is
-  ook de reden dat het formulier daarna nog gewoon werkt (anders was `ReadParse` leeg). Dat filter is dus waarschijnlijk uitgeschakeld.
-  Het gevolg zou zijn dat records met "scriptie" of "inscriptie" (10558 en 11162) wel te bewerken zijn. Dit is een afleiding, nog niet uitgeprobeerd.
-- **Velden zonder invoerveld worden gewist** (zie paragraaf 4). In de data zijn er zo'n 14 records met inhoud in veld 17 (zoals
-  "|Document niet geheel gescand.") en zo'n 9 met een getal in veld 28. Bewerk je die via het ZCBS-formulier, dan verdwijnt die inhoud.
-  De app moet ze meesturen.
+- **Filters** (lokaal getest op de echte ZCBS-code, zie [zcbs-lokaal-testresultaten.md](zcbs-lokaal-testresultaten.md)):
+  1. In de **URL**: `onerror`, `onload`, `onclick`, `onfocus`, `onselect`, `onsubmit`, `script` (als heel woord, niet na "java"), `style` en `curl` geven een lege pagina
+     (`==Sorry:1==`). Dus `search=style`, `manuscript`, `lifestyle` en `curlew` worden geweigerd, `scriptie` niet.
+  2. Een **User-Agent** met `curl` geeft `==Sorry:3==`.
+  3. Het filter op het ruwe **POST-lichaam** (`==Sorry:2==`) is dood: `$content_length` heeft nergens een waarde, dus er wordt niets gelezen. Woorden als script, style en curl in velden mogen.
+  4. **Per veld, na het inlezen** (`==Sorry:4==`): de hoofdletterwoorden `CHAR(`, `UNION`, `SELECT`, `CHAR`, `CONCAT`, `FROM`, `NULL`, `THEN(`, `name_const`, `benchmark`, en
+     de hele woorden `onload`, `onclick`, `onerror`, `onfocus`, `onselect`, `onsubmit` (hoofdletterongevoelig). De hele opslag mislukt dan. `a0` is ook een veld, dus dit geldt ook voor tekst die al in het record staat.
+  5. `permit.lst`, `objecten.pl` of `cfg-cbs…pl` in een veld geeft `==Sorry:5==`.
+  In de 1908 records van archief wordt er geen enkel record door 4 of 5 geraakt. De app controleert deze woorden vooraf en meldt het in gewoon Nederlands.
+- **Snelheidsbegrenzing.** Verzoeken zonder `zcbs-user`-cookie worden geteld per IP-adres: meer dan 7 in 10 seconden of meer dan 15 in een minuut geeft de pagina "Access ZCBS denied: using too many requests".
+  Met een `zcbs-user`-cookie (ook na een mislukte inlog) wordt er niet geteld. De app stuurt dus altijd de cookies mee.
+- **Velden die niet in het formulier staan, worden leeg opgeslagen.** ZCBS leest het nieuwe record alleen uit de ontvangen velden. Lokaal getest: record 10147 heeft in veld 28 een `1`; het formulier
+  heeft geen `a28`, en na opslaan was het veld leeg. Veld 17 is een uitzondering: het formulier toont `a17` wel als er iets in staat (record 10016), en dan blijft het behouden. De regel voor de app:
+  voor elk veld `a3` t/m `a31` dat niet in het formulier staat (ook niet als `…b` of `…x`), de waarde uit `a0` meesturen.
+- **Een niet bestaand nummer.** `upd_form=edt` geeft dan geen bewerkformulier (er is geen veld `a0`), maar de pagina van een leeg record. Een POST met dat nummer **maakt het record aan** (lokaal getest met 99998). Controleer dus altijd dat `a0` aanwezig is.
 - **De vergrendeling hoort bij de gebruikersnaam**, niet bij het tabblad. Twee mensen met dezelfde inlog blokkeren elkaar niet.
 - **Geen controle op tussentijdse wijzigingen.** Een tweede bewerking nadat de vergrendeling is verlopen, overschrijft de eerste.
   Vergelijk dus zelf `a33`/`a34` en het record met wat je ophaalde.
@@ -236,9 +242,10 @@ ZCBS bepaalt wie je bent in deze volgorde:
 ### Inloggen
 - `POST /cgi-bin/archief.pl` met `application/x-www-form-urlencoded` en de velden `user` en `pswd` (het formulier van `archief.pl?user=reset`;
   wachtwoord alleen `A-Za-z0-9_`). Er is geen token.
-- Klopt het, dan staat in het antwoord "Gebruikersnaam/wachtwoord combinatie herkend" en komen er `Set-Cookie`-regels:
-  `zcbs-user=<naam>|<crypt(wachtwoord,99)>`, `zcbs-rout`, `zcbs-date=<minuten>` en `zcbs-app-user` (24 uur). Klopt het niet, dan ben je "extern" met
-  "onjuist" in de tekst, en dan kun je niets bewerken.
+- Klopt het, dan staat in het antwoord "Gebruikersnaam/wachtwoord combinatie herkend!" en komen er `Set-Cookie`-regels:
+  `zcbs-user=<naam>|<hash>`, `zcbs-rout`, `zcbs-date=<minuten>` en `zcbs-app-user` (24 uur). **Let op (lokaal getest): ook bij een fout wachtwoord zet ZCBS een
+  `zcbs-user`-cookie met de naam**, alleen met een andere hash, en staat er "combinatie niet herkend!" in de tekst. De cookie is dus **geen** teken van een geslaagde inlog; de tekst is dat wel.
+  Een naam die niet in `permit.lst` voorkomt (bijvoorbeeld in kleine letters) geeft geen cookie, en een gedeeltelijke naam met het goede wachtwoord ("Bewerker") werkt wel.
 - Achter een router-adres is het formulier anders: een keuzerondje `user` met de naam, `pswd`, en verborgen `veld=access`.
 
 ### Wat de app moet doen
@@ -249,7 +256,7 @@ ZCBS bepaalt wie je bent in deze volgorde:
 - Log daarom vlak voor het opslaan opnieuw in met de naam en het wachtwoord in het geheugen, haal het formulier opnieuw op (dat ververst ook de vergrendeling),
   vergelijk `a0` met wat de gebruiker begon te bewerken, en post direct.
 - Een eigen User-Agent (geen `curl`) en latin-1 voor de velden.
-- Een herkenbare mislukking: het antwoord bevat "Uw sessie is verlopen", "niet herkend", "Tijdelijk geblokkeerd object" of `==Sorry`.
+- Een herkenbare mislukking: het antwoord bevat "Uw sessie is verlopen", "niet herkend", "Onjuist wachtwoord ingevuld!" (routeradres), "Tijdelijk geblokkeerd object", "Access ZCBS denied" of `==Sorry`.
 
 ### Aanvulling: HKH zelf en de vergrendeling
 

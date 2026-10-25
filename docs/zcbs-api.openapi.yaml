@@ -5,8 +5,8 @@ info:
   description: |
     Beschrijving van de bestaande ZCBS-aanroepen voor lezen, vergrendelen en wijzigen van een record in de collectie `archief`.
     Dit is geen echte REST-API. Het is één Perl-script dat HTML teruggeeft, en dezelfde URL doet verschillende dingen afhankelijk van
-    de parameters. Dit bestand is **afgeleid uit de broncode (`objecten.pl`) en de HTML van het bewerkscherm**, en is nog niet uitgeprobeerd.
-    Wat onbevestigd is, staat als "ONBEVESTIGD" bij de operatie.
+    de parameters. Dit bestand is afgeleid uit de broncode (`objecten.pl`) en de HTML van het bewerkscherm, en is op 25 oktober 2026 **getest tegen een lokale kopie van de echte code**
+    (niet tegen de HKH-server). Wat nog onbevestigd is, staat als "ONBEVESTIGD" bij de operatie.
 
     OpenAPI kan niet twee operaties met hetzelfde pad en dezelfde methode onderscheiden. Daarom staat er achter het pad een
     `?parameter` als label. Dat is een hulpmiddel: de echte URL is steeds `/cgi-bin/archief.pl`.
@@ -15,8 +15,10 @@ info:
     - Tekens: ISO-8859-1 (latin-1), niet UTF-8.
     - Stuur een eigen `User-Agent`. Een agent met `curl` krijgt een lege pagina (`==Sorry:3==`).
     - Stuur geen `X-Forwarded-For`. ZCBS gebruikt dat als IP-adres.
-    - Een URL met `onerror`, `onload`, `onclick`, `onfocus`, `onselect`, `onsubmit`, `script`, `style` of `curl` geeft een lege pagina (`==Sorry:1==`).
-      Hetzelfde filter bestaat voor het POST-lichaam (`==Sorry:2==`), maar werkt waarschijnlijk niet doordat `$content_length` nergens een waarde krijgt. ONBEVESTIGD.
+    - Een URL met `onerror`, `onload`, `onclick`, `onfocus`, `onselect`, `onsubmit`, `script` (heel woord), `style` of `curl` geeft een lege pagina (`==Sorry:1==`). Het ruwe POST-filter (`==Sorry:2==`) is dood.
+      Per veld geeft `==Sorry:4==`: de hoofdletterwoorden `FROM`, `NULL`, `SELECT`, `UNION`, `CONCAT`, `CHAR(` en de hele woorden `onclick`, `onload`, enz.; `==Sorry:5==` voor `permit.lst`, `objecten.pl`, `cfg-cbs.pl`.
+    - Zonder `zcbs-user`-cookie: meer dan 7 verzoeken in 10 seconden per IP geeft "Access ZCBS denied".
+    - Lokaal getest op de echte code (zie `docs/zcbs-lokaal-testresultaten.md`); de echte server kan afwijken in configuratie.
     - Er is geen fout-statuscode. Alles geeft `200` met HTML. Succes of fout moet je uit de tekst of door terugkijken halen.
 servers:
   - url: https://www.historischekringheemskerk.nl/cgi-bin
@@ -137,8 +139,8 @@ paths:
       operationId: login
       summary: Inloggen
       description: |
-        Vraagt cookies aan. ONBEVESTIGD: de exacte antwoordtekst. Volgens de code staat bij succes "combinatie herkend" in de pagina en volgen
-        de `Set-Cookie`-regels. Bij een fout ben je "extern" en staat er "onjuist" of "niet herkend".
+        Vraagt cookies aan. Lokaal getest: bij succes staat "Gebruikersnaam/wachtwoord combinatie herkend!" in de pagina; bij een fout "combinatie niet herkend!"
+        (routeradres: "Onjuist wachtwoord ingevuld!"). **De `zcbs-user`-cookie komt ook bij een fout wachtwoord**, dus de tekst is het signaal, niet de cookie.
         Hoeft niet als het IP-adres van de app al in `permit.lst` staat en geen router is.
       security: []
       requestBody:
@@ -205,7 +207,7 @@ paths:
         Geen vergrendeling in de testversie `archief2.pl`.
         Uit het formulier haal je: de verborgen velden (waaronder `a0`, `a32`, `a33`, `a34`), de huidige waarden, en de `<option>`-regels van de
         keuzelijsten (de keuzelijsten staan in de config van de collectie).
-        ONBEVESTIGD: of `ident` en `upd_form` genoeg zijn. De pagina zelf gebruikt een langere URL met zoekparameters.
+        Lokaal getest: `ident` en `upd_form` zijn genoeg. Bestaat het nummer niet, dan is er geen formulier (geen veld `a0`) en maakt een POST het record aan.
       parameters:
         - $ref: '#/components/parameters/ident'
         - name: upd_form
