@@ -30,6 +30,34 @@ ZCBS-record, zodat Carla de gegevens in onze flow kan invullen. Opslaan gebeurt 
 - Zoeken in het archief, andere collecties, meerdere gebruikers tegelijk.
 - Het schrijven naar bestanden van ZCBS. Dat blijft verboden. Alleen via het ZCBS-formulier.
 
+## 1a. Overzicht van de hele flow
+
+Carla opent de browser, gaat naar de app en werkt de batch van begin tot eind door. De batch is pas klaar als alle records zijn bewerkt en afgesloten.
+
+| # | Fase | Wat Carla doet | Wat de app doet | Controle (vinkjes) | Terugvaloptie |
+|---|---|---|---|---|---|
+| 1 | **Inloggen** | Typt haar ZCBS-naam en wachtwoord | Logt in bij ZCBS (POST), bewaart sessie en wachtwoord alleen in het geheugen | cookie van ZCBS met haar naam | niet verder zonder inlog |
+| 2 | **Nieuwe bestanden** | Ziet de pdf's die in de invoermap klaarstaan en controleert de lijst | Toont de bestanden en waarschuwt voor losse bestanden, oude resultaten van een vorige run en een ontbrekende back-upmap | lijst klopt, geen oude resten | opruimen met de hand |
+| 3 | **Voorbereiden** | Geeft of bevestigt het beginnummer | Stelt het hoogste nummer plus één voor (indien uit ZCBS te lezen), hernoemt kopieën naar recordnummers in een werkmap, en controleert dat die nummers nog **niet** in ZCBS bestaan | nummers vrij, kopieën aanwezig | hernoemen met de hand |
+| 4 | **pdf2zcbs** | Keurt de stap goed | Draait pdf2zcbs één keer voor de hele batch; antwoordt de vragen zelf | per bestand: tekst, pdf, small, large | exe zelf draaien |
+| 5 | **images.exe** | Keurt de stap goed (zet upload en records bewust aan) | Draait images.exe met de large-jpg's; antwoordt de vragen (FTP-wachtwoord uit de instellingen) | small, large, 100pct aanwezig; de records bestaan nu in ZCBS | exe zelf draaien |
+| 6 | **Upload ocr en pdf** | Keurt de stap goed | Uploadt per sftp naar `archief/ocr` en `archief/pdf`; overschrijft nooit | grootte op de server gelijk aan lokaal | Total Commander |
+| 7 | **Bewerken** | Opent de records één voor één, vult de velden in en dient in | Haalt het formulier op (lock), toont de velden, bij indienen opnieuw inloggen en formulier ophalen, conflictcontrole, posten, terugleggen | per record: opgeslagen en teruggecontroleerd | "open in ZCBS" |
+| 8 | **Afsluiten** | Keurt de stap goed | Maakt een back-up van de 100pct, ruimt de mappen van de programma's op, archiveert de originelen, en stuurt de logs naar de server van Robbert | alles opgeruimd, logs verstuurd | met de hand |
+
+Eigenschappen van de hele flow:
+- Elke fase begint pas na een **goedkeuring van Carla** en een groen resultaat van de vorige fase. Gaat er iets mis, dan stopt de app en maakt ze de rest op de oude manier af.
+- De batch heeft één status die door de fasen loopt: *klaar om te starten, voorbereid, pdf2zcbs klaar, images.exe klaar, geüpload, bewerken (x van y), afsluiten, klaar*. Ze kan **niet** naar "klaar" voordat elk record is bewerkt of bewust is overgeslagen.
+- De status moet een herstart van de app overleven (bestand in de werkmap), want een batch kan een hele dag duren. Nu staat de status nog in het geheugen.
+- Het ZCBS-wachtwoord blijft in het geheugen; na een herstart van de app logt Carla opnieuw in.
+
+**Keuzes die nog openstaan** (voorstel tussen haakjes):
+1. Moet "Afsluiten" (opruimen en archiveren) vóór of ná het bewerken? (Ná: de originelen en de mappen blijven staan tot alles klopt. Nadeel: een nieuwe batch kan pas starten als de vorige is afgesloten.)
+2. Mag een record worden overgeslagen en later worden bewerkt, of moet alles in dezelfde run? (Overslaan toestaan, met een duidelijke markering.)
+3. Het beginnummer: uit ZCBS lezen (het commando `LAST`, nog niet uitgeprobeerd) of altijd door Carla typen? (Voorstel: voorstellen, Carla bevestigt.)
+4. Het sftp- en FTP-wachtwoord: bewaren in de instellingen of per run vragen? (Nu bewaren; later per run.)
+5. De logs naar de server van Robbert: waar naartoe en welk protocol? (Open.)
+
 ## 2. Uitgangspunten
 
 1. **ZCBS is de bron.** Alles wat de app doet, kan iemand ook in ZCBS doen. Elke pagina heeft een link "open in ZCBS" als terugvaloptie.
