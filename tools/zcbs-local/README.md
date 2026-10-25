@@ -49,10 +49,10 @@ Dezelfde mapindeling als de echte server, en dezelfde map als ZCBS gebruikt: wat
 
 | Instelling | Waarde |
 |---|---|
-| Host, poort | `localhost`, `2222` |
+| Host, poort | `127.0.0.1` (niet `localhost`: dat wordt soms IPv6 en daar luistert de server niet), `2222` |
 | Gebruiker, wachtwoord | `hkhadmin`, `hkhtest` |
 | Basismap | `/domains/historischekringheemskerk.nl/public_html` |
-| Vingerafdruk | `docker exec zcbs-sftp sh -c 'ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub'` (verandert als de container opnieuw wordt gemaakt) |
+| Vingerafdruk | `ssh-keygen -lf tools/zcbs-local/sftp-keys/ssh_host_ed25519_key.pub` (de sleutels staan in `sftp-keys/`, gitignored, en veranderen niet als de container opnieuw wordt gemaakt) |
 
 ## FTP (voor de nep-images.exe)
 

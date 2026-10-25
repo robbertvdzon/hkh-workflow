@@ -17,6 +17,9 @@ services:
       - "127.0.0.1:2222:22"
     volumes:
       - ./run:/home/hkhadmin/domains/historischekringheemskerk.nl/public_html
+      # Vaste sleutels van de server, zodat de vingerafdruk niet verandert als de container opnieuw wordt gemaakt
+      - ./sftp-keys/ssh_host_ed25519_key:/etc/ssh/ssh_host_ed25519_key:ro
+      - ./sftp-keys/ssh_host_rsa_key:/etc/ssh/ssh_host_rsa_key:ro
 
   # Gewone FTP, zoals images.exe die gebruikt (Net::FTP). Zelfde map als hierboven.
   ftp:
