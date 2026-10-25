@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Record bewerken')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <a class="back" th:href="@{/records}">← Terug naar de lijst</a>
+        <div class="head">
+            <div>
+                <h1>Record <span class="mono" th:text="${r.number}">11934</span></h1>
+                <p class="sub"><span class="mono" th:text="${r.fileName}">scan.pdf</span>
+                    <span th:if="${r.by != ''}"> · gescand door <b th:text="${r.by}">Ria</b> (<span class="mono" th:text="${r.folder}">K:\</span>)</span>
+                    · record <span th:text="${position}">1</span> van <span th:text="${total}">12</span>
+                    <span th:if="${openedAt != null}"> · geopend om <span th:text="${openedAt}">14:32</span>, voor anderen vergrendeld tot <span th:text="${openedUntil}">14:42</span></span></p>
+            </div>
+            <a class="btn btn-s btn-sm" th:if="${zcbsUrl}" th:href="${zcbsUrl}" target="_blank">Open in ZCBS</a>
+        </div>
+
+        <div class="alert alert-err stack" th:if="${panel == 'unsafe' or panel == 'error'}" style="gap:10px">
+            <b th:text="${panel == 'unsafe'} ? 'Dit record is niet veilig te bewerken in deze app.' : 'Er ging iets mis.'"></b>
+            <span th:each="m : ${messages}" th:text="${m}" style="white-space:pre-line"></span>
+            <div class="row-actions" th:if="${controls.isEmpty()}">
+                <a class="btn btn-p btn-sm" th:href="${zcbsUrl}" target="_blank">Open in ZCBS</a>
+                <form th:action="@{/records/{nr}/later(nr=${r.number})}" method="post"><button class="btn btn-s btn-sm" type="submit">Doe ik later</button></form>
+            </div>
+        </div>
+        <div class="alert alert-warn stack" th:if="${panel == 'locked'}" style="gap:8px">
+            <b th:each="m : ${messages}" th:text="${m}"></b>
+            <span>Probeer het over een paar minuten opnieuw, of doe dit record later.</span>
+            <div class="row-actions" th:if="${controls.isEmpty()}">
+                <a class="btn btn-p btn-sm" th:href="@{/records/{nr}(nr=${r.number})}">Probeer opnieuw</a>
+                <form th:action="@{/records/{nr}/later(nr=${r.number})}" method="post"><button class="btn btn-s btn-sm" type="submit">Doe ik later</button></form>
+            </div>
+        </div>
+        <div class="alert alert-info" th:if="${panel == 'info'}" th:each="m : ${messages}" th:text="${m}"></div>
+        <div class="alert alert-err stack" th:if="${panel == 'blocked'}" style="gap:6px">
+            <b>Dit kan zo niet worden opgeslagen.</b>
+            <span th:each="m : ${messages}" th:text="${m}"></span>
+        </div>
+
+        <form th:unless="${controls.isEmpty()}" method="post" th:action="@{/records/{nr}/voorbeeld(nr=${r.number})}" class="stack" style="gap:18px">
+            <div class="alert alert-warn stack" th:if="${panel == 'locked'}" style="gap:8px">
+                <button class="btn btn-p btn-sm" type="submit" th:formaction="@{/records/{nr}/opslaan(nr=${r.number})}" style="align-self:flex-start">Probeer opnieuw op te slaan</button>
+            </div>
+            <div class="alert alert-warn stack" th:if="${panel == 'conflict'}" style="gap:8px">
+                <b>Iemand heeft record <span th:text="${r.number}"></span> aangepast terwijl jij bezig was.</b>
+                <span>Deze velden zijn bij jullie allebei anders:</span>
+                <div class="table"><div class="tr th" style="grid-template-columns:200px 1fr 1fr"><span>Veld</span><span>Jouw versie</span><span>Nu in ZCBS</span></div>
+                    <div class="tr" th:each="c : ${conflict}" style="grid-template-columns:200px 1fr 1fr"><span th:text="${c.label}"></span><span class="diff-new" th:text="${c.mine}"></span><span th:text="${c.theirs}"></span></div></div>
+                <div class="row-actions">
+                    <button class="btn btn-p btn-sm" type="submit" name="keuze" value="mijn" th:formaction="@{/records/{nr}/conflict(nr=${r.number})}">Mijn versie bewaren</button>
+                    <button class="btn btn-s btn-sm" type="submit" name="keuze" value="zcbs" th:formaction="@{/records/{nr}/conflict(nr=${r.number})}">Die van ZCBS gebruiken</button></div>
+            </div>
+            <div class="twocol">
+                <div class="stack">
+                    <div class="docbox" style="height:auto;min-height:340px;padding:0;overflow:hidden" th:if="${pdfUrl}">
+                        <iframe th:src="${pdfUrl}" style="border:0;width:100%;height:480px" title="De pdf van dit record"></iframe>
+                    </div>
+                    <div class="docbox" th:unless="${pdfUrl}"><span class="pdf" style="width:46px;height:58px;font-size:12px">PDF</span>
+                        <span>de pdf van dit record staat (nog) niet op de site</span><span class="hint">archief/pdf/<span th:text="${r.number}"></span>.pdf</span></div>
+                    <a th:if="${pdfUrl}" th:href="${pdfUrl}" target="_blank" class="hint">Open de pdf in een apart venster</a>
+                    <div class="card pad" style="padding:14px 16px" th:if="${ocr}"><b style="font-size:13px">Tekst uit het document (ocr)</b>
+                        <p class="muted" style="margin:6px 0 0;font-size:13.5px" th:text="${ocr}"></p></div>
+                </div>
+                <div class="card pad">
+                    <div class="fr" th:each="c : ${controls}">
+                        <label class="f" th:text="${c.label}" th:for="${c.name}">Label</label>
+                        <div th:switch="${c.kind.name()}">
+                            <input th:case="'TEXT'" type="text" th:id="${c.name}" th:name="${c.name}" th:value="${c.value}">
+                            <textarea th:case="'TEXTAREA'" th:id="${c.name}" th:name="${c.name}" th:text="${c.value}"></textarea>
+                            <select th:case="'SELECT'" th:id="${c.name}" th:name="${c.name}">
+                                <option th:each="o : ${c.options}" th:value="${o}" th:text="${o}" th:selected="${c.values.contains(o)}"></option>
+                            </select>
+                            <select th:case="'MULTI'" th:id="${c.name}" th:name="${c.name}" multiple size="6">
+                                <option th:each="o : ${c.options}" th:value="${o}" th:text="${o}" th:selected="${c.values.contains(o)}"></option>
+                            </select>
+                            <div th:case="'RADIO'" class="opts">
+                                <label th:each="o : ${c.options}"><input type="radio" th:name="${c.name}" th:value="${o}" th:checked="${c.values.contains(o)}"> <span th:text="${c.name == 'a21'} ? (${o == '0'} ? 'neen' : 'ja') : ${o}"></span></label>
+                            </div>
+                            <div class="hint" th:if="${c.kind.name() == 'MULTI'}" style="margin-top:4px">Houd Ctrl (of Cmd) ingedrukt om meer dan één te kiezen.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="selbar">
+                <button class="btn btn-s" type="submit" th:formaction="@{/records/{nr}/later(nr=${r.number})}" formnovalidate>Doe ik later</button>
+                <span style="display:flex;gap:14px;align-items:center"><span class="hint">Er is nog niets opgeslagen.</span><button class="btn btn-p" type="submit">Voorbeeld van de wijziging</button></span>
+            </div>
+        </form>
+    </main>
+</div>
+</body>
+</html>

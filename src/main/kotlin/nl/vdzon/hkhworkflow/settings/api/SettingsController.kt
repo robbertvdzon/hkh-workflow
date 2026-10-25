@@ -46,6 +46,8 @@ class SettingsController(private val settingsService: SettingsService) {
                 imagesResolution = param("imagesResolution"),
                 imagesInstitution = param("imagesInstitution"),
                 backup100pctFolder = param("backup100pctFolder"),
+                zcbsBaseUrl = param("zcbsBaseUrl"),
+                sourceFolder = param("sourceFolder"),
                 sftpHost = param("sftpHost"),
                 sftpPort = param("sftpPort").trim().toIntOrNull() ?: 22,
                 sftpUser = param("sftpUser"),

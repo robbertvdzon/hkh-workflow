@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer-when-downgrade">
+<title>Autorisatie interne gebruiker</title>
+<base href="http://localhost:8081">
+<script type="text/javascript">
+<!--
+var width = (typeof screen !== "undefined" && screen.width) ? screen.width : 1;
+var height = (typeof screen !== "undefined" && screen.height) ? screen.height : 1;
+document.cookie = "zcbs-scres=" + width + "x" + height + "; expires=Sun, 18 Aug 2947 10:00:00 UTC; path=/;";
+// -->
+</script>
+</head>
+
+<body bgcolor="#66CCFF">
+
+<p align="center">
+<a href="http://www.historischekringheemskerk.nl" target="_top"><img src="/objecten/misc/hkh.jpg" alt="Historische Kring Heemskerk" name="HKH"  width="100" height="40" border=0></a>
+
+                  &nbsp;&nbsp;&nbsp; <font size="+3"><strong>Historische Kring Heemskerk</strong></font><br>
+
+
+
+
+
+
+<center>
+<table border="0" cellspacing="0" cellpadding="2" width="709" id="tblblocked">
+<tr><td align="left">
+<font size="-1">
+<a href="" target="_blank">Homepage HKH</a> <font size="+1">&#8594;</font>
+<a href="/cgi-bin/archief.pl">Archief Heemskerk</a> <font size="+1">&#8594;</font>
+Autorisatie
+</font>
+</td></tr>
+</table>
+</center>
+
+
+
+
+<p>
+<h2>Autorisatie interne gebruiker</h2>    
+
+
+<h3 align="center">Uw sessie is verlopen.<br>Log opnieuw in </h3><p>
+<!-- EOR -->
+U bent (nog) niet geautoriseerd om het besloten (interne) deel van dit programma te gebruiken.
+
+<p>
+<form method="POST" action="/cgi-bin/archief.pl" autocomplete="off" >
+<strong>Uw naam:</strong>
+<br>
+<input type="text" name="user" value="" size="20">
+<p>
+<strong>Wachtwoord:</strong>
+<br>
+<input type="password" name="pswd" value="" size="20" autocomplete="new-password" pattern="[A-Za-z0-9_]{1,}" oninvalid="setCustomValidity('Wachtwoord mag alleen bevatten:  A-Z a-z 0-9 _   Ververs de pagina voordat u opnieuw probeert. Neem eventueel contact op met uw systeembeheerder')"> 
+<!-- em>(Niet verplicht. &nbsp; Zonder wachtwoord verkrijgt men beperkte internet-toegang tot dit programma)</em -->  
+<p>
+<input type="submit" class="button" value="Aanmelden"> 
+<input type="hidden" name="spec"    value="">
+
+</form>
+
+<p>
+<pre>&#32;</pre>
+<!-- EOR -->
+
+<!-- VANNES=4.18q=26 sep 2026 -->
+
+
+
+
+
+
+
+<p>
+ Update: 26 sep 2026
+
+
+<script>
+document.addEventListener("keydown", function(event) {
+  if (event.ctrlKey && event.code === "Home") {              // Bij gebruik Ctrl+Home toets 
+    window.location.href = "/cgi-bin/archief.pl";
+  }
+  if (event.ctrlKey && event.key.toLowerCase() === "h") {    // Bij gebruik Ctrl+h
+    event.preventDefault();
+    window.location.href = "/cgi-bin/archief.pl";
+  }
+});
+</script>
+</body>
+</html>

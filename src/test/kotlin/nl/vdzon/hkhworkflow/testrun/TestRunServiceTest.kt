@@ -10,12 +10,15 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
+import nl.vdzon.hkhworkflow.items.EditStatus
+import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.AnswerRule
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.sftp.SftpService
 import nl.vdzon.hkhworkflow.sftp.TestSftpServer
+import nl.vdzon.hkhworkflow.zcbs.FakeZcbs
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -40,6 +43,8 @@ class TestRunServiceTest {
     private lateinit var server: TestSftpServer
     private lateinit var settings: SettingsService
     private lateinit var service: TestRunService
+    private lateinit var items: ItemEditService
+    private lateinit var zcbs: FakeZcbs
 
     private fun fake(name: String, into: Path, asName: String): Path {
         Files.createDirectories(into)
@@ -51,6 +56,7 @@ class TestRunServiceTest {
 
     @BeforeEach
     fun setUp() {
+        zcbs = FakeZcbs()
         inbox = Files.createDirectories(dir.resolve("invoer"))
         archived = dir.resolve("backup_invoer_org")
         backup = Files.createDirectories(dir.resolve("backup_100pct"))
@@ -69,13 +75,15 @@ class TestRunServiceTest {
 
         settings = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         save { it }
-        service = TestRunService(settings, ExeRunner("UTF-8", dir.resolve("logs").toString()), SftpService(settings))
+        items = ItemEditService(settings)
+        service = TestRunService(settings, ExeRunner("UTF-8", dir.resolve("logs").toString()), SftpService(settings), items, SourceFilesService(settings))
     }
 
     @AfterEach
     fun tearDown() {
         service.reset()
         server.close()
+        zcbs.close()
     }
 
     private fun base() = WorkflowSettings(
@@ -83,7 +91,7 @@ class TestRunServiceTest {
         imagesExe = imgDir.resolve("images.sh").toString(), pdf2zcbsExe = p2zDir.resolve("pdf2zcbs.sh").toString(),
         collection = "archief", backup100pctFolder = backup.toString(),
         sftpHost = "localhost", sftpPort = server.port, sftpUser = TestSftpServer.USER, sftpPassword = TestSftpServer.PASSWORD,
-        sftpHostKey = server.fingerprint, sftpBaseDir = "/public_html",
+        sftpHostKey = server.fingerprint, sftpBaseDir = "/public_html", zcbsBaseUrl = zcbs.baseUrl,
     )
 
     private fun save(change: (WorkflowSettings) -> WorkflowSettings) {
@@ -108,6 +116,8 @@ class TestRunServiceTest {
     /** Voert stappen uit tot de volgende stap van het gegeven type aan de beurt is (die wordt zelf niet uitgevoerd). */
     private fun runUntil(type: String) {
         while (next().type != type) {
+            // Records bewerken heeft een eigen test (met inloggen en een nep-ZCBS); hier slaan we de stap over.
+            if (next().type == "EDIT") { service.skip(next().id); continue }
             val result = runNext()
             assertEquals("DONE", result.status, "${result.type}: ${result.message}")
         }
@@ -129,8 +139,8 @@ class TestRunServiceTest {
         val view = service.view()!!
         assertEquals(listOf("0100.pdf", "0101.pdf"), view.rows.map { it.newName })
         assertEquals(listOf("xx01.pdf", "xx02.pdf"), view.rows.map { it.originalName })
-        assertEquals(8, view.totalCount, "2 x hernoemen, pdf2zcbs, images, upload, opruimen, 2 x archiveren")
-        assertEquals(listOf("Hernoemen", "pdf2zcbs.exe", "images.exe", "Upload (sftp)", "Opruimen", "Archiveren"), view.stepTypes)
+        assertEquals(9, view.totalCount, "2 x hernoemen, pdf2zcbs, images, upload, records bewerken, opruimen, 2 x archiveren")
+        assertEquals(listOf("Hernoemen", "pdf2zcbs.exe", "images.exe", "Upload (sftp)", "Records bewerken", "Opruimen", "Archiveren"), view.stepTypes)
         assertEquals("Hernoem xx01.pdf naar 0100.pdf?", view.next!!.question)
     }
 
@@ -182,6 +192,24 @@ class TestRunServiceTest {
         assertTrue(Files.exists(remote("/public_html/archief/pdf/90000001.pdf")))
         assertEquals(listOf("OK", "OK"), states(0, "server"))
 
+        // records bewerken: de stap kan pas als je bent ingelogd en de records bestaan; hij is klaar als alles is opgeslagen of op later staat.
+        assertTrue(next().problems.any { it.contains("Log eerst in") }, next().problems.toString())
+        zcbs.addRecord("edit-leeg.html", "90000000")
+        zcbs.addRecord("edit-leeg.html", "90000001")
+        assertEquals(null, items.login("Test Beheerder", "Beheer1"))
+        val edit = next()
+        assertEquals("EDIT", edit.type)
+        service.execute(edit.id, RunMode.IN_APP)
+        assertEquals("RUNNING", stepView(edit.id).status)
+        assertEquals(listOf("PENDING"), states(0, "ZCBS"))
+        assertTrue(items.open("90000000") is nl.vdzon.hkhworkflow.items.OpenOutcome.Ready)
+        assertEquals(nl.vdzon.hkhworkflow.items.SaveOutcome.Saved, items.save("90000000", mapOf("a5" to listOf("Eerste titel"))))
+        assertEquals("RUNNING", stepView(edit.id).status, "nog niet alle records zijn klaar")
+        items.later("90000001")
+        assertEquals("DONE", stepView(edit.id).status)
+        assertEquals(listOf("OK"), states(0, "ZCBS"))
+        assertEquals(EditStatus.LATER, items.statusOf("90000001"))
+
         // opruimen: eerst back-up, dan weg; de originelen staan er nog.
         assertEquals("DONE", runNext().status)
         assertEquals(listOf("90000000.jpg", "90000001.jpg"), filesIn(backup))
@@ -191,7 +219,7 @@ class TestRunServiceTest {
         assertEquals(emptyList(), filesIn(imgDir.resolve("images")))
         assertEquals(listOf("images", "images.sh"), filesIn(imgDir), "het logbestand is weg; het programma en de lege invoermap blijven")
         assertTrue(Files.exists(inbox.resolve("xx01.pdf")))
-        assertEquals(listOf("server", "back-up"), service.view()!!.rows[0].checks.map { it.label })
+        assertEquals(listOf("server", "ZCBS", "back-up"), service.view()!!.rows[0].checks.map { it.label })
         assertEquals(listOf("OK"), states(0, "back-up"))
 
         // archiveren: de originelen verhuizen naar de archived-map en alles is klaar.
@@ -258,6 +286,7 @@ class TestRunServiceTest {
         service.start("10")
         runUntil("PDF2ZCBS")
         repeat(3) { assertEquals("DONE", runNext().status) }
+        service.skip(next().id)
         save { it.copy(backup100pctFolder = "") }
 
         assertTrue(next().problems.any { it.contains("back-upmap") })
@@ -271,6 +300,7 @@ class TestRunServiceTest {
         service.start("10")
         runUntil("PDF2ZCBS")
         repeat(2) { assertEquals("DONE", runNext().status) }
+        service.skip(next().id)
         service.skip(next().id)
         assertTrue(next().warnings.any { it.contains("upload is overgeslagen") })
     }

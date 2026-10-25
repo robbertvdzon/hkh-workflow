@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Records bewerken')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <a class="back" th:href="@{/test}">← Terug naar de test</a>
+        <div class="head">
+            <div>
+                <h1>Records bewerken</h1>
+                <p class="sub"><span th:text="${items.handledCount()}">0</span> van <span th:text="${records.size()}">12</span> opgeslagen<span th:if="${items.laterCount() > 0}" th:text="', ' + ${items.laterCount()} + ' later'"></span>
+                    · <span th:if="${loggedIn}">ingelogd bij ZCBS als <b th:text="${items.user}">Carla</b></span><span th:unless="${loggedIn}">niet ingelogd bij ZCBS</span></p>
+            </div>
+            <form th:if="${loggedIn}" th:action="@{/zcbs/logout}" method="post"><input type="hidden" name="terug" value="/records"><button class="btn btn-s btn-sm" type="submit">Uitloggen bij ZCBS</button></form>
+        </div>
+        <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
+        <div class="alert alert-ok" th:if="${saved != null}" th:text="'Record ' + ${saved} + ' is opgeslagen en teruggecontroleerd. De beheerder krijgt een e-mail met het record.'"></div>
+        <section class="card pad stack" th:unless="${loggedIn}" style="max-width:520px">
+            <b>Log opnieuw in bij ZCBS</b>
+            <form th:action="@{/zcbs/login}" method="post" class="stack" autocomplete="off">
+                <input type="hidden" name="terug" value="/records">
+                <div class="field"><label class="f" for="naam">Naam</label><input type="text" id="naam" name="naam" autocomplete="off"></div>
+                <div class="field"><label class="f" for="wachtwoord">Wachtwoord</label><input type="password" id="wachtwoord" name="wachtwoord" autocomplete="new-password" style="height:44px;padding:0 12px;border:1px solid #b9b09c;border-radius:8px;font:14px var(--sans)"></div>
+                <div><button class="btn btn-p" type="submit">Inloggen</button></div>
+            </form>
+        </section>
+        <div class="bar"><span th:style="'width:' + ${items.handledCount() * 100 / records.size()} + '%'"></span></div>
+        <section class="table">
+            <div class="tr th" style="grid-template-columns:80px 200px minmax(140px,1fr) 130px 130px"><span>Nummer</span><span>Bestand</span><span>Titel</span><span>Status</span><span></span></div>
+            <div class="tr" th:each="r : ${records}" style="grid-template-columns:80px 200px minmax(140px,1fr) 130px 130px">
+                <span class="mono" th:text="${r.number}">11934</span>
+                <span style="min-width:0"><span class="mono muted" th:text="${r.fileName}" style="font-size:12.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:title="${r.fileName}">scan.pdf</span><span class="hint" th:if="${r.by != ''}" th:text="'gescand door ' + ${r.by}"></span></span>
+                <span th:text="${r.title.isEmpty()} ? '(nog leeg)' : ${r.title}" th:classappend="${r.title.isEmpty()} ? 'muted'" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" th:title="${r.message}">Titel</span>
+                <span><span class="chip" th:classappend="'c-' + ${r.status.kind}" th:text="${r.status.label}">status</span></span>
+                <span class="row-actions" style="justify-content:flex-end">
+                    <a class="btn btn-s btn-sm" th:if="${r.status.name() == 'OPGESLAGEN'}" th:href="${items.recordUrl(r.number, false)}" target="_blank">Open in ZCBS</a>
+                    <a class="btn btn-p btn-sm" th:if="${(r.status.name() == 'OPEN' or r.status.name() == 'BEZIG') and loggedIn}" th:href="@{/records/{nr}(nr=${r.number})}" th:text="${r.status.name() == 'BEZIG'} ? 'Verder' : 'Open'">Open</a>
+                    <a class="btn btn-s btn-sm" th:if="${(r.status.name() == 'LATER' or r.status.name() == 'GEBLOKKEERD' or r.status.name() == 'FOUT') and loggedIn}" th:href="@{/records/{nr}(nr=${r.number})}">Bewerk</a>
+                    <a class="btn btn-s btn-sm" th:if="${r.status.name() == 'ONVEILIG'}" th:href="${items.recordUrl(r.number)}" target="_blank">Open in ZCBS</a>
+                </span>
+            </div>
+        </section>
+        <div class="selbar">
+            <span class="hint">Een geopend record is 10 minuten voor anderen vergrendeld. De stap Records bewerken is klaar zodra elk record is opgeslagen of op "later" staat.</span>
+            <a class="btn btn-p" th:href="@{/test}">Terug naar de test</a>
+        </div>
+    </main>
+</div>
+</body>
+</html>

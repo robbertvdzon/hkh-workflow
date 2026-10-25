@@ -1,0 +1,110 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer-when-downgrade">
+<title>Tijdelijk geblokkeerd object</title>
+<base href="http://localhost:8081">
+<script type="text/javascript">
+<!--
+// ----------- ZCBS-functietoetsen ---------- //
+
+document.onkeydown = checkKeycode;
+function checkKeycode(e) {
+  var keycode;
+  if (window.event) {      // opvragen keycode is browser afhankelijk
+    keycode = window.event.keyCode;
+  } else if (e) {
+    keycode = e.which;
+  }
+  if (keycode == 112) {                       // key: F1
+    e.preventDefault();
+    window.open("//www.zcbs.nl/misc/f1.html","","width=800,height=400");
+  } else if (keycode == 113) {                // key: F2
+    e.preventDefault();
+    window.open("//www.zcbs.nl/misc/f2.html","","width=412,height=612");
+  } else if (keycode == 114) {                // key: F3
+    e.preventDefault();
+    window.open("/cgi-bin/archief.pl?misc=53","","width=860,height=260,directories=0,titlebar=1,toolbar=0,location=0,status=0,menubar=0,scrollbars=1,resizable=1");
+  } else if (keycode == 115) {                // key: F4
+    e.preventDefault();
+    window.open("//www.zcbs.nl/cgi-bin/documentatie.pl?sub=1","","");
+  }
+}
+// -->
+</script>
+<script type="text/javascript">
+<!--
+var width = (typeof screen !== "undefined" && screen.width) ? screen.width : 1;
+var height = (typeof screen !== "undefined" && screen.height) ? screen.height : 1;
+document.cookie = "zcbs-scres=" + width + "x" + height + "; expires=Sun, 18 Aug 2947 10:00:00 UTC; path=/;";
+// -->
+</script>
+</head>
+
+<body bgcolor="#66CCFF">
+
+<p align="center">
+<a href="http://www.historischekringheemskerk.nl" target="_top"><img src="/objecten/misc/hkh.jpg" alt="Historische Kring Heemskerk" name="HKH"  width="100" height="40" border=0></a>
+
+                  &nbsp;&nbsp;&nbsp; <font size="+3"><strong>Historische Kring Heemskerk</strong></font><br>
+
+
+
+
+
+
+<center>
+<table border="0" cellspacing="0" cellpadding="2" width="709" id="tblblocked">
+<tr><td align="left">
+<font size="-1">
+<a href="" target="_blank">Homepage HKH</a> <font size="+1">&#8594;</font>
+<a href="/cgi-bin/archief.pl">Archief Heemskerk</a> <font size="+1">&#8594;</font>
+Publicatie geblokkeerd
+</font>
+</td></tr>
+</table>
+</center>
+
+
+
+
+<p>
+<h2>Tijdelijk geblokkeerd object</h2>    
+
+
+<center>
+</center>
+<p>
+    Het object <strong>11906</strong> is nog voor <strong>10 minuten</strong> door een andere
+    gegevensbeheerder (<em>Test Bewerker</em>) voor bewerking in gebruik.
+    <br>
+    U kunt dit object momenteel nog niet aanpassen.
+    
+    <p>
+
+
+
+
+
+
+
+<p>
+ Update: 25 oktober 2026
+
+
+<script>
+document.addEventListener("keydown", function(event) {
+  if (event.ctrlKey && event.code === "Home") {              // Bij gebruik Ctrl+Home toets 
+    window.location.href = "/cgi-bin/archief.pl";
+  }
+  if (event.ctrlKey && event.key.toLowerCase() === "h") {    // Bij gebruik Ctrl+h
+    event.preventDefault();
+    window.location.href = "/cgi-bin/archief.pl";
+  }
+});
+</script>
+</body>
+</html>

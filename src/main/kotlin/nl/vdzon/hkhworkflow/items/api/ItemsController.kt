@@ -1,0 +1,176 @@
+package nl.vdzon.hkhworkflow.items.api
+
+import nl.vdzon.hkhworkflow.items.ConflictRow
+import nl.vdzon.hkhworkflow.items.EditStatus
+import nl.vdzon.hkhworkflow.items.ItemEditService
+import nl.vdzon.hkhworkflow.items.OpenOutcome
+import nl.vdzon.hkhworkflow.items.PreviewOutcome
+import nl.vdzon.hkhworkflow.items.SaveOutcome
+import nl.vdzon.hkhworkflow.zcbs.ControlKind
+import org.springframework.stereotype.Controller
+import org.springframework.ui.Model
+import org.springframework.util.MultiValueMap
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.servlet.mvc.support.RedirectAttributes
+
+/** De pagina's om de records van de batch te bewerken via het ZCBS-formulier. */
+@Controller
+class ItemsController(private val items: ItemEditService) {
+
+    private fun back(target: String): String = if (target == "/records") "redirect:/records" else "redirect:/test"
+
+    @PostMapping("/zcbs/login")
+    fun login(
+        @RequestParam("naam", defaultValue = "") name: String,
+        @RequestParam("wachtwoord", defaultValue = "") password: String,
+        @RequestParam("terug", defaultValue = "/test") target: String,
+        redirect: RedirectAttributes,
+    ): String {
+        val error = items.login(name, password)
+        if (error != null) redirect.addFlashAttribute("error", error)
+        return back(target)
+    }
+
+    @PostMapping("/zcbs/logout")
+    fun logout(@RequestParam("terug", defaultValue = "/test") target: String): String {
+        items.logout()
+        return back(target)
+    }
+
+    @GetMapping("/records")
+    fun list(@RequestParam("opgeslagen", required = false) saved: String?, model: Model): String {
+        if (items.records().isEmpty()) return "redirect:/test"
+        model.addAttribute("active", "records")
+        model.addAttribute("items", items)
+        model.addAttribute("records", items.records())
+        model.addAttribute("saved", saved)
+        model.addAttribute("loggedIn", items.loggedIn())
+        return "records"
+    }
+
+    private fun showForm(model: Model, number: String, panel: String? = null, messages: List<String> = emptyList(), conflict: List<ConflictRow> = emptyList()): String {
+        val r = items.record(number) ?: return "redirect:/records"
+        model.addAttribute("active", "records")
+        model.addAttribute("r", r)
+        model.addAttribute("controls", items.controlsFor(number))
+        model.addAttribute("panel", panel)
+        model.addAttribute("messages", messages)
+        model.addAttribute("conflict", conflict)
+        model.addAttribute("position", items.records().indexOf(r) + 1)
+        model.addAttribute("total", items.records().size)
+        model.addAttribute("openedAt", items.openedAt(number))
+        model.addAttribute("openedUntil", items.openedUntil(number))
+        model.addAttribute("zcbsUrl", items.recordUrl(number))
+        model.addAttribute("pdfUrl", items.pdfUrl(number))
+        model.addAttribute("ocr", items.ocrText(number))
+        return "record"
+    }
+
+    @GetMapping("/records/{nr}")
+    fun open(@PathVariable("nr") number: String, model: Model, redirect: RedirectAttributes): String {
+        if (items.record(number) == null) return "redirect:/records"
+        return when (val outcome = items.open(number)) {
+            is OpenOutcome.Ready -> showForm(model, number)
+            is OpenOutcome.Blocked -> {
+                val panel = when (outcome.record.status) {
+                    EditStatus.GEBLOKKEERD -> "locked"
+                    EditStatus.ONVEILIG -> "unsafe"
+                    else -> "error"
+                }
+                blockedPage(model, number, panel, outcome.message)
+            }
+            is OpenOutcome.NeedsLogin -> { redirect.addFlashAttribute("error", "Je sessie bij ZCBS is verlopen. Log opnieuw in."); "redirect:/test" }
+        }
+    }
+
+    /** De pagina van een record dat niet te bewerken is: zonder formulier, met uitleg en een link naar ZCBS. */
+    private fun blockedPage(model: Model, number: String, panel: String, message: String): String {
+        val r = items.record(number)!!
+        model.addAttribute("active", "records")
+        model.addAttribute("r", r)
+        model.addAttribute("controls", emptyList<Any>())
+        model.addAttribute("panel", panel)
+        model.addAttribute("messages", listOf(message))
+        model.addAttribute("conflict", emptyList<ConflictRow>())
+        model.addAttribute("position", items.records().indexOf(r) + 1)
+        model.addAttribute("total", items.records().size)
+        model.addAttribute("openedAt", null)
+        model.addAttribute("openedUntil", null)
+        model.addAttribute("zcbsUrl", items.recordUrl(number))
+        model.addAttribute("pdfUrl", null)
+        model.addAttribute("ocr", null)
+        return "record"
+    }
+
+    /** De waarden uit het formulier: per veld dat het record kent; een meerkeuze zonder keuze is leeg. */
+    private fun values(number: String, params: MultiValueMap<String, String>): Map<String, List<String>> {
+        val controls = items.record(number)?.baseline?.controls ?: return emptyMap()
+        return controls.associate { c ->
+            c.name to when (c.kind) {
+                ControlKind.MULTI -> params[c.name].orEmpty().filter { it.isNotEmpty() }
+                ControlKind.RADIO -> params[c.name]?.take(1) ?: c.values
+                ControlKind.TEXTAREA -> listOf(params.getFirst(c.name).orEmpty().trim())
+                else -> listOf(params.getFirst(c.name).orEmpty().trim())
+            }
+        }
+    }
+
+    @PostMapping("/records/{nr}/voorbeeld")
+    fun preview(@PathVariable("nr") number: String, @RequestParam params: MultiValueMap<String, String>, model: Model): String {
+        val r = items.record(number) ?: return "redirect:/records"
+        return when (val outcome = items.preview(number, values(number, params))) {
+            is PreviewOutcome.Ok -> {
+                model.addAttribute("active", "records")
+                model.addAttribute("r", r)
+                model.addAttribute("changes", outcome.changes)
+                model.addAttribute("blockers", outcome.blockers)
+                model.addAttribute("controls", items.controlsFor(number))
+                model.addAttribute("zcbsUrl", items.recordUrl(number))
+                "record-voorbeeld"
+            }
+            is PreviewOutcome.Failed -> showForm(model, number, "error", listOf(outcome.message))
+        }
+    }
+
+    @PostMapping("/records/{nr}/terug")
+    fun backToForm(@PathVariable("nr") number: String, @RequestParam params: MultiValueMap<String, String>, model: Model): String {
+        items.preview(number, values(number, params))
+        return showForm(model, number)
+    }
+
+    @PostMapping("/records/{nr}/opslaan")
+    fun save(@PathVariable("nr") number: String, @RequestParam params: MultiValueMap<String, String>, model: Model, redirect: RedirectAttributes): String =
+        handle(number, items.save(number, values(number, params)), model, redirect)
+
+    @PostMapping("/records/{nr}/conflict")
+    fun resolve(
+        @PathVariable("nr") number: String,
+        @RequestParam("keuze", defaultValue = "mijn") choice: String,
+        @RequestParam params: MultiValueMap<String, String>,
+        model: Model,
+        redirect: RedirectAttributes,
+    ): String {
+        val outcome = items.resolveConflict(number, choice == "mijn", values(number, params))
+        return if (choice == "mijn") handle(number, outcome, model, redirect)
+        else showForm(model, number, "info", listOf("De velden die botsten zijn vervangen door de versie uit ZCBS. Controleer het formulier en sla dan op."))
+    }
+
+    private fun handle(number: String, outcome: SaveOutcome, model: Model, redirect: RedirectAttributes): String = when (outcome) {
+        is SaveOutcome.Saved -> "redirect:/records?opgeslagen=$number"
+        is SaveOutcome.NoChanges -> showForm(model, number, "info", listOf("Er is niets gewijzigd; er is niets opgeslagen."))
+        is SaveOutcome.Blocked -> showForm(model, number, "blocked", outcome.messages)
+        is SaveOutcome.Locked -> showForm(model, number, "locked", listOf(outcome.message))
+        is SaveOutcome.Conflict -> showForm(model, number, "conflict", conflict = outcome.rows)
+        is SaveOutcome.Failed -> showForm(model, number, "error", listOf(outcome.message))
+        is SaveOutcome.NeedsLogin -> { redirect.addFlashAttribute("error", "Je sessie bij ZCBS is verlopen. Log opnieuw in; je invoer blijft bewaard."); "redirect:/test" }
+    }
+
+    @PostMapping("/records/{nr}/later")
+    fun later(@PathVariable("nr") number: String): String {
+        items.later(number)
+        return "redirect:/records"
+    }
+}

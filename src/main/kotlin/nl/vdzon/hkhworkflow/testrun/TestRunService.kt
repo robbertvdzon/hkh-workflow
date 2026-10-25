@@ -10,6 +10,9 @@ import kotlin.io.path.name
 import nl.vdzon.hkhworkflow.exerunner.AutoAnswer
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
+import nl.vdzon.hkhworkflow.items.BatchRecord
+import nl.vdzon.hkhworkflow.items.EditStatus
+import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.sftp.SftpService
@@ -25,8 +28,11 @@ import org.springframework.stereotype.Service
  * 2. pdf2zcbs.exe (één keer): maakt tekst, pdf, small en large;
  * 3. images.exe (één keer): krijgt de large-jpg's van pdf2zcbs en maakt small, large en 100pct;
  * 4. upload (één keer): tekst en pdf's met sftp naar de server;
- * 5. opruimen (één keer): back-up van de 100pct, daarna de mappen van de programma's leegmaken;
- * 6. archiveren (per bestand): het origineel naar de archived-map.
+ * 5. records bewerken (één keer): de records van de batch één voor één invullen via het ZCBS-formulier (pagina Records);
+ * 6. opruimen (één keer): back-up van de 100pct, daarna de mappen van de programma's leegmaken;
+ * 7. archiveren (per bestand): het origineel naar de archived-map.
+ *
+ * Vóór de run haalt [SourceFilesService] de bestanden die Ria heeft aangegeven op van de server.
  *
  * Zo lang er niets wordt opgeruimd of gearchiveerd, staat alles op schijf zoals het bij de handmatige werkwijze
  * ook zou staan, zodat een stap die misgaat op de oude manier kan worden afgemaakt. Een stap is pas "klaar" als
@@ -37,6 +43,8 @@ class TestRunService(
     private val settingsService: SettingsService,
     private val exeRunner: ExeRunner,
     private val sftpService: SftpService,
+    private val itemEditService: ItemEditService,
+    private val sourceFiles: SourceFilesService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -65,7 +73,10 @@ class TestRunService(
         require(pdfs.isNotEmpty()) { "Er staan geen pdf's in de testmap." }
 
         val numbers = sequenceNumbers(startNumber, pdfs.size)
-        val files = pdfs.mapIndexed { i, path -> TestFile(i, path, numbers[i]) }
+        val files = pdfs.mapIndexed { i, path ->
+            val origin = sourceFiles.origin(path.name)
+            TestFile(i, path, numbers[i], origin?.by.orEmpty(), origin?.folder.orEmpty())
+        }
         var id = 0
         val steps = StepType.entries.flatMap { type ->
             if (type.perFile) files.map { Step(++id, type, listOf(it)) } else listOf(Step(++id, type, files))
@@ -90,6 +101,7 @@ class TestRunService(
     @Synchronized
     fun execute(stepId: Int, mode: RunMode, auto: Boolean = false, options: StepOptions = StepOptions()) {
         val current = run ?: error("Er is geen testrun gestart.")
+        syncEdit(current)
         val step = current.steps.firstOrNull { it.id == stepId } ?: error("Onbekende stap $stepId.")
         check(current.nextStep()?.id == step.id) { "Deze stap is nog niet aan de beurt." }
         check(step.status != StepStatus.RUNNING) { "Deze stap is al bezig." }
@@ -104,6 +116,7 @@ class TestRunService(
                 StepType.PDF2ZCBS -> runPdf2zcbs(current, step, settings, mode, auto)
                 StepType.IMAGES -> runImages(step, settings, mode, auto, options)
                 StepType.UPLOAD -> upload(step, settings)
+                StepType.EDIT -> edit(current, step)
                 StepType.CLEANUP -> cleanup(step, settings)
                 StepType.ARCHIVE -> archive(step, settings)
             }
@@ -125,8 +138,18 @@ class TestRunService(
 
     private fun update(stepId: Int, change: (Step) -> Unit) {
         val step = run?.steps?.firstOrNull { it.id == stepId } ?: error("Onbekende stap $stepId.")
-        check(step.status != StepStatus.RUNNING) { "Deze stap is nog bezig." }
+        // Het bewerken van de records is geen programma: de gebruiker mag het zelf afsluiten.
+        check(step.status != StepStatus.RUNNING || step.type == StepType.EDIT) { "Deze stap is nog bezig." }
         change(step)
+    }
+
+    /** De stap Records bewerken is klaar zodra elk record is opgeslagen of op "later" staat. */
+    private fun syncEdit(current: TestRun) {
+        val step = current.steps.firstOrNull { it.type == StepType.EDIT } ?: return
+        if (step.status == StepStatus.RUNNING && itemEditService.allHandled()) {
+            step.status = StepStatus.DONE
+            step.message = "${itemEditService.handledCount()} records opgeslagen" + (itemEditService.laterCount().takeIf { it > 0 }?.let { ", $it op later" } ?: "") + "."
+        }
     }
 
     // ---- Locaties van alle bestanden die de stappen aanmaken of nodig hebben ----
@@ -214,6 +237,12 @@ class TestRunService(
                     if (!l.ocr(it).present()) add("Tekstbestand ontbreekt: ${l.ocr(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")
                     if (!l.pdf(it).present()) add("Pdf ontbreekt: ${l.pdf(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")
                 }
+            }
+
+            StepType.EDIT -> buildList {
+                if (s.zcbsBaseUrl.isBlank()) add("Het adres van ZCBS is niet ingesteld (Instellingen).")
+                if (s.collection.isBlank()) add("Collectie is niet ingesteld (Instellingen).")
+                if (!itemEditService.loggedIn()) add("Log eerst in bij ZCBS met je eigen naam en wachtwoord.")
             }
 
             StepType.CLEANUP -> buildList {
@@ -359,6 +388,16 @@ class TestRunService(
         }
     }
 
+    private fun edit(current: TestRun, step: Step) {
+        val missing = itemEditService.missingInZcbs(step.files.map { it.number })
+        check(missing.isEmpty()) {
+            "Deze records bestaan nog niet in ZCBS: ${names(missing)}. Zijn ze aangemaakt (images.exe met \"lege records aanmaken\")? Zo niet, dan is er niets te bewerken."
+        }
+        itemEditService.startBatch(step.files.map { BatchRecord(it.number, it.originalName, it.by, it.folder) })
+        step.status = StepStatus.RUNNING
+        step.message = "Bewerk de records op de pagina Records. De stap is klaar als elk record is opgeslagen of op later staat."
+    }
+
     /**
      * Eerst de back-up van de 100pct en pas daarna het verwijderen, en alleen in de mappen van de programma's zelf.
      * Het origineel (en de kopie in `werk`) blijft staan; die gaan in de archiveerstap weg.
@@ -431,6 +470,7 @@ class TestRunService(
     @Synchronized
     fun view(): TestRunView? {
         val current = run ?: return null
+        syncEdit(current)
         val s = settingsService.get()
         val next = current.nextStep()
 
@@ -457,6 +497,7 @@ class TestRunService(
             FileRowView(
                 originalName = file.originalName,
                 newName = file.newName,
+                by = file.by,
                 cells = StepType.entries.map { type -> toView(current.steps.first { it.type == type && it.files.contains(file) }) },
                 checks = checkGroups(current, file, s),
             )
@@ -477,6 +518,9 @@ class TestRunService(
     private fun warnings(current: TestRun, step: Step): List<String> = buildList {
         if (step.type == StepType.CLEANUP && current.steps.first { it.type == StepType.UPLOAD }.status == StepStatus.SKIPPED) {
             add("De upload is overgeslagen. Na het opruimen zijn de tekst en pdf's weg, tenzij je ze zelf op de server hebt gezet.")
+        }
+        if (step.type == StepType.EDIT && !settingsService.get().zcbsIsLocal()) {
+            add("Dit schrijft in het echte archief (${settingsService.get().zcbsBaseUrl}). Elke opslag stuurt een e-mail naar de beheerder.")
         }
     }
 
@@ -502,6 +546,11 @@ class TestRunService(
                 "Tekst: $n bestand(en) naar ${s.remoteOcrDir()}",
                 "Pdf: $n bestand(en) naar ${s.remotePdfDir()}",
                 "Eerst een controle: de mappen bestaan en geen enkel bestand bestaat al. Er wordt niets overschreven, aangemaakt of verwijderd.",
+            )
+            StepType.EDIT -> listOf(
+                "Controleert dat de $n records bestaan in ZCBS (${s.zcbsBaseUrl.ifBlank { unset }}).",
+                "Je bewerkt ze één voor één op de pagina Records. Elk record dat je opent is 10 minuten voor anderen vergrendeld.",
+                "Elke opslag gaat via het formulier van ZCBS, met een voorbeeld vooraf en teruglezen achteraf. Zie je een melding, dan kun je het record altijd in ZCBS zelf bewerken.",
             )
             StepType.CLEANUP -> listOf(
                 "Kopieert de $n 100pct-afbeeldingen naar ${s.backup100pctFolder.ifBlank { unset }}.",
@@ -555,6 +604,17 @@ class TestRunService(
             add(CheckGroupView("server", listOf(
                 remote("tekst", s.remoteOcrDir() + "/" + file.number + ".txt"),
                 remote("pdf", s.remotePdfDir() + "/" + file.number + ".pdf"),
+            )))
+            add(CheckGroupView("ZCBS", listOf(
+                run {
+                    val st = itemEditService.statusOf(file.number)
+                    val state = when (st) {
+                        EditStatus.OPGESLAGEN -> "OK"
+                        EditStatus.ONVEILIG, EditStatus.FOUT, EditStatus.GEBLOKKEERD -> "MISSING"
+                        else -> "PENDING"
+                    }
+                    CheckView("record bewerkt" + (st?.takeIf { it == EditStatus.LATER }?.let { " (later)" } ?: ""), state, itemEditService.recordUrl(file.number).orEmpty())
+                },
             )))
             add(CheckGroupView("back-up", listOf(
                 run {

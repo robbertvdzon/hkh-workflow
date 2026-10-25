@@ -209,7 +209,7 @@ Uit `objecten.pl` (OUTPUT_UPDATE vanaf regel 16997, ZCBS_MENU vanaf 24582, LOCK_
 - **Snelheidsbegrenzing.** Verzoeken zonder `zcbs-user`-cookie worden geteld per IP-adres: meer dan 7 in 10 seconden of meer dan 15 in een minuut geeft de pagina "Access ZCBS denied: using too many requests".
   Met een `zcbs-user`-cookie (ook na een mislukte inlog) wordt er niet geteld. De app stuurt dus altijd de cookies mee.
 - **Velden die niet in het formulier staan, worden leeg opgeslagen.** ZCBS leest het nieuwe record alleen uit de ontvangen velden. Lokaal getest: record 10147 heeft in veld 28 een `1`; het formulier
-  heeft geen `a28`, en na opslaan was het veld leeg. Veld 17 is een uitzondering: het formulier toont `a17` wel als er iets in staat (record 10016), en dan blijft het behouden. De regel voor de app:
+  heeft geen `a28`, en na opslaan was het veld leeg. Veld 17 is een uitzondering: het formulier bevat `a17` als **verborgen** veld (`type="hidden"`) als er iets in staat (record 10016), en dan blijft het behouden. De regel voor de app:
   voor elk veld `a3` t/m `a31` dat niet in het formulier staat (ook niet als `…b` of `…x`), de waarde uit `a0` meesturen.
 - **Een niet bestaand nummer.** `upd_form=edt` geeft dan geen bewerkformulier (er is geen veld `a0`), maar de pagina van een leeg record. Een POST met dat nummer **maakt het record aan** (lokaal getest met 99998). Controleer dus altijd dat `a0` aanwezig is.
 - **De vergrendeling hoort bij de gebruikersnaam**, niet bij het tabblad. Twee mensen met dezelfde inlog blokkeren elkaar niet.

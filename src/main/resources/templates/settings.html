@@ -40,6 +40,20 @@
                 <span><b>Start met PERLIO=:unix</b><br><span class="hint">Zet de uitvoerbuffer van Perl uit, zodat de vragen van images.exe en pdf2zcbs.exe meteen zichtbaar zijn. Nodig voor automatisch uitvoeren. Invoer eindigt dan op LF.</span></span>
             </label>
             <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
+                <legend class="f" style="padding:0;margin-bottom:6px">Bestanden van de server en ZCBS</legend>
+                <div class="field">
+                    <label class="f" for="sourceFolder">Bronmap op de server</label>
+                    <input type="text" id="sourceFolder" name="sourceFolder" th:value="${settings.sourceFolder}" placeholder="K:\scabslelly">
+                    <span class="hint">Hier zetten Ria en anderen de pdf's klaar, in een submap per persoon. De testpagina haalt de bestanden die je aanvinkt hier op en kopieert ze naar de testmap; de map toont ook wie het gescand heeft.</span>
+                </div>
+                <div class="field">
+                    <label class="f" for="zcbsBaseUrl">Adres van ZCBS</label>
+                    <input type="text" id="zcbsBaseUrl" name="zcbsBaseUrl" th:value="${settings.zcbsBaseUrl}" placeholder="http://localhost:8081">
+                    <span class="hint">Voor het bewerken van de records. De lokale testkopie is <span class="mono">http://localhost:8081</span> (zie tools/zcbs-local); het echte archief is <span class="mono">https://www.historischekringheemskerk.nl</span>. Bij het echte archief schrijft elke opslag in ZCBS en gaat er een e-mail naar de beheerder. Naam en wachtwoord vraagt de app per keer en bewaart ze niet.</span>
+                    <span class="warn" th:if="${problems['zcbsBaseUrl']}" th:text="${problems['zcbsBaseUrl']}"></span>
+                </div>
+            </fieldset>
+            <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
                 <legend class="f" style="padding:0;margin-bottom:6px">Collectie en images.exe</legend>
                 <div class="field">
                     <label class="f" for="collection">Collectie</label>

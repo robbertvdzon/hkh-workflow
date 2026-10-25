@@ -53,6 +53,8 @@ class SettingsService(
                     imagesResolution = node.path("imagesResolution").asText("6"),
                     imagesInstitution = node.path("imagesInstitution").asText("4"),
                     backup100pctFolder = node.path("backup100pctFolder").asText(""),
+                    zcbsBaseUrl = node.path("zcbsBaseUrl").asText(""),
+                    sourceFolder = node.path("sourceFolder").asText(""),
                     sftpHost = node.path("sftpHost").asText(""),
                     sftpPort = node.path("sftpPort").asInt(22),
                     sftpUser = node.path("sftpUser").asText(""),
@@ -85,6 +87,8 @@ class SettingsService(
             imagesResolution = settings.imagesResolution.trim(),
             imagesInstitution = settings.imagesInstitution.trim(),
             backup100pctFolder = settings.backup100pctFolder.trim(),
+            zcbsBaseUrl = settings.zcbsBaseUrl.trim().trimEnd('/'),
+            sourceFolder = settings.sourceFolder.trim(),
             sftpHost = settings.sftpHost.trim(),
             sftpUser = settings.sftpUser.trim(),
             sftpHostKey = settings.sftpHostKey.trim(),
@@ -127,6 +131,7 @@ class SettingsService(
         if (settings.collection.isBlank()) problems["collection"] = "Nog niet ingevuld."
         if (settings.backup100pctFolder.isBlank()) problems["backup100pctFolder"] = "Nog niet ingevuld."
         else if (!Files.isDirectory(Path.of(settings.backup100pctFolder))) problems["backup100pctFolder"] = "Map bestaat niet."
+        if (settings.zcbsBaseUrl.isBlank()) problems["zcbsBaseUrl"] = "Nog niet ingevuld."
         if (settings.sftpHost.isBlank()) problems["sftpHost"] = "Nog niet ingevuld."
         if (settings.sftpUser.isBlank()) problems["sftpUser"] = "Nog niet ingevuld."
         if (settings.sftpPassword.isEmpty()) problems["sftpPassword"] = "Nog niet ingevuld."

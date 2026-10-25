@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Voorbeeld van de wijziging')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div class="head">
+            <div>
+                <h1>Voorbeeld van de wijziging</h1>
+                <p class="sub">Record <span class="mono" th:text="${r.number}">11934</span> · <span class="mono" th:text="${r.fileName}">scan.pdf</span></p>
+            </div>
+        </div>
+        <form method="post" class="stack" style="gap:18px">
+            <th:block th:each="c : ${controls}"><input type="hidden" th:each="v : ${c.values}" th:name="${c.name}" th:value="${v}"></th:block>
+            <section class="table" th:if="${!changes.isEmpty()}">
+                <div class="tr th" style="grid-template-columns:200px minmax(0,1fr) minmax(0,1fr)"><span>Veld</span><span>Was</span><span>Wordt</span></div>
+                <div class="tr" th:each="c : ${changes}" style="grid-template-columns:200px minmax(0,1fr) minmax(0,1fr)">
+                    <span th:text="${c.label}">Titel</span>
+                    <span class="diff-old" th:text="${c.old.isEmpty()} ? '(leeg)' : ${c.old}" style="white-space:pre-line">oud</span>
+                    <span class="diff-new" th:text="${c.new.isEmpty()} ? '(leeg)' : ${c.new}" style="white-space:pre-line">nieuw</span>
+                </div>
+            </section>
+            <div class="alert alert-info" th:if="${changes.isEmpty()}">Er is niets gewijzigd. Opslaan doet dan niets.</div>
+            <div class="alert alert-err stack" th:if="${!blockers.isEmpty()}" style="gap:6px"><b>Dit kan zo niet worden opgeslagen.</b><span th:each="b : ${blockers}" th:text="${b}"></span></div>
+            <div class="alert alert-info" th:if="${!changes.isEmpty() and blockers.isEmpty()}">Opslaan stuurt een e-mail naar de beheerder met het hele record. Daarna leest de app het record terug uit ZCBS en controleert het.</div>
+            <div class="row-actions">
+                <button class="btn btn-p" type="submit" th:formaction="@{/records/{nr}/opslaan(nr=${r.number})}" th:disabled="${changes.isEmpty() or !blockers.isEmpty()}">Opslaan</button>
+                <button class="btn btn-s" type="submit" th:formaction="@{/records/{nr}/terug(nr=${r.number})}">Terug naar het formulier</button>
+            </div>
+        </form>
+    </main>
+</div>
+</body>
+</html>

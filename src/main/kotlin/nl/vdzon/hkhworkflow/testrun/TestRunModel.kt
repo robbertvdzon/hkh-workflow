@@ -14,6 +14,7 @@ enum class StepType(val label: String, val perFile: Boolean, val usesExe: Boolea
     PDF2ZCBS("pdf2zcbs.exe", false, usesExe = true),
     IMAGES("images.exe", false, usesExe = true),
     UPLOAD("Upload (sftp)", false),
+    EDIT("Records bewerken", false),
     CLEANUP("Opruimen", false),
     ARCHIVE("Archiveren", true),
 }
@@ -26,7 +27,7 @@ enum class StepStatus(val label: String) {
     FAILED("Mislukt"),
 }
 
-data class TestFile(val index: Int, val original: Path, val number: String) {
+data class TestFile(val index: Int, val original: Path, val number: String, val by: String = "", val folder: String = "") {
     val originalName: String get() = original.fileName.toString()
     val newName: String get() = "$number.pdf"
 }
@@ -66,6 +67,7 @@ class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
             StepType.PDF2ZCBS, StepType.IMAGES ->
                 "Run ${type.label} één keer voor ${files.size} ${if (files.size == 1) "bestand" else "bestanden"} ($fileNames)?"
             StepType.UPLOAD -> "Upload tekst en pdf van ${files.size} ${if (files.size == 1) "bestand" else "bestanden"} naar de server?"
+            StepType.EDIT -> "Bewerk ${files.size} ${if (files.size == 1) "record" else "records"} in ZCBS?"
             StepType.CLEANUP -> "Maak een back-up van de 100pct en ruim de mappen van de programma's op?"
         }
 }
@@ -112,6 +114,8 @@ data class CheckGroupView(val label: String, val items: List<CheckView>)
 data class FileRowView(
     val originalName: String,
     val newName: String,
+    /** Wie het gescand heeft: de persoon van de map waarin het bestand op de server stond (leeg als dat niet bekend is). */
+    val by: String,
     val cells: List<StepView>,
     val checks: List<CheckGroupView>,
 )

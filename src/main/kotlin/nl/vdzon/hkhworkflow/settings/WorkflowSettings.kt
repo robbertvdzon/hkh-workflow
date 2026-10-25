@@ -39,6 +39,10 @@ data class WorkflowSettings(
     val imagesInstitution: String = "4",
     /** Map waar de 100pct-afbeeldingen een back-up krijgen voordat er wordt opgeruimd. */
     val backup100pctFolder: String = "",
+    /** Adres van ZCBS, bijvoorbeeld http://localhost:8081 (lokale kopie om tegen te testen) of https://www.historischekringheemskerk.nl. */
+    val zcbsBaseUrl: String = "",
+    /** Map met de pdf's die Ria klaarzet, per persoon een submap (K:\scabslelly). Hier haalt de testpagina de te verwerken bestanden op. */
+    val sourceFolder: String = "",
     val sftpHost: String = "",
     val sftpPort: Int = 22,
     val sftpUser: String = "",
@@ -52,6 +56,12 @@ data class WorkflowSettings(
     /** Map voor de pdf's, relatief aan de basismap. Leeg = "<collectie>/pdf". */
     val sftpPdfDir: String = "",
 ) {
+    /** Het pad van het ZCBS-script van de collectie, bijvoorbeeld /cgi-bin/archief.pl. */
+    fun zcbsScriptPath(): String = "/cgi-bin/${collection.trim()}.pl"
+
+    /** Draait ZCBS op deze computer (een testkopie)? Anders schrijft de app in het echte archief. */
+    fun zcbsIsLocal(): Boolean = zcbsBaseUrl.trim().let { it.contains("//localhost") || it.contains("//127.0.0.1") }
+
     /** Volledig pad op de sftp-server voor de tekstbestanden. */
     fun remoteOcrDir(): String = remoteDir(sftpOcrDir, "ocr")
 

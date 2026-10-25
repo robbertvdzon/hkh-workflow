@@ -86,6 +86,6 @@ class SettingsServiceTest {
     fun `extras warn about missing backup folder and sftp settings`() {
         val service = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("x.json").toString()))
         val problems = service.checkExtras(WorkflowSettings())
-        assertEquals(setOf("backup100pctFolder", "sftpHost", "sftpUser", "sftpPassword", "sftpHostKey"), problems.keys)
+        assertEquals(setOf("backup100pctFolder", "zcbsBaseUrl", "sftpHost", "sftpUser", "sftpPassword", "sftpHostKey"), problems.keys)
     }
 }

@@ -8,7 +8,7 @@
         <div class="head">
             <div>
                 <h1>Test</h1>
-                <p class="sub">Verwerk de pdf's uit de testmap stap voor stap: hernoemen → pdf2zcbs.exe → images.exe → archiveren.</p>
+                <p class="sub">Haal de bestanden van de server op en verwerk ze stap voor stap: hernoemen → pdf2zcbs.exe → images.exe → upload → records bewerken → opruimen → archiveren.</p>
             </div>
             <form th:if="${run != null}" method="post" th:action="@{/test/reset}">
                 <button class="btn btn-s" type="submit" title="Stopt een nog lopend programma en maakt de console leeg">Nieuwe test</button>
@@ -24,6 +24,24 @@
             — <a th:href="@{/instellingen}">naar Instellingen</a>.
         </div>
 
+        <!-- Eerste stap: de bestanden die Ria heeft aangegeven van de server ophalen -->
+        <section th:if="${run == null and sourceConfigured}" class="card pad" style="display:flex;flex-direction:column;gap:14px;max-width:980px">
+            <h2>Bestanden ophalen van de server</h2>
+            <p class="hint" style="margin:0">Ria geeft aan welke bestanden verwerkt moeten worden. Ze staan in <span class="mono" th:text="${settings.sourceFolder}"></span>, in een map per persoon. Vink aan wat je wilt verwerken: de app kopieert het naar de testmap. De bestanden op de server blijven staan en er wordt niets overschreven.</p>
+            <div th:if="${sourceGroups.isEmpty()}" class="warn">Geen pdf's gevonden in de bronmap (bestaat de map?).</div>
+            <form th:unless="${sourceGroups.isEmpty()}" method="post" th:action="@{/test/bronbestanden}" style="display:flex;flex-direction:column;gap:12px">
+                <div class="table" th:each="g : ${sourceGroups}">
+                    <div class="tr grouphead" style="grid-template-columns:minmax(0,1fr)"><span><b th:text="${g.value[0].by != ''} ? ${g.value[0].by} : '(zonder persoon)'">Ria</b> <span class="mono muted" th:text="${g.key}"></span></span></div>
+                    <label class="tr" th:each="f : ${g.value}" style="grid-template-columns:28px minmax(0,1fr) 90px 150px;cursor:pointer">
+                        <input type="checkbox" name="files" th:value="${f.relPath}">
+                        <span class="mono" th:text="${f.name}">scan.pdf</span>
+                        <span class="muted" th:text="${f.sizeKb} + ' kB'">12 kB</span><span class="muted" th:text="${f.modified}">gescand</span>
+                    </label>
+                </div>
+                <div><button class="btn btn-p" type="submit">Kopieer de aangevinkte bestanden naar de testmap</button></div>
+            </form>
+        </section>
+
         <!-- Nog geen testrun: volgnummer vragen -->
         <section th:if="${run == null}" class="card pad" style="display:flex;flex-direction:column;gap:18px;max-width:820px">
             <h2>Nieuwe test starten</h2>
@@ -31,7 +49,7 @@
                 <div class="hint">Testmap: <span class="mono" th:text="${settings.testFolder != '' ? settings.testFolder : '(niet ingesteld)'}"></span></div>
                 <div th:if="${pdfs.isEmpty()}" class="warn" style="margin-top:6px">Er staan geen pdf's in de testmap.</div>
                 <ul th:unless="${pdfs.isEmpty()}" style="margin:10px 0 0;padding-left:20px">
-                    <li th:each="p : ${pdfs}" th:text="${p}"></li>
+                    <li th:each="p : ${pdfs}"><span th:text="${p.name}"></span><span class="hint" th:if="${p.by != ''}" th:text="' · gescand door ' + ${p.by}"></span></li>
                 </ul>
             </div>
             <form method="post" th:action="@{/test/start}" style="display:flex;gap:12px;align-items:flex-end">
@@ -59,7 +77,18 @@
                     <div class="alert alert-info" style="margin:4px 0 0" th:each="w : ${run.next.warnings}" th:text="${w}"></div>
                     <span class="hint" th:if="${run.next.status == 'FAILED'}" style="color:var(--err);white-space:pre-line" th:text="${run.next.message}"></span>
                     <span class="hint" th:if="${run.next.status == 'RUNNING' and run.next.usesExe}">Bezig… beantwoord de vragen hieronder.</span>
-                    <span class="hint" th:if="${run.next.status == 'RUNNING' and !run.next.usesExe}">Bezig… even geduld, de pagina laadt opnieuw als het klaar is.</span>
+                    <span class="hint" th:if="${run.next.status == 'RUNNING' and !run.next.usesExe and run.next.type != 'EDIT'}">Bezig… even geduld, de pagina laadt opnieuw als het klaar is.</span>
+                    <div th:if="${run.next.type == 'EDIT' and run.next.status != 'DONE'}" style="display:flex;flex-direction:column;gap:8px;max-width:520px">
+                        <span class="hint" th:if="${zcbsLoggedIn}">Ingelogd bij ZCBS als <b th:text="${zcbsUser}"></b> · <span class="mono" th:text="${settings.zcbsBaseUrl}"></span>
+                            <span th:unless="${zcbsLocal}" style="color:var(--err);font-weight:600"> (het echte archief)</span></span>
+                        <form th:unless="${zcbsLoggedIn}" method="post" th:action="@{/zcbs/login}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end" autocomplete="off">
+                            <input type="hidden" name="terug" value="/test">
+                            <div class="field" style="width:200px"><label class="f" for="zcbsNaam">ZCBS-naam</label><input type="text" id="zcbsNaam" name="naam" autocomplete="off"></div>
+                            <div class="field" style="width:180px"><label class="f" for="zcbsWachtwoord">Wachtwoord</label><input type="password" id="zcbsWachtwoord" name="wachtwoord" autocomplete="new-password" style="height:44px;padding:0 12px;border:1px solid #b9b09c;border-radius:8px;font:14px var(--sans)"></div>
+                            <button class="btn btn-p" type="submit">Inloggen bij ZCBS</button>
+                        </form>
+                        <form th:if="${zcbsLoggedIn}" method="post" th:action="@{/zcbs/logout}"><input type="hidden" name="terug" value="/test"><button class="btn btn-s btn-sm" type="submit">Uitloggen bij ZCBS</button></form>
+                    </div>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'PENDING'}" style="align-items:flex-end;flex-direction:column;gap:10px">
                     <form th:unless="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}">
@@ -79,6 +108,10 @@
                         </div>
                     </form>
                     <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit" title="Sla deze stap over, bijvoorbeeld omdat je hem zelf met de hand doet">Overslaan</button></form>
+                </div>
+                <div class="row-actions" th:if="${run.next.type == 'EDIT' and run.next.status == 'RUNNING'}" style="align-items:flex-end;flex-direction:column;gap:10px">
+                    <a class="btn btn-p" th:href="@{/records}">Naar de records</a>
+                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit" title="Sla de rest van deze stap over">Overslaan</button></form>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'FAILED'}">
                     <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><button class="btn btn-s" type="submit">Overslaan</button></form>
@@ -135,13 +168,13 @@
 
             <!-- Overzicht: per bestand de stappen, met daaronder de controle of de bestanden er echt zijn -->
             <section class="table">
-                <div class="tr th" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(6,minmax(0,1fr))">
+                <div class="tr th" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(7,minmax(0,1fr))">
                     <span>Origineel</span><span>Nummer</span>
                     <span th:each="t : ${run.stepTypes}" th:text="${t}"></span>
                 </div>
                 <th:block th:each="row : ${run.rows}">
-                    <div class="tr" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(6,minmax(0,1fr));border-bottom:0">
-                        <span th:text="${row.originalName}"></span>
+                    <div class="tr" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(7,minmax(0,1fr));border-bottom:0">
+                        <span style="min-width:0"><span th:text="${row.originalName}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><span class="hint" th:if="${row.by != ''}" th:text="'gescand door ' + ${row.by}"></span></span>
                         <span class="mono" th:text="${row.newName}"></span>
                         <span th:each="c : ${row.cells}" th:title="${c.message}">
                             <span class="chip"

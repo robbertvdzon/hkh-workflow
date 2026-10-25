@@ -1,0 +1,128 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer-when-downgrade">
+<title>Toegangscontrole ZPBS</title>
+<base href="http://localhost:8081">
+<script type="text/javascript">
+<!--
+var width = (typeof screen !== "undefined" && screen.width) ? screen.width : 1;
+var height = (typeof screen !== "undefined" && screen.height) ? screen.height : 1;
+document.cookie = "zcbs-scres=" + width + "x" + height + "; expires=Sun, 18 Aug 2947 10:00:00 UTC; path=/;";
+// -->
+</script>
+</head>
+
+<body bgcolor="#66CCFF">
+
+<p align="center">
+<a href="http://www.historischekringheemskerk.nl" target="_top"><img src="/objecten/misc/hkh.jpg" alt="Historische Kring Heemskerk" name="HKH"  width="100" height="40" border=0></a>
+
+                  &nbsp;&nbsp;&nbsp; <font size="+3"><strong>Historische Kring Heemskerk</strong></font><br>
+
+
+
+
+
+
+<center>
+<table border="0" cellspacing="0" cellpadding="2" width="709" id="tblblocked">
+<tr><td align="left">
+<font size="-1">
+<a href="" target="_blank">Homepage HKH</a> <font size="+1">&#8594;</font>
+<a href="/cgi-bin/archief.pl">Archief Heemskerk</a> <font size="+1">&#8594;</font>
+Toegangscontrole
+</font>
+</td></tr>
+</table>
+</center>
+
+
+
+
+<p>
+<h2>Toegangscontrole ZPBS</h2>    
+
+
+<center>
+</center>
+<p>
+
+
+
+<p>
+<form method="POST" action="/cgi-bin/archief.pl" autocomplete="off">
+<em>Wie bent u?</em><br>
+<input type="radio" name="user" value="Test Beheerder"> Test Beheerder
+<br>
+ <input type="radio" name="user" value="Test Bewerker"> Test Bewerker
+<br>
+ <input type="radio" name="user" value="Test Tweede"> Test Tweede
+<br>
+ <input type="radio" name="user" value="Test Lezer"> Test Lezer
+<br>
+ <p>
+<input type="radio" name="user" value="router"> <strong>Internet (geen wachtwoord nodig)</strong>
+<br>
+
+
+<p>
+<em>En wat is uw wachtwoord?</em> &nbsp;&nbsp;
+<input type="hidden" name="veld"     value="access">
+<input type="hidden" name="spec"     value="">
+<input type="hidden" name="ident"    value="">
+<input type="hidden" name="upd_form" value="">
+<input type="password" name="pswd" id="pswd" value="" autocomplete="new-password" size="20">
+&nbsp; 
+<label>
+  <input type="checkbox" onclick="togglePassword()"> Toon wachtwoord
+</label>
+
+<script>
+function togglePassword() {
+  var x = document.getElementById("pswd");
+  x.type = (x.type === "password") ? "text" : "password";
+}
+</script>
+
+<p>
+<input type="submit" class="button" value="Aanmelden">
+</form>
+
+<p>
+<font size="-1">
+Staat hierboven uw naam niet vermeld en <br>
+wilt u wel uitgebreidere bevoegdheden dan die van de standaard internetgebruiker?<br>
+Neem dan contact op met:<br>
+ Jan Kamps
+<br>
+E-mail: <a href="mailto:xxx@x.nl?SUBJECT=ZCBS%20toegang%20verlening%20IP-adres:%20198.51.100.7">xxx@x.nl</a>
+
+</font>
+
+
+
+
+
+
+
+<p>
+ Update: 26 sep 2026
+
+
+<script>
+document.addEventListener("keydown", function(event) {
+  if (event.ctrlKey && event.code === "Home") {              // Bij gebruik Ctrl+Home toets 
+    window.location.href = "/cgi-bin/archief.pl";
+  }
+  if (event.ctrlKey && event.key.toLowerCase() === "h") {    // Bij gebruik Ctrl+h
+    event.preventDefault();
+    window.location.href = "/cgi-bin/archief.pl";
+  }
+});
+</script>
+</body>
+</html>

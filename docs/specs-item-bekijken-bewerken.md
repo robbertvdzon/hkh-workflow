@@ -1,6 +1,6 @@
 # Specificatie: item bekijken en bewerken in de workflow
 
-Status: voorstel, 24 oktober 2026, bijgewerkt na de beslissingen van Robbert (geen login op de app, testen op het echte archief, lock bij openen). Bedoeld voor de eerste run met Carla in het echte archief, volgende week.
+Status: **gebouwd op 25 oktober 2026** (modules `zcbs` en `items`, pagina's Records, en de testpagina met twee nieuwe stappen; getest op de Mac tegen de lokale ZCBS in Docker, nog niet tegen de echte server). Eerder: voorstel van 24 oktober, bijgewerkt na de beslissingen van Robbert (geen login op de app, testen op het echte archief, lock bij openen). Bedoeld voor de eerste run met Carla in het echte archief, volgende week.
 Achtergrond en bewijs staan in [zcbs-edit-formulier.md](zcbs-edit-formulier.md), [zcbs-api.openapi.yaml](zcbs-api.openapi.yaml) en
 [zcbs-analyse-en-wrapper.md](zcbs-analyse-en-wrapper.md). Alles over ZCBS is daar **uit de broncode en de HTML van het bewerkscherm gelezen,
 niet uitgeprobeerd**. Er is vóór de run geen testomgeving beschikbaar. Deze spec gaat daarom uit van veilig falen: als iets niet klopt,
@@ -321,7 +321,7 @@ gedrag bij een niet bestaand nummer, de meerkeuze `a24`, tekens en regeleinden, 
 - Geen wachtwoorden in logs of schermen.
 
 
-## 15. Aanvulling: de testpagina (`/test`) krijgt twee stappen
+## 15. De testpagina (`/test`) heeft twee extra stappen (gebouwd)
 
 De bestaande testflow (hernoemen, pdf2zcbs, images.exe, upload, opruimen, archiveren) volgt nog Carla's papieren stappenplan en mist twee stappen van de nieuwe flow:
 
@@ -329,3 +329,10 @@ De bestaande testflow (hernoemen, pdf2zcbs, images.exe, upload, opruimen, archiv
 2. **Een stap na de upload: records bewerken.** Dezelfde stap als in de demo (fase 7), maar echt: inloggen bij ZCBS, per record het formulier ophalen, wijzigen, voorbeeld, opslaan en teruglezen. Net als de andere stappen met een plan vooraf, problemen en waarschuwingen (bijvoorbeeld: record bestaat niet, ongelezen veld, vergrendeld) en vinkjes per record. Nieuwe instellingen: de basis-URL van ZCBS (lokale kopie `http://localhost:8081/cgi-bin/archief.pl` of de echte site) en het script. De ZCBS-naam en het wachtwoord worden bij het starten van de stap gevraagd en blijven in het geheugen.
 
 Het testen van deze stap kan eerst volledig tegen de lokale ZCBS in Docker (zie [zcbs-lokaal-testresultaten.md](zcbs-lokaal-testresultaten.md)), zonder iets aan productie te veranderen. De bouw ervan is dezelfde als de echte bewerkfunctie (paragraaf 5 en 7) en wacht op het sein van Robbert.
+
+**Gebouwd (25 oktober 2026).** Wat er staat en waar:
+- `zcbs`: `ZcbsClient`, `FormParser` (Jsoup), `ItemForm`, `RecordRebuilder`, `ZcbsText`, `ZcbsPages`. Tests met echte pagina's van de lokale ZCBS in `src/test/resources/zcbs/` en een nagemaakte ZCBS (`FakeZcbs`), plus contracttests tegen de lokale ZCBS die alleen met `-Dzcbs.live=true` draaien.
+- `items`: `ItemEditService` en de pagina's `/records`. De ZCBS-naam en het wachtwoord staan alleen in het geheugen; elke opslag volgt paragraaf 7.
+- `testrun`: `SourceFilesService` (bestanden ophalen, wie het gescand heeft in `herkomst.tsv`) en de stap Records bewerken (na de upload, vóór het opruimen).
+- Wat de lokale ZCBS liet zien en wat dit document anders zei: veld 17 komt als **verborgen** veld in het formulier (niet zichtbaar); een regeleinde in een tekstvak komt na opslaan terug met een spatie ervoor; de ocr-tekst van pdf2zcbs is UTF-8.
+- Nog niet gebouwd: een eigen login op de app, het versturen van logs naar een eigen server, de keuze wat er met de originelen op de server gebeurt.

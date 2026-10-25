@@ -3,7 +3,9 @@ package nl.vdzon.hkhworkflow.testrun.api
 import jakarta.servlet.http.HttpServletResponse
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
+import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
+import nl.vdzon.hkhworkflow.testrun.SourceFilesService
 import nl.vdzon.hkhworkflow.testrun.StepOptions
 import nl.vdzon.hkhworkflow.testrun.TestRunService
 import org.springframework.http.HttpStatus
@@ -22,7 +24,12 @@ class TestController(
     private val testRunService: TestRunService,
     private val exeRunner: ExeRunner,
     private val settingsService: SettingsService,
+    private val sourceFiles: SourceFilesService,
+    private val itemEditService: ItemEditService,
 ) {
+
+    /** Een pdf in de testmap, met wie het gescand heeft als dat bekend is. */
+    data class PdfRow(val name: String, val by: String)
 
     @GetMapping("/test")
     fun page(model: Model): String {
@@ -30,7 +37,12 @@ class TestController(
         model.addAttribute("active", "test")
         model.addAttribute("settings", settings)
         model.addAttribute("problems", settingsService.check(settings) + settingsService.checkExtras(settings))
-        model.addAttribute("pdfs", testRunService.pdfsInTestFolder().map { it.fileName.toString() })
+        model.addAttribute("pdfs", testRunService.pdfsInTestFolder().map { PdfRow(it.fileName.toString(), sourceFiles.origin(it.fileName.toString())?.by.orEmpty()) })
+        model.addAttribute("sourceGroups", sourceFiles.candidates().groupBy { it.folder })
+        model.addAttribute("sourceConfigured", settings.sourceFolder.isNotBlank())
+        model.addAttribute("zcbsLoggedIn", itemEditService.loggedIn())
+        model.addAttribute("zcbsUser", itemEditService.user)
+        model.addAttribute("zcbsLocal", settings.zcbsIsLocal())
         model.addAttribute("run", testRunService.view())
         model.addAttribute("console", exeRunner.snapshot())
         model.addAttribute("runs", exeRunner.history())
@@ -84,6 +96,14 @@ class TestController(
     fun stop(): String {
         exeRunner.kill()
         return "redirect:/test"
+    }
+
+    /** De eerste stap: de bestanden die Ria heeft aangegeven van de server naar de testmap (invoermap) kopiëren. */
+    @PostMapping("/test/bronbestanden")
+    fun copySource(@RequestParam("files", required = false) files: List<String>?, redirect: RedirectAttributes): String = attempt(redirect) {
+        val result = sourceFiles.copy(files.orEmpty())
+        val skipped = if (result.skipped.isEmpty()) "" else " Overgeslagen: ${result.skipped.joinToString()}."
+        redirect.addFlashAttribute("info", "${result.copied.size} bestanden gekopieerd naar de testmap. De originelen op de server blijven staan.$skipped")
     }
 
     @PostMapping("/test/start")

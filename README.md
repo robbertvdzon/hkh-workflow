@@ -35,7 +35,12 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
   Open `/demo-flow`; **Opnieuw beginnen** zet alles terug.
 - **Instellingen** — mappen, paden naar `images.exe` en `pdf2zcbs.exe`, collectie, back-upmap en de sftp-server (met
   Test verbinding). Opgeslagen als JSON, die niet in git komt.
-- **Test** — verwerkt alle pdf's uit de testmap volgens het stappenplan van Carla. Elke stap start je zelf, na een
+- **Records bewerken** — de records van de batch één voor één invullen via het ZCBS-formulier: inloggen met je eigen ZCBS-naam
+  (alleen in het geheugen), voorbeeld van de wijziging, opslaan en teruglezen, "later" voor een record dat je overslaat. Het adres van
+  ZCBS stel je in bij Instellingen: lokale testkopie `http://localhost:8081` (zie `tools/zcbs-local/README.md`) of de echte site. **Bij
+  de echte site schrijft elke opslag in het echte archief en gaat er een e-mail naar de beheerder.**
+- **Test** — haalt eerst (als de bronmap is ingesteld) de bestanden die Ria heeft aangegeven op van de server (`K:\scabslelly\<persoon>\<map>`,
+  de map toont wie het gescand heeft) en verwerkt alle pdf's uit de testmap volgens het stappenplan van Carla. Elke stap start je zelf, na een
   overzicht van wat hij gaat doen, en per bestand zie je met vinkjes of de bestanden er echt zijn:
   1. **Hernoemen** (per bestand) — vraagt eerst een beginnummer; elk bestand krijgt een volgnummer (voorloopnullen
      blijven). Het origineel blijft staan; er komt een kopie `<nummer>.pdf` in `<testmap>\werk`.
@@ -45,8 +50,9 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
      en maakt small, large en 100pct. Upload en records aanmaken staan standaard uit en kies je per run met een vinkje.
   4. **Upload (sftp)** — zet tekst en pdf's in `<collectie>/ocr` en `<collectie>/pdf` op de server. Overschrijft en
      verwijdert nooit, controleert eerst alles en gebruikt een vastgezette vingerafdruk van de server.
-  5. **Opruimen** — back-up van de 100pct, daarna de mappen van de programma's leegmaken.
-  6. **Archiveren** (per bestand) — verplaatst het origineel naar de archived-map.
+  5. **Records bewerken** — logt in bij ZCBS en opent de pagina Records; klaar als elk record is opgeslagen of op "later" staat.
+  6. **Opruimen** — back-up van de 100pct, daarna de mappen van de programma's leegmaken.
+  7. **Archiveren** (per bestand) — verplaatst het origineel naar de archived-map.
 
   De programma's draaien één keer per batch omdat ze alles verwerken wat in hun map staan en pdf2zcbs zijn `output\` bij
   elke start leegt. Een stap start niet als er oude resultaten of andere bestanden in die mappen staan. Een stap is pas
@@ -89,7 +95,9 @@ images.exe en pdf2zcbs.exe als Perl-scripts; zie `tools/mock/README.md`.
 | `settings` | Instellingen lezen/schrijven + pagina |
 | `exerunner` | Externe programma's starten, uitvoer lezen, invoer doorsturen |
 | `sftp` | Uploaden naar de server met sftp, met vastgezette vingerafdruk |
-| `testrun` | De testworkflow (de stappenketen met controles) + pagina |
+| `zcbs` | Client voor ZCBS: inloggen, formulier ophalen en posten, controles op wat ZCBS wel en niet accepteert |
+| `items` | Records van een batch bewerken via het ZCBS-formulier (voorbeeld, opslaan, conflictcontrole, teruglezen) + pagina's |
+| `testrun` | De testworkflow (de stappenketen met controles, bestanden ophalen van de server) + pagina |
 | `ux` | De UX-schermen met demo-gegevens |
 
 ## Documentatie
