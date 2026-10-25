@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Inloggen')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div class="head">
+            <div>
+                <h1>Nieuwe batch <span class="demo">Demo</span></h1>
+                <p class="sub">Log eerst in bij ZCBS. Daarna zie je welke bestanden klaarstaan.</p>
+            </div>
+        </div>
+        <section class="card pad stack" style="max-width:480px">
+            <h2>Inloggen bij ZCBS</h2>
+            <p class="muted" style="margin:0">Dit zijn dezelfde gegevens als op de ZCBS-website. De app bewaart ze alleen zolang deze batch loopt en schrijft ze nergens op.</p>
+            <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
+            <form th:action="@{/demo-flow/login}" method="post" class="stack" autocomplete="off">
+                <div class="field"><label class="f" for="naam">Naam</label>
+                    <input type="text" id="naam" name="naam" th:value="${naam} ?: 'Carla van Noort'" autocomplete="off">
+                    <span class="hint">Typ je naam precies zoals in ZCBS.</span></div>
+                <div class="field"><label class="f" for="wachtwoord">Wachtwoord</label>
+                    <input type="password" id="wachtwoord" name="wachtwoord" autocomplete="new-password" style="height:44px;padding:0 12px;border:1px solid #b9b09c;border-radius:8px;font:14px var(--sans)"></div>
+                <button class="btn btn-p" type="submit">Inloggen</button>
+            </form>
+            <p class="hint" style="margin:0">Demo: elk wachtwoord werkt, behalve het woord <b>fout</b> (om de foutmelding te zien).</p>
+        </section>
+    </main>
+</div>
+</body>
+</html>

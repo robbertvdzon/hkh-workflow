@@ -216,6 +216,7 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 | GET | `/` | Te verwerken (demo) |
 | GET | `/batch/controleren?files=..&collectie=..` | Batch controleren (demo; nummers vanaf 1711) |
 | GET | `/batches`, `/batches/demo-bezig`, `/batches/demo-klaar` | Batches (demo) |
+| GET/POST | `/demo-flow`, `/demo-flow/login`, `/demo-flow/bestanden`, `/demo-flow/voorbereiden`, `/demo-flow/start`, `/demo-flow/volgende`, `/demo-flow/records/{nr}[/voorbeeld\|/opslaan\|/later\|/terug\|/zcbs-versie]`, `/demo-flow/klaar` | **Klikbare demo van de hele flow** (inloggen tot afsluiten) met nepgegevens; zie [specs-item-bekijken-bewerken.md](specs-item-bekijken-bewerken.md). Raakt ZCBS, de exe's en sftp niet |
 | GET/POST | `/instellingen` | Instellingen |
 | GET | `/test` | Testpagina |
 | POST | `/test/start` (`startNumber`), `/test/reset` | Testrun starten / nieuwe test |
@@ -406,6 +407,7 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
   sftp-server: hernoemen, pdf2zcbs, images, upload, opruimen, archiveren, met de vinkjes per bestand.
 - **Nog niet gedaan:** de keten met de echte exe's op Windows bij HKH. Zie [testen-bij-hkh.md](testen-bij-hkh.md) voor de checklist.
 - De demoschermen (Te verwerken, Batch, Batches) zijn nog niet gekoppeld; de testpagina is de motor van de latere batch.
+- **25 oktober 2026:** er is een klikbare demo van de hele flow zoals Carla hem gaat doorlopen (menu *Hele flow*, `/demo-flow`): inloggen, nieuwe bestanden, voorbereiden, pdf2zcbs, images.exe (met een optionele mislukking), upload, records één voor één bewerken (voorbeeld, "later", vergrendeld, intussen gewijzigd, niet veilig) en afsluiten. Alleen nepdata in het geheugen (`ux`-module, `FlowDemo.kt`); nog geen koppeling met ZCBS.
 
 ## 9. Volgende stappen
 

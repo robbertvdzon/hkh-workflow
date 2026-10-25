@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Batch klaar')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div class="head">
+            <div>
+                <h1>Batch klaar <span class="demo">Demo</span></h1>
+                <p class="sub">Batch 25 oktober 2026 · Archief · afgesloten door <b th:text="${state.user}">Carla</b></p>
+            </div>
+            <form th:action="@{/demo-flow/opnieuw}" method="post"><button class="btn btn-p" type="submit">Nieuwe batch starten</button></form>
+        </div>
+        <div class="stats">
+            <div class="stat"><span class="muted">Bestanden verwerkt</span><b th:text="${state.records.size()}">12</b></div>
+            <div class="stat"><span class="muted">Records opgeslagen</span><b th:text="${state.handled()}">11</b></div>
+            <div class="stat"><span class="muted">Nog te bewerken (later)</span><b th:text="${state.later()}">1</b></div>
+        </div>
+        <section class="card pad stack" th:if="${state.later() > 0}">
+            <h2>Nog te bewerken</h2>
+            <p class="muted" style="margin:0">Deze records zijn aangemaakt maar nog niet ingevuld. Je kunt ze later in ZCBS afmaken.</p>
+            <div class="table">
+                <div class="tr" th:each="r : ${state.records}" th:if="${r.status.name() == 'LATER' or r.status.name() == 'ONVEILIG'}" style="grid-template-columns:90px minmax(0,1fr) 200px">
+                    <span class="mono" th:text="${r.nr}">11940</span><span class="mono muted" th:text="${r.file}">scan.pdf</span>
+                    <a class="btn btn-s btn-sm" th:href="${zcbsBase} + '/archief.pl?ident=' + ${r.nr} + '&upd_form=edt'" target="_blank">Open in ZCBS</a>
+                </div>
+            </div>
+        </section>
+        <section class="card pad stack">
+            <h2>Wat is er gebeurd</h2>
+            <ul class="checks-list" style="flex-direction:column">
+                <li>12 pdf's hernoemd naar 11934 t/m 11945</li><li>Tekst, pdf, small en large gemaakt met pdf2zcbs</li>
+                <li>Afbeeldingen geüpload en 12 records aangemaakt met images.exe</li><li>Tekst en pdf geüpload naar archief/ocr en archief/pdf</li>
+                <li><span th:text="${state.handled()}">11</span> records ingevuld en opgeslagen in ZCBS</li><li>100pct een back-up gegeven, werkmappen opgeruimd, originelen gearchiveerd</li>
+            </ul>
+        </section>
+    </main>
+</div>
+</body>
+</html>

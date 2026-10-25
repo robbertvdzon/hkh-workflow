@@ -30,6 +30,9 @@ starten. Zet `HKH_WORKFLOW_ADDRESS=127.0.0.1` om dat te beperken. Instelbaar met
 
 - **Te verwerken, Batch controleren, Batch bezig/klaar, Batches** — de schermen uit `docs/ZcbsServer UX.pdf`,
   nog met **demo-gegevens**.
+- **Hele flow (demo)** — klikbare demo van wat Carla gaat doen: inloggen bij ZCBS, nieuwe bestanden, voorbereiden, pdf2zcbs, images.exe,
+  upload, de records één voor één bewerken en afsluiten. Alleen nepdata; er wordt niets naar ZCBS, de exe's of de sftp-server gestuurd.
+  Open `/demo-flow`; **Opnieuw beginnen** zet alles terug.
 - **Instellingen** — mappen, paden naar `images.exe` en `pdf2zcbs.exe`, collectie, back-upmap en de sftp-server (met
   Test verbinding). Opgeslagen als JSON, die niet in git komt.
 - **Test** — verwerkt alle pdf's uit de testmap volgens het stappenplan van Carla. Elke stap start je zelf, na een

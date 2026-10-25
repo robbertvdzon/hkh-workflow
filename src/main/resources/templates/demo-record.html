@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Record bewerken')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <a class="back" th:href="@{/demo-flow/records}">← Terug naar de lijst</a>
+        <div class="head">
+            <div>
+                <h1>Record <span class="mono" th:text="${r.nr}">11934</span> <span class="demo">Demo</span></h1>
+                <p class="sub"><span class="mono" th:text="${r.file}">scan.pdf</span> · record <span th:text="${position}">1</span> van <span th:text="${state.records.size()}">12</span>
+                    <span th:if="${panel != 'onveilig'}"> · geopend om <span th:text="${lockFrom}">14:32</span>, voor anderen vergrendeld tot <span th:text="${lockUntil}">14:42</span></span></p>
+            </div>
+            <a class="btn btn-s btn-sm" th:href="${zcbsBase} + '/archief.pl?ident=' + ${r.nr} + '&upd_form=edt'" target="_blank">Open in ZCBS</a>
+        </div>
+
+        <div class="alert alert-err stack" th:if="${panel == 'onveilig'}" style="gap:10px">
+            <b>Dit record is niet veilig te bewerken in deze app.</b>
+            <span>De app begrijpt de velden van dit record niet goed genoeg (ze komen niet overeen met het ZCBS-record). Er is niets gewijzigd. Open het record in ZCBS om het daar te bewerken.</span>
+            <form th:action="@{/demo-flow/records/{nr}/later(nr=${r.nr})}" method="post" class="row-actions">
+                <a class="btn btn-p btn-sm" th:href="${zcbsBase} + '/archief.pl?ident=' + ${r.nr} + '&upd_form=edt'" target="_blank">Open in ZCBS</a>
+                <button class="btn btn-s btn-sm" type="submit">Doe ik later</button></form>
+        </div>
+
+        <form th:if="${panel != 'onveilig'}" method="post" th:action="@{/demo-flow/records/{nr}/voorbeeld(nr=${r.nr})}" class="stack" style="gap:18px">
+            <div class="alert alert-warn stack" th:if="${panel == 'vergrendeld'}" style="gap:8px">
+                <b>Record <span th:text="${r.nr}"></span> is nog ongeveer 7 minuten in gebruik bij Test Bewerker.</b>
+                <span>Je invoer is bewaard. Probeer het over een paar minuten opnieuw, of doe dit record later.</span>
+                <div class="row-actions"><button class="btn btn-p btn-sm" type="submit" th:formaction="@{/demo-flow/records/{nr}/opslaan(nr=${r.nr})}">Probeer opnieuw</button></div>
+            </div>
+            <div class="alert alert-warn stack" th:if="${panel == 'gewijzigd'}" style="gap:8px">
+                <b>Iemand heeft record <span th:text="${r.nr}"></span> aangepast terwijl jij bezig was.</b>
+                <span>Dit veld is bij jullie allebei anders:</span>
+                <div class="table"><div class="tr th" style="grid-template-columns:120px 1fr 1fr"><span>Veld</span><span>Jouw versie</span><span>Nu in ZCBS</span></div>
+                    <div class="tr" style="grid-template-columns:120px 1fr 1fr"><span>Titel</span><span class="diff-new" th:text="${myTitle}"></span><span th:text="${theirTitle}"></span></div></div>
+                <div class="row-actions">
+                    <button class="btn btn-p btn-sm" type="submit" name="force" value="ja" th:formaction="@{/demo-flow/records/{nr}/opslaan(nr=${r.nr})}">Mijn versie bewaren</button>
+                    <button class="btn btn-s btn-sm" type="submit" th:formaction="@{/demo-flow/records/{nr}/zcbs-versie(nr=${r.nr})}">Die van ZCBS gebruiken</button></div>
+            </div>
+            <div class="twocol">
+                <div class="stack">
+                    <div class="docbox"><span class="pdf" style="width:46px;height:58px;font-size:12px">PDF</span>
+                        <span>pdf van record <span class="mono" th:text="${r.nr}"></span> · <span th:text="${r.pages}">2</span> pagina's</span>
+                        <span class="hint">op de echte pagina zie je hier het document uit archief/pdf</span></div>
+                    <div class="card pad" style="padding:14px 16px"><b style="font-size:13px">Tekst uit het document (ocr)</b>
+                        <p class="muted" style="margin:6px 0 0;font-size:13.5px" th:text="${ocr}"></p></div>
+                </div>
+                <div class="card pad">
+                    <div class="fr" th:each="f : ${fields}">
+                        <label class="f" th:text="${f.label}" th:for="${f.name}">Label</label>
+                        <div th:switch="${f.kind}">
+                            <input th:case="'text'" type="text" th:id="${f.name}" th:name="${f.name}" th:value="${v[f.name]}">
+                            <textarea th:case="'area'" th:id="${f.name}" th:name="${f.name}" th:text="${v[f.name]}"></textarea>
+                            <select th:case="'select'" th:id="${f.name}" th:name="${f.name}">
+                                <option value="">— kies —</option>
+                                <option th:each="o : ${f.options}" th:value="${o}" th:text="${o}" th:selected="${o == v[f.name]}"></option>
+                            </select>
+                            <select th:case="'multi'" th:id="${f.name}" th:name="${f.name}" multiple size="6">
+                                <option th:each="o : ${f.options}" th:value="${o}" th:text="${o}" th:selected="${themes.contains(o)}"></option>
+                            </select>
+                            <div th:case="'radio'" class="opts">
+                                <label th:each="o : ${f.options}"><input type="radio" th:name="${f.name}" th:value="${o}" th:checked="${o == v[f.name]}"> <span th:text="${o}"></span></label>
+                            </div>
+                            <div class="hint" th:if="${f.hint != ''}" th:text="${f.hint}" style="margin-top:4px"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <section class="demo-box" style="margin-bottom:60px">
+                <label style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><b>Demo:</b> wat gebeurt er als je straks op <i>Opslaan</i> klikt?
+                    <select name="scenario" style="width:340px">
+                        <option value="normaal" th:selected="${scenario == 'normaal'}">Gewoon opslaan</option>
+                        <option value="vergrendeld" th:selected="${scenario == 'vergrendeld'}">Het record is vergrendeld door een collega</option>
+                        <option value="gewijzigd" th:selected="${scenario == 'gewijzigd'}">Een collega heeft het intussen aangepast</option>
+                    </select></label>
+            </section>
+            <div class="selbar">
+                <button class="btn btn-s" type="submit" th:formaction="@{/demo-flow/records/{nr}/later(nr=${r.nr})}" formnovalidate>Doe ik later</button>
+                <span style="display:flex;gap:14px;align-items:center"><span class="hint">Er is nog niets opgeslagen.</span><button class="btn btn-p" type="submit">Voorbeeld van de wijziging</button></span>
+            </div>
+        </form>
+
+    </main>
+</div>
+</body>
+</html>

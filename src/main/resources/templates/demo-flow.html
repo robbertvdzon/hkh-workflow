@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Batch')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div class="head">
+            <div>
+                <h1>Batch 25 oktober 2026 <span class="demo">Demo</span></h1>
+                <p class="sub">Archief · ingelogd als <b th:text="${state.user}">Carla</b> · alles hieronder is nepdata, er wordt niets naar ZCBS gestuurd.</p>
+            </div>
+            <form th:action="@{/demo-flow/opnieuw}" method="post"><button class="btn btn-s btn-sm" type="submit">Opnieuw beginnen</button></form>
+        </div>
+
+        <div id="stage" th:fragment="stage" class="stack" style="gap:22px">
+            <div class="strip">
+                <span class="it" th:each="p : ${phases}" th:classappend="${state.phaseDone(p.nr)} ? 'done' : (${p.nr == state.current} ? 'now' : 'todo')">
+                    <span class="n" th:text="${state.phaseDone(p.nr)} ? '✓' : ${p.nr}">1</span>
+                    <span th:text="${p.title}">Fase</span>
+                    <span class="s" th:if="${p.nr == 7 and state.records.size() > 0}" th:text="${state.handled()} + '/' + ${state.records.size()}"></span>
+                </span>
+            </div>
+
+            <!-- Fase 2: nieuwe bestanden -->
+            <section class="card pad stack" th:if="${state.current == 2}">
+                <h2>2. Nieuwe bestanden</h2>
+                <p class="muted" style="margin:0">Deze 12 pdf's staan klaar in de invoermap <span class="mono">c:\zcbs\invoer</span>. Controleer of dit de bestanden zijn die je wilt verwerken.</p>
+                <div class="table">
+                    <div class="tr th" style="grid-template-columns:minmax(0,1fr) 110px 120px"><span>Bestand</span><span>Pagina's</span><span>Gescand door</span></div>
+                    <div class="tr" th:each="f : ${inputFiles}" style="grid-template-columns:minmax(0,1fr) 110px 120px">
+                        <span style="display:flex;gap:10px;align-items:center"><span class="pdf">PDF</span><span class="mono" th:text="${f.first}">scan.pdf</span></span>
+                        <span th:text="${f.second}">2</span><span th:text="${f.third}">Ria</span>
+                    </div>
+                </div>
+                <ul class="checks-list"><li>Geen losse bestanden naast de pdf's</li><li>Geen resultaten van een vorige batch in de werkmappen</li><li>De back-upmap bestaat</li></ul>
+                <form th:action="@{/demo-flow/bestanden}" method="post"><button class="btn btn-p" type="submit">Klopt, verder</button></form>
+            </section>
+
+            <!-- Fase 3: voorbereiden -->
+            <section class="card pad stack" th:if="${state.current == 3}">
+                <h2>3. Voorbereiden</h2>
+                <p class="muted" style="margin:0">De app zocht in ZCBS het hoogste recordnummer (<span class="mono">LAST</span>): <b class="mono">11933</b>. De 12 bestanden krijgen daarom de nummers hieronder. Je kunt het beginnummer aanpassen.</p>
+                <div class="alert alert-err" th:if="${prepError}" th:text="${prepError}"></div>
+                <form th:action="@{/demo-flow/voorbereiden}" method="post" class="stack">
+                    <div class="field" style="max-width:240px"><label class="f" for="start">Eerste recordnummer</label>
+                        <input type="text" id="start" name="start" class="mono" th:value="${startInput} ?: ${state.startNr}"></div>
+                    <ul class="checks-list"><li>De nummers bestaan nog niet in ZCBS</li><li>Er zijn precies 12 nummers nodig</li></ul>
+                    <p class="hint" style="margin:0">De app maakt kopieën met het recordnummer als naam in een werkmap. De originele bestanden blijven staan.</p>
+                    <div><button class="btn btn-p" type="submit">Hernoem de kopieën en ga verder</button></div>
+                </form>
+                <p class="hint" style="margin:0">Demo: probeer eens <span class="mono">11930</span> om de controle op bestaande nummers te zien.</p>
+            </section>
+
+            <!-- Fase 4, 5, 6, 8: een stap met goedkeuring, voortgang en controle -->
+            <section class="card pad stack" th:if="${state.current == 4 or state.current == 5 or state.current == 6 or state.current == 8}" th:with="def=${phases[state.current - 1]}">
+                <h2 th:text="${def.nr} + '. ' + ${def.title}">Stap</h2>
+                <p class="muted" style="margin:0" th:text="${def.intro}"></p>
+
+                <div th:if="${!state.running() and !state.phaseDone(state.current) and !state.failed()}" class="stack">
+                    <div><b>Dit gaat de app doen</b>
+                        <ul class="plan-list"><li th:each="l : ${def.plan}" th:text="${l}"></li></ul></div>
+                    <div><b>Dit controleerde de app al</b>
+                        <ul class="checks-list"><li th:each="c : ${def.checks}" th:text="${c}"></li></ul></div>
+                    <form th:action="@{/demo-flow/start}" method="post" class="stack">
+                        <label th:if="${state.current == 5}" class="hint" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="falen" value="ja"> Demo: laat de upload bij het 9e bestand mislukken</label>
+                        <div class="row-actions"><button class="btn btn-p" type="submit" th:text="${def.runLabel}">Start</button>
+                            <span class="hint" style="align-self:center">Gaat er iets mis, dan stopt de app en maak je de rest op de oude manier af.</span></div>
+                    </form>
+                </div>
+
+                <div th:if="${state.running() or state.phaseDone(state.current) or state.failed()}" class="stack">
+                    <div class="table">
+                        <div class="tr th" th:style="'grid-template-columns:minmax(190px,2fr) 96px ' + 'repeat(' + ${def.columns.size()} + ',minmax(0,1fr))'">
+                            <span th:text="${def.rows != null} ? 'Onderdeel' : 'Record'">Record</span><span>Status</span>
+                            <span th:each="c : ${def.columns}" th:text="${c}"></span>
+                        </div>
+                        <div class="tr" th:each="r : ${state.rows()}" th:style="'grid-template-columns:minmax(190px,2fr) 96px ' + 'repeat(' + ${def.columns.size()} + ',minmax(0,1fr))'">
+                            <span th:text="${r.label}" th:classappend="${def.rows == null} ? 'mono'" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px">11934</span>
+                            <span><span class="chip" th:classappend="${r.state == 'ok'} ? 'c-ok' : (${r.state == 'busy'} ? 'c-busy' : (${r.state == 'err'} ? 'c-err' : 'c-neutral'))" th:text="${r.stateLabel}">Klaar</span></span>
+                            <span th:each="c : ${def.columns}"><span class="chip chk" th:classappend="${r.state == 'ok'} ? 'c-ok' : (${r.state == 'err'} ? 'c-err' : 'c-neutral')" th:text="${r.state == 'ok'} ? '✓' : (${r.state == 'err'} ? '✗' : '·')">✓</span></span>
+                        </div>
+                    </div>
+                    <div class="alert alert-info" th:if="${state.running()}">Bezig… deze pagina ververst vanzelf.</div>
+                    <div class="alert alert-err stack" th:if="${state.failed()}" style="gap:10px">
+                        <b>De app is gestopt bij record <span class="mono" th:text="${state.records[8].nr}">11942</span>.</b>
+                        <span>Upload mislukt: de verbinding met de website is verbroken. Voor dit en de volgende bestanden is geen record aangemaakt. Er is niets gewijzigd aan bestanden die al klaar zijn.</span>
+                        <span>Je kunt het opnieuw proberen, of de rest op de oude manier afmaken met images.exe zelf.</span>
+                        <form th:action="@{/demo-flow/opnieuw-proberen}" method="post"><button class="btn btn-p btn-sm" type="submit">Opnieuw proberen</button></form>
+                    </div>
+                    <div class="alert alert-ok stack" th:if="${state.phaseDone(state.current) and state.current < 8}" style="gap:10px">
+                        <b>Klaar en gecontroleerd.</b>
+                        <form th:action="@{/demo-flow/volgende}" method="post"><button class="btn btn-p btn-sm" type="submit">Naar de volgende stap</button></form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Fase 7: bewerken -->
+            <section class="card pad stack" th:if="${state.current == 7}">
+                <h2>7. Bewerken</h2>
+                <p class="muted" style="margin:0">De records bestaan nu in ZCBS, nog zonder gegevens. Vul ze één voor één in. Een record dat je opent, is 10 minuten voor anderen vergrendeld.</p>
+                <div class="bar"><span th:style="'width:' + ${state.handled() * 100 / state.records.size()} + '%'"></span></div>
+                <div th:text="${state.handled()} + ' van ' + ${state.records.size()} + ' opgeslagen' + (${state.later() > 0} ? ', ' + ${state.later()} + ' later' : '')" class="muted"></div>
+                <div class="row-actions"><a class="btn btn-p" th:href="@{/demo-flow/records}">Naar de records</a></div>
+            </section>
+
+            <div th:if="${state.running()}" th:attr="hx-get=@{/demo-flow/kaart}" hx-trigger="load delay:1s" hx-target="#stage" hx-swap="outerHTML"></div>
+        </div>
+    </main>
+</div>
+</body>
+</html>
