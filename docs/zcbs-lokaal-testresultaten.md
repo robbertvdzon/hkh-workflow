@@ -1,7 +1,7 @@
 # Lokale ZCBS: wat de echte code doet
 
 Datum: 25 oktober 2026. Getest op een lokale kopie van de echte ZCBS-code (`objecten.pl` 4.18q, `archief.pl`, `cgi-lib.pl`) met de archiefdata van 21 oktober, een eigen `permit.lst` met verzonnen
-testgebruikers, lege e-mailadressen en een nep `sendmail.pm` die mails in een bestand schrijft. Opzet en gebruik: [tools/zcbs-local/README.md](../tools/zcbs-local/README.md).
+testgebruikers, lege e-mailadressen en een nep `sendmail.pm` die mails in een bestand schrijft. Opzet en gebruik: [tools/zcbs-local/README.md](../oude-tests/zcbs-local/README.md).
 **Er is niets naar de echte HKH-server gestuurd.** De uitkomsten gelden voor de code zoals gedownload; de echte server kan afwijken in configuratie, hostingregels, IP-adressen en versie.
 
 ## Uitkomsten
