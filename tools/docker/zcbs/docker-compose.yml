@@ -1,34 +1,17 @@
-# Lokale ZCBS (de echte code) met sftp en gewone ftp. Alles gebruikt dezelfde map: ./files
+# Lokale ZCBS (de echte code) met sftp en gewone ftp, alles in één container. De map ./files is de public_html.
 name: zcbs
 services:
-  web:
+  zcbs:
     build: .
-    container_name: zcbs-web
+    container_name: zcbs
     ports:
-      - "127.0.0.1:8081:80"
-    volumes:
-      - ./files:/usr/local/apache2/htdocs
-
-  # sftp: dezelfde mapindeling als de echte server (/domains/historischekringheemskerk.nl/public_html)
-  sftp:
-    image: atmoz/sftp:alpine
-    container_name: zcbs-sftp
-    command: hkhadmin:hkhtest:1001
-    ports:
-      - "127.0.0.1:2222:22"
+      - "127.0.0.1:8081:80"                    # ZCBS (web)
+      - "127.0.0.1:2222:22"                    # sftp
+      - "127.0.0.1:2121:21"                    # ftp
+      - "127.0.0.1:30000-30009:30000-30009"    # ftp passief
     volumes:
       - ./files:/home/hkhadmin/domains/historischekringheemskerk.nl/public_html
-      - sftp-hostkeys:/etc/ssh      # vaste sleutels: de vingerafdruk verandert niet als de container opnieuw wordt gemaakt
-
-  # gewone ftp, zoals images.exe die gebruikt
-  ftp:
-    build: ./ftp
-    container_name: zcbs-ftp
-    ports:
-      - "127.0.0.1:2121:21"
-      - "127.0.0.1:30000-30009:30000-30009"
-    volumes:
-      - ./files:/home/hkhadmin/domains/historischekringheemskerk.nl/public_html
+      - sshkeys:/etc/ssh/keys                  # vaste sftp-sleutels
 
 volumes:
-  sftp-hostkeys:
+  sshkeys:

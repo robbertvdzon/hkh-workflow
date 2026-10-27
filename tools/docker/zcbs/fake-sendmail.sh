@@ -4,5 +4,5 @@
   echo "===== $(date) ====="
   cat
   echo
-} >> /usr/local/apache2/htdocs/mailbox.txt
+} >> /home/hkhadmin/domains/historischekringheemskerk.nl/public_html/mailbox.txt
 exit 0

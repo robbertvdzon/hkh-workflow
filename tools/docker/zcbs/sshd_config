@@ -1,0 +1,15 @@
+Port 22
+HostKey /etc/ssh/keys/ssh_host_ed25519_key
+HostKey /etc/ssh/keys/ssh_host_rsa_key
+PermitRootLogin no
+PasswordAuthentication yes
+UsePAM yes
+AllowUsers hkhadmin
+LogLevel VERBOSE
+Subsystem sftp internal-sftp
+
+Match User hkhadmin
+    ChrootDirectory /home/hkhadmin
+    ForceCommand internal-sftp
+    AllowTcpForwarding no
+    X11Forwarding no

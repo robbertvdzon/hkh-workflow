@@ -1,14 +1,16 @@
 # Lokale ZCBS in Docker
 
-De echte ZCBS-code (van Gerard van Nes) draait lokaal in Docker, met een kopie van de archiefdata, verzonnen testgebruikers en zonder echte e-mail. Er zijn drie containers:
+De echte ZCBS-code (van Gerard van Nes) draait lokaal in Docker, met een kopie van de archiefdata, verzonnen testgebruikers en zonder echte e-mail. Alles zit in **één container** (`zcbs`),
+waarin supervisord drie diensten draait:
 
-| Container | Wat | Adres |
+| Dienst | Wat | Adres |
 |---|---|---|
-| `zcbs-web` | ZCBS (Apache + Perl) | http://localhost:8081/cgi-bin/archief.pl |
-| `zcbs-sftp` | sftp, zelfde mapindeling als de echte server | `127.0.0.1`, poort `2222` |
-| `zcbs-ftp` | gewone ftp, zoals images.exe die gebruikt | `127.0.0.1`, poort `2121` (passief, `30000-30009`) |
+| Apache + Perl | ZCBS | http://localhost:8081/cgi-bin/archief.pl |
+| sshd | sftp, zelfde mapindeling als de echte server | `127.0.0.1`, poort `2222` |
+| vsftpd | gewone ftp, zoals images.exe die gebruikt | `127.0.0.1`, poort `2121` (passief, `30000-30009`) |
 
-Alle drie gebruiken dezelfde map: **`files/`**. Dat is de `public_html` van de server. Wat je uploadt of wat ZCBS opslaat, staat meteen in `files/` en dus voor alle drie zichtbaar.
+Alle drie gebruiken dezelfde map: **`files/`**. Dat is de `public_html` van de server (in de container: `/home/hkhadmin/domains/historischekringheemskerk.nl/public_html`). Wat je uploadt of wat ZCBS
+opslaat, staat meteen in `files/` en dus voor alle drie zichtbaar. Apache draait als gebruiker `hkhadmin`, dezelfde als sftp en ftp, zodat bestanden altijd door elkaar te lezen en te schrijven zijn.
 
 ## Starten
 
@@ -25,7 +27,8 @@ Open daarna http://localhost:8081/cgi-bin/archief.pl?user=reset en log in (zie h
 docker compose down
 ```
 
-Poorten 8081, 2222 en 2121 mogen niet bezet zijn. Draait de oudere opzet `tools/zcbs-local` nog, stop die dan eerst (`cd tools/zcbs-local && docker compose down`): de containers hebben dezelfde namen en poorten.
+Poorten 8081, 2222 en 2121 mogen niet bezet zijn. Draait de oudere opzet met drie containers (`zcbs-local`) nog, stop die dan eerst: de poorten zijn dezelfde.
+Logs van alle drie de diensten: `docker logs -f zcbs`.
 
 ## Inloggen (verzonnen testgebruikers)
 
@@ -49,7 +52,7 @@ De gebruikers staan in `files/cgi-bin/misc/permit.lst`. Gebruik in de browser `l
 | Wachtwoord | `hkhtest` | `hkhtest` |
 | Basismap | `/domains/historischekringheemskerk.nl/public_html` | idem |
 
-Vingerafdruk van de sftp-server: `docker exec zcbs-sftp ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`. De sleutels staan in een Docker-volume en veranderen niet als je de containers opnieuw maakt.
+Vingerafdruk van de sftp-server: `docker exec zcbs ssh-keygen -lf /etc/ssh/keys/ssh_host_ed25519_key.pub`. De sleutels staan in een Docker-volume (`sshkeys`) en veranderen niet als je de container opnieuw maakt.
 
 Met Midnight Commander (het wachtwoord moet in het adres):
 
@@ -71,7 +74,7 @@ files/
   archief/                                            large/, small/, ocr/, pdf/ (voorbeelden), logging/ (leeg)
 ```
 
-De bestanden zijn al klaar voor gebruik: alle e-mailadressen in code en config zijn `xxx@x.nl`, het permit-wachtwoord en het telefoonnummer zijn vervangen, `permit.lst` bevat alleen de testgebruikers, en `sendmail` is een nep-versie.
+De lege mappen die ZCBS, ftp en sftp nodig hebben (`addenda`, `backup1`, `archief/small`, `archief/logging`, ...) maakt de container bij het starten zelf aan als ze ontbreken. De bestanden zijn al klaar voor gebruik: alle e-mailadressen in code en config zijn `xxx@x.nl`, het permit-wachtwoord en het telefoonnummer zijn vervangen, `permit.lst` bevat alleen de testgebruikers, en `sendmail` is een nep-versie.
 Je hoeft dus niets te importeren.
 
 ## Mail, logs en wat ZCBS schrijft
@@ -86,7 +89,7 @@ Je hoeft dus niets te importeren.
 ./reset.sh
 ```
 
-Dat vervangt `files/` door een kopie van de map `initial-files/` (de beginstand, die je zelf nooit aanpast) en start de containers opnieuw. Alles wat je hebt opgeslagen of geüpload is dan weg.
+Dat vervangt `files/` door een kopie van de map `initial-files/` (de beginstand, die je zelf nooit aanpast) en start de container opnieuw. Alles wat je hebt opgeslagen of geüpload is dan weg.
 
 ## Niet in git
 
