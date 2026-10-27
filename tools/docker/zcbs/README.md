@@ -37,7 +37,8 @@
 
    ```bash
    cd tools/docker/zcbs
-   rm -rf files && cp -a initial-files files
+   rm -rf files
+   cp -a initial-files files
    ```
 
 2. **Zet de nepbestanden uit `stubs/` erbij:**
@@ -48,16 +49,7 @@
 
    `permit.lst` bevat de verzonnen testgebruikers (zie hieronder). `sendmail.pm` heeft ZCBS nodig om te starten; dit is een lege versie.
 
-3. **Pas `files/cgi-bin/archief/misc/cfg-cbs.pl` aan.** Open het bestand en verander deze twee regels (de rest laat je staan):
-
-   | Regel (begint met) | Nieuwe waarde |
-   |---|---|
-   | `$TEL_BB` | `''` (leeg, dit is een telefoonnummer) |
-   | `$PERMIT` | `'testpermit'` (het wachtwoord voor de permit-pagina) |
-
-   Houd de aanhalingstekens en het puntkomma zoals ze staan. Het bestand heeft Windows-regeleinden; bewerk het met een editor die dat laat staan (VS Code, `nano`).
-
-4. **Zet de rechten goed.** De container draait als een andere gebruiker dan jij:
+3. **Zet de rechten goed.** De container draait als een andere gebruiker dan jij:
 
    ```bash
    chmod -R a+rwX files
@@ -98,7 +90,6 @@ Poorten 8081, 2222 en 2121 mogen niet bezet zijn. Draait de oudere opzet met dri
 ```bash
 mc . sftp://hkhadmin:hkhtest@127.0.0.1:2222/domains/historischekringheemskerk.nl/public_html
 ```
-
 Of met `sftp -P 2222 hkhadmin@127.0.0.1`.
 
 ## 6. Terug naar de beginstand
