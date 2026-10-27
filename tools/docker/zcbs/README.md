@@ -86,12 +86,12 @@ Je hoeft dus niets te importeren.
 ./reset.sh
 ```
 
-Dat haalt `files/` terug uit `files.initial.tgz` en start de containers opnieuw. Alles wat je hebt opgeslagen of geüpload is dan weg.
+Dat vervangt `files/` door een kopie van de map `initial-files/` (de beginstand, die je zelf nooit aanpast) en start de containers opnieuw. Alles wat je hebt opgeslagen of geüpload is dan weg.
 
 ## Niet in git
 
-`files/` en `files.initial.tgz` staan in `.gitignore`: de ZCBS-code en de data zijn van Gerard van Nes en HKH en horen niet op een openbare plek. Op een andere computer moet je `files/` zelf neerzetten
-(dezelfde indeling als hierboven, met de serverbestanden) en `files.initial.tgz` met `tar -czf files.initial.tgz files` maken, als je `reset.sh` wilt gebruiken.
+`files/` en `initial-files/` staan in `.gitignore`: de ZCBS-code en de data zijn van Gerard van Nes en HKH en horen niet op een openbare plek. Op een andere computer moet je `files/` zelf neerzetten
+(dezelfde indeling als hierboven, met de serverbestanden), en een kopie ervan als `initial-files/`: `cp -a files initial-files`, als je `reset.sh` wilt gebruiken.
 
 ## Handig om te weten
 
