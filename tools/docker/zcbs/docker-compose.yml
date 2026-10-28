@@ -5,10 +5,12 @@ services:
     build: .
     container_name: zcbs
     ports:
-      - "127.0.0.1:8081:80"                    # ZCBS (web)
-      - "127.0.0.1:2222:22"                    # sftp
-      - "127.0.0.1:2121:21"                    # ftp
-      - "127.0.0.1:30000-30009:30000-30009"    # ftp passief
+      - "${BIND_ADDRESS:-127.0.0.1}:8081:80"                    # ZCBS (web)
+      - "${BIND_ADDRESS:-127.0.0.1}:2222:22"                    # sftp
+      - "${BIND_ADDRESS:-127.0.0.1}:2121:21"                    # ftp
+      - "${BIND_ADDRESS:-127.0.0.1}:30000-30009:30000-30009"    # ftp passief
+    environment:
+      PASV_ADDRESS: ${PASV_ADDRESS:-127.0.0.1}      # adres dat ftp aan clients doorgeeft (passieve modus)
     volumes:
       - ./files:/home/hkhadmin/domains/historischekringheemskerk.nl/public_html
       - sshkeys:/etc/ssh/keys                  # vaste sftp-sleutels

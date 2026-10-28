@@ -109,3 +109,31 @@ Of met `sftp -P 2222 hkhadmin@127.0.0.1`.
 ```bash
 ./reset.sh
 ```
+
+## 7. Vanaf een andere computer (bijvoorbeeld Windows)
+
+Standaard luistert alles alleen op de Mac zelf (`127.0.0.1`). Om ZCBS, sftp en ftp vanaf een andere computer in je netwerk te gebruiken:
+
+1. Zoek het IP-adres van je Mac: `ipconfig getifaddr en0` (wifi) of `en1` (kabel).
+2. Maak het bestand `.env` (staat in `.gitignore`) uit het voorbeeld en vul daar je IP-adres in:
+
+   ```bash
+   cp .env.example .env
+   # zet in .env: PASV_ADDRESS=<het IP-adres van je Mac>
+   ```
+
+3. Start de container opnieuw: `docker compose up -d`.
+
+Daarna werkt op de andere computer (met het IP-adres van de Mac):
+
+| Wat | Adres |
+|---|---|
+| ZCBS | `http://<ip>:8081/cgi-bin/archief.pl` |
+| sftp | `<ip>`, poort `2222`, `hkhadmin` / `hkhtest` (bijvoorbeeld met WinSCP, FileZilla, of `sftp -P 2222 hkhadmin@<ip>`) |
+| ftp | `<ip>`, poort `2121`, `hkhadmin` / `hkhtest`, passieve modus |
+
+`PASV_ADDRESS` is het adres dat de ftp-server aan de client doorgeeft voor het bestandsverkeer. Staat daar `127.0.0.1`, dan probeert een andere computer verbinding te maken met zichzelf en mislukt een lijst of een upload.
+Verandert het IP-adres van je Mac, pas het dan aan in `.env` en start opnieuw.
+
+**Veiligheid:** met `BIND_ADDRESS=0.0.0.0` kan iedereen op het netwerk bij ZCBS, sftp en ftp, met de testgebruikers en wachtwoorden uit dit README. Via ftp en sftp kan iemand bestanden in `files/` schrijven, ook `objecten.pl`.
+Doe het alleen op een netwerk dat je vertrouwt, en haal `.env` weg (en start opnieuw) zodra je klaar bent.

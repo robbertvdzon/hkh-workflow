@@ -7,6 +7,9 @@ for t in ed25519 rsa; do
 done
 touch /var/log/vsftpd.log
 
+# Het adres dat ftp aan clients doorgeeft voor passieve verbindingen (zie README, "Vanaf een andere computer").
+echo "pasv_address=${PASV_ADDRESS:-127.0.0.1}" >> /etc/vsftpd.conf
+
 # Mappen die ZCBS, ftp en sftp verwachten (lege mappen blijven niet altijd bestaan als je files/ kopieert of in git zet).
 R=/home/hkhadmin/domains/historischekringheemskerk.nl/public_html
 for d in cgi-bin/archief/addenda cgi-bin/archief/backup1 cgi-bin/archief/databases cgi-bin/archief/forms cgi-bin/archief/uitgeleend \
