@@ -16,17 +16,28 @@
 | `files/` | De werkmap: een kopie van `initial-files/` plus de aanpassingen hieronder. Dit is de `public_html` die in de container wordt gemount. ZCBS, sftp en ftp werken er alle drie in. | 
 
 ## 1. Bestanden van de server halen
-
+Minimaal:
 | Files | Waarom |
 |---|---|
 | `/cgi-bin/archief.pl` | Startscript van archief |
 | `/cgi-bin/objecten.pl` | De ZCBS-applicatie zelf |
-| `/cgi-bin/misc/cgi-lib.pl` | Leest formulieren en cookies. **Vraag de beheerder waar dit bestand staat**: `objecten.pl` zoekt het in `cgi-bin/archief/misc/` en dan in `cgi-bin/misc/`. |
+| `/cgi-bin/misc/cgi-lib.pl` | Leest formulieren en cookies|
 | `/cgi-bin/misc/httpbl.pm` | Controle op spam-IP-adressen; ZCBS laadt het bij elke bezoeker zonder cookie |
 | `/cgi-bin/archief/misc/cfg-cbs.pl` | De instellingen van archief: veldnamen en keuzelijsten |
 | `/cgi-bin/archief/misc/layout.html` | De paginasjabloon |
 | `/cgi-bin/archief/archief.txt` | Het hoofdbestand met de records |
 | `/cgi-bin/archief/updates.txt` | De wijzigingen sinds de laatste merge. Zonder dit bestand mist je de recente stand. |
+
+Volledig:
+| Files | Waarom |
+|---|---|
+| `/cgi-bin/archief.pl` | Startscript van archief |
+| `/cgi-bin/objecten.pl` | De ZCBS-applicatie zelf |
+| `/cgi-bin/misc/*` | Leest formulieren en cookies|
+| `/cgi-bin/archief/misc/*` | De instellingen van archief: veldnamen en keuzelijsten |
+| `/cgi-bin/archief/archief.txt` | Het hoofdbestand met de records |
+| `/cgi-bin/archief/updates.txt` | De wijzigingen sinds de laatste merge. Zonder dit bestand mist je de recente stand. |
+
 
 
 ## 2. Aanpassen: de werkmap `files/` maken
@@ -62,6 +73,7 @@ Vereist Docker (Docker Desktop of vergelijkbaar).
 
 ```bash
 cd tools/docker/zcbs
+docker compose down
 docker compose up --build -d
 ```
 
