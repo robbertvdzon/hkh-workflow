@@ -108,7 +108,7 @@ components:
         a18: { type: string, description: Aanvullend beschikbaar materiaal }
         a19: { type: string, description: Interne opmerking }
         a20: { type: string, description: 'Geen invoerveld. Meesturen uit a0.' }
-        a21: { type: string, example: '9679', description: 'Plaatsing op internet: 0 (neen) of een dagcode (aantal dagen sinds 9 juli 1999). Neem de waarde uit het formulier.' }
+        a21: { type: string, example: '9679', description: 'Plaatsing op internet: 0 (neen) of een dagcode `372*(jaar-2000) + 31*(maand-1) + dag` (bijvoorbeeld 27 oktober 2026 is 9978). Neem de waarde uit het formulier.' }
         a22:  { type: string, description: 'Oorspronkelijk archief (keuzelijst)' }
         a22b: { type: string }
         a23: { type: string, description: 'Geen invoerveld. Meesturen uit a0.' }
