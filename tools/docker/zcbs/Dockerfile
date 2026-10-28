@@ -11,6 +11,7 @@ RUN apt-get update \
  && chown root:root /home/hkhadmin && chmod 755 /home/hkhadmin
 
 COPY apache.conf /usr/local/apache2/conf/httpd.conf
+COPY index.html /usr/local/apache2/welcome/index.html
 COPY sshd_config /etc/ssh/sshd_config
 COPY vsftpd.conf /etc/vsftpd.conf
 COPY supervisord.conf /etc/supervisord-zcbs.conf
