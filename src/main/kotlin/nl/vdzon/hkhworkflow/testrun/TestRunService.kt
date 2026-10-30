@@ -122,16 +122,19 @@ class TestRunService(
         finishedShown = false
     }
 
-    /** Is de klaar-pagina al eens getoond? De eerste keer is dat nee (en onthouden we het); daarna moet de pagina weer bij het begin beginnen. */
     private var finishedShown = false
 
+    /**
+     * De stand voor de pagina Nieuwe bestanden, in één keer gelezen (de laatste stap loopt in een andere thread). Is de doorloop klaar
+     * en is dat al eens getoond, dan begint de pagina opnieuw bij het begin. Het overzicht van de gemaakte bestanden zit erbij zolang de pagina klaar is.
+     */
     @Synchronized
-    fun finishedAlreadyShown(): Boolean {
-        val finished = run?.let { it.nextStep() == null } == true
-        if (!finished) return false
-        if (finishedShown) return true
+    fun pageState(): Pair<FlowView, List<SummaryLine>?> {
+        if (finishedShown && run?.nextStep() == null && run != null) reset()
+        val flow = flowView()
+        if (!flow.finished) return flow to null
         finishedShown = true
-        return false
+        return flow to summary()
     }
 
     /** Alles wat deze doorloop heeft gemaakt en waar het staat: op de server (ftp) en in de back-up. */

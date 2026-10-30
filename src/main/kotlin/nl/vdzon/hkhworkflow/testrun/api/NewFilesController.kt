@@ -46,11 +46,8 @@ class NewFilesController(
     ): String {
         val settings = settingsService.get()
         // Klaar is één keer te zien; opent Carla de pagina daarna weer, dan begint ze weer bij het begin.
-        val summary = testRunService.summary()
-        val wasFinished = testRunService.flowView().finished
-        if (testRunService.finishedAlreadyShown()) testRunService.reset()
-        val flow = testRunService.flowView()
-        if (wasFinished && flow.finished) model.addAttribute("summary", summary)
+        val (flow, summary) = testRunService.pageState()
+        if (summary != null) model.addAttribute("summary", summary)
         // Standaard de eerste map met scans uit de instellingen, zodat Carla meteen bestanden ziet.
         val rootName = rootName?.takeIf { it.isNotBlank() } ?: sourceFiles.roots().firstOrNull()?.name.takeIf { flow.current == 2 }
         model.addAttribute("active", "nieuw")
