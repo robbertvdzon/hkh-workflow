@@ -145,3 +145,6 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 .leftovers.stack{border:1px solid var(--busy);border-radius:10px;padding:16px;background:#fffaf0}
 
 .tr.groupstart{border-top:1px solid var(--line)}
+
+/* Knop die het onthouden antwoord (alleen Enter) geeft. */
+.btn-suggested { border-color: var(--accent, #1f5068); box-shadow: 0 0 0 2px var(--accent, #1f5068); font-weight: 700; }

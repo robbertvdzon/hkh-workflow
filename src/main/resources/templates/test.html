@@ -117,7 +117,8 @@
                         <div th:if="${console.running and console.mode.name() == 'IN_APP' and !console.auto and console.suggestion != null}" id="suggest"
                              th:attr="data-key=${console.question + '#' + console.inputsSent},data-answer=${console.suggestion}" class="alert alert-info" style="margin-bottom:8px">
                             Onthouden antwoord op deze vraag: <b th:text="${console.suggestion.isEmpty()} ? '(alleen Enter)' : ${console.suggestion}"></b>.
-                            Het staat al in het invoerveld; druk op Enter of Verstuur om het te gebruiken, of typ iets anders.
+                            <span th:if="${console.suggestion.isEmpty()}">Dat is een lege regel, dus er staat niets in het invoerveld: druk op de gemarkeerde knop <b>Enter</b> om het te gebruiken, of typ iets anders.</span>
+                            <span th:unless="${console.suggestion.isEmpty()}">Het staat al in het invoerveld; druk op Enter of Verstuur om het te gebruiken, of typ iets anders.</span>
                         </div>
                         <pre class="console" id="console-out" th:text="${console.output.isEmpty() ? (console.mode.name() == 'WINDOW' ? 'Het programma draait in een eigen venster. Beantwoord de vragen daar; sluit het venster als het klaar is.' : '(nog geen uitvoer)') : console.output}"></pre>
                         <div class="hint" style="margin-top:6px">Commando: <span class="mono" th:text="${console.command}"></span> · log: <span class="mono" th:text="${console.logFile}"></span></div>
@@ -129,7 +130,7 @@
                         <input type="text" id="line" name="line" autocomplete="off" placeholder="Typ een antwoord en druk op Enter" autofocus>
                         <button class="btn btn-p" type="submit">Verstuur</button>
                     </form>
-                    <button class="btn btn-s" hx-post="/test/console/input" hx-vals='{"line":""}' hx-swap="none">Enter</button>
+                    <button class="btn btn-s" id="enter-btn" hx-post="/test/console/input" hx-vals='{"line":""}' hx-swap="none">Enter</button>
                     <button class="btn btn-s" hx-post="/test/console/input" hx-vals='{"line":"j"}' hx-swap="none">J</button>
                     <button class="btn btn-s" hx-post="/test/console/input" hx-vals='{"line":"n"}' hx-swap="none">N</button>
                     <form method="post" th:action="@{/test/console/stop}"><button class="btn btn-s" type="submit" style="color:var(--err)">Stop programma</button></form>

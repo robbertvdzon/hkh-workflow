@@ -10,11 +10,22 @@ function scrollConsole() {
 var lastSuggestion = null;
 function fillSuggestion() {
     var el = document.getElementById('suggest'), line = document.getElementById('line');
-    if (!el || !line) return;
+    var enter = document.getElementById('enter-btn');
+    if (!line) return;
+    if (!el) {
+        lastSuggestion = null;
+        line.placeholder = 'Typ een antwoord en druk op Enter';
+        if (enter) enter.classList.remove('btn-suggested');
+        return;
+    }
     var key = el.getAttribute('data-key');
     if (key === lastSuggestion) return;
     lastSuggestion = key;
-    line.value = el.getAttribute('data-answer') || '';
+    var answer = el.getAttribute('data-answer') || '';
+    line.value = answer;
+    // Een leeg onthouden antwoord (alleen Enter) is niet te zien in het veld: maak het zichtbaar.
+    line.placeholder = answer === '' ? 'Onthouden antwoord: alleen Enter (druk op Enter)' : 'Typ een antwoord en druk op Enter';
+    if (enter) enter.classList.toggle('btn-suggested', answer === '');
     line.focus();
     line.select();
 }
