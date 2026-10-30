@@ -27,6 +27,7 @@ class FreeNumbers(ranges: List<NumberRange>, val width: Int, val last: Long? = n
 
     /** Een bruikbaar beginnummer: direct na het laatste record als daar ruimte is, anders het begin van de eerste reeks die groot genoeg is. */
     fun suggest(count: Int): Long? {
+        if (count <= 0) return null
         last?.let { if (check(it + 1, count) == null) return it + 1 }
         return withRoom(count).firstOrNull()?.from
     }

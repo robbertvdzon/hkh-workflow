@@ -45,6 +45,7 @@ class TestRunService(
     private val itemEditService: ItemEditService,
     private val sourceFiles: SourceFilesService,
     private val processed: ProcessedLog,
+    private val input: InputFolder,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -55,17 +56,32 @@ class TestRunService(
     @Volatile
     private var filesConfirmed: Boolean = false
 
+    /** De gebruiker voor wie de bestanden in de invoermap bij deze doorloop horen ("" zonder inlog), of null als dat nog niet bevestigd is. */
+    @Volatile
+    private var inputAcceptedFor: String? = null
+
+    /** De bestanden die nu in de invoermap staan horen bij deze doorloop (Carla heeft ze zelf gekozen of zegt dat ze erbij horen). */
     @Synchronized
-    fun confirmFiles() { filesConfirmed = true }
+    fun acceptInput() { inputAcceptedFor = input.user() }
+
+    /** De invoermap van de ingelogde gebruiker, of null als de invoermap niet is ingesteld. */
+    fun inputFolder(): Path? = input.path()
+
+    /** @return een melding als er nog resten van een eerdere run staan, anders null. */
+    @Synchronized
+    fun confirmFiles(): String? {
+        if (leftovers().isNotEmpty()) return LEFTOVERS_MESSAGE
+        if (pdfsInTestFolder().isEmpty()) return "Er staan geen pdf's in je invoermap. Kies eerst bestanden en kopieer ze."
+        filesConfirmed = true
+        return null
+    }
 
     @Synchronized
     fun reopenFiles() { filesConfirmed = false }
 
-    /** Pdf's die nu in de testmap staan (alleen de map zelf, geen submappen). */
+    /** Pdf's die nu in de invoermap van de gebruiker staan (alleen de map zelf, geen submappen). */
     fun pdfsInTestFolder(): List<Path> {
-        val folder = settingsService.get().testFolder
-        if (folder.isBlank()) return emptyList()
-        val dir = Path.of(folder)
+        val dir = input.path() ?: return emptyList()
         if (!Files.isDirectory(dir)) return emptyList()
         return dir.listDirectoryEntries()
             .filter { it.isRegularFile() && it.extension.equals("pdf", ignoreCase = true) }
@@ -76,9 +92,7 @@ class TestRunService(
     fun start(startNumber: String) {
         stopPrevious()
         val settings = settingsService.get()
-        require(settings.testFolder.isNotBlank()) { "Stel eerst de testmap in bij Instellingen." }
-        val testFolder = Path.of(settings.testFolder)
-        require(Files.isDirectory(testFolder)) { "De testmap bestaat niet: $testFolder" }
+        val testFolder = input.ensure()
         val pdfs = pdfsInTestFolder()
         require(pdfs.isNotEmpty()) { "Er staan geen pdf's in de testmap." }
 
@@ -100,6 +114,7 @@ class TestRunService(
         stopPrevious()
         run = null
         filesConfirmed = false
+        inputAcceptedFor = null
     }
 
     /**
@@ -111,6 +126,7 @@ class TestRunService(
     fun prepare(startNumber: String): String? {
         val pdfs = pdfsInTestFolder()
         if (pdfs.isEmpty()) return "Er staan geen pdf's in de invoermap."
+        if (leftovers().isNotEmpty()) return LEFTOVERS_MESSAGE
         val start = startNumber.trim().toLongOrNull() ?: return "Geef een beginnummer van alleen cijfers op."
         val free = itemEditService.freeNumbers()
             ?: return "ZCBS gaf de lijst met vrije nummers niet. Is je sessie verlopen, heb je geen recht om records aan te maken, of is ZCBS niet bereikbaar? Log opnieuw in."
@@ -168,6 +184,97 @@ class TestRunService(
             PhaseView(nr, title, when { nr < phase -> "done"; nr == phase -> "now"; else -> "todo" }, notes[nr])
         }
         return FlowView(phases, phase, phase == 7, review, v)
+    }
+
+    // ---- Resten van een eerdere run ----
+
+    /**
+     * Wat er nog in de mappen van pdf2zcbs.exe en images.exe staat van een eerdere run (of van handwerk): pdf's naast pdf2zcbs, de uitvoer in
+     * `output` (behalve `log` en `updates.txt`), de bestanden in `images` en de resultaten in `small`, `large` en `100pct`.
+     */
+    fun leftovers(): List<Leftover> {
+        val l = Layout(settingsService.get())
+        fun regular(dir: Path, deep: Boolean, skip: (Path) -> Boolean = { false }): List<Path> {
+            if (!Files.isDirectory(dir)) return emptyList()
+            return runCatching {
+                if (deep) Files.walk(dir).use { w -> w.filter { Files.isRegularFile(it) && !skip(it) }.sorted().toList() }
+                else dir.listDirectoryEntries().filter { it.isRegularFile() && !skip(it) }.sortedBy { it.name }
+            }.getOrDefault(emptyList())
+        }
+        return buildList {
+            // Wat al in de invoermap staat zonder dat Carla het in deze doorloop koos, is van een eerdere keer.
+            input.path()?.takeIf { run == null && inputAcceptedFor != input.user() }?.let { dir ->
+                // Zonder inlog is dit de gemeenschappelijke map: de map met resten daarin telt dan niet mee.
+                val own = dir == input.base()
+                regular(dir, true) { own && dir.relativize(it).getName(0).toString() == InputFolder.LEFTOVERS_DIR }.takeIf { it.isNotEmpty() }
+                    ?.let { add(Leftover("invoer", "de invoermap (${dir.fileName})", dir, it)) }
+            }
+            l.p2z?.let { dir ->
+                regular(dir, false) { !it.extension.equals("pdf", ignoreCase = true) }.takeIf { it.isNotEmpty() }?.let { add(Leftover("pdf2zcbs", "pdf2zcbs: pdf's in de map van het programma", dir, it)) }
+                val out = dir.resolve("output")
+                regular(out, true) { out.relativize(it).getName(0).toString() == "log" || it.name == "updates.txt" }.takeIf { it.isNotEmpty() }
+                    ?.let { add(Leftover("pdf2zcbs", "pdf2zcbs: de map output", dir, it)) }
+            }
+            l.img?.let { dir ->
+                regular(dir.resolve("images"), false).takeIf { it.isNotEmpty() }?.let { add(Leftover("images", "images.exe: bronbestanden in de map images", dir, it)) }
+                listOf("small", "large", "100pct").forEach { sub ->
+                    regular(dir.resolve(sub), true).takeIf { it.isNotEmpty() }?.let { add(Leftover("images", "images.exe: de map $sub", dir, it)) }
+                }
+            }
+        }
+    }
+
+    /** De map waar resten naartoe gaan: de instelling, of de submap `resten` van de gemeenschappelijke invoermap (per gebruiker een eigen submap). */
+    fun leftoversTarget(): Path? {
+        val s = settingsService.get()
+        s.leftoversFolder.trim().takeIf { it.isNotEmpty() }?.let { return Path.of(it) }
+        val base = input.base()?.resolve(InputFolder.LEFTOVERS_DIR) ?: return null
+        return input.user().takeIf { it.isNotEmpty() }?.let { base.resolve(InputFolder.folderName(it)) } ?: base
+    }
+
+    /**
+     * Ruimt de resten op: verplaatst ze naar een submap met datum en tijd van [leftoversTarget] (en behoudt de mapstructuur), of verwijdert ze.
+     * Alleen de bestanden uit [leftovers]; lege mappen daaronder verdwijnen. Alleen als er geen doorloop of programma bezig is.
+     * @return een melding over wat er gebeurd is, of waarom het niet kan.
+     */
+    @Synchronized
+    fun clearLeftovers(move: Boolean): String {
+        if (run != null) return "Er is al een doorloop bezig. Begin eerst opnieuw."
+        if (exeRunner.isRunning()) return "Er draait nog een programma."
+        val items = leftovers()
+        if (items.isEmpty()) return "Er stond niets meer om op te ruimen."
+        val total = items.sumOf { it.files.size }
+        val target = if (move) {
+            val root = leftoversTarget() ?: return "Stel eerst de invoermap of de map voor resten in bij Instellingen."
+            root.resolve(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")))
+        } else null
+        try {
+            items.forEach { item ->
+                val area = item.area
+                item.files.forEach { file ->
+                    check(file.toAbsolutePath().normalize().startsWith(item.base.toAbsolutePath().normalize())) { "Weigert iets buiten de map van het programma aan te raken: $file" }
+                    if (target != null) {
+                        val dest = target.resolve(area).resolve(item.base.relativize(file).toString())
+                        Files.createDirectories(dest.parent)
+                        Files.move(file, dest)
+                    } else Files.delete(file)
+                }
+            }
+            val l = Layout(settingsService.get())
+            listOfNotNull(l.p2zOutput(), l.img?.resolve("small"), l.img?.resolve("large"), l.img?.resolve("100pct"), input.path()?.resolve("werk")).forEach { pruneEmptyDirs(it) }
+            if (items.any { it.area == "invoer" }) inputAcceptedFor = null
+        } catch (e: Exception) {
+            log.warn("Resten opruimen mislukt: {}", e.message)
+            return "Opruimen is niet helemaal gelukt: ${e.message ?: e.javaClass.simpleName}. Controleer de mappen van de programma's."
+        }
+        log.info("{} bestanden van een eerdere run {}", total, if (target != null) "verplaatst naar $target" else "verwijderd")
+        return if (target != null) "$total bestanden verplaatst naar $target." else "$total bestanden verwijderd."
+    }
+
+    /** Verwijdert lege (sub)mappen onder [dir], en [dir] zelf als die leeg is. */
+    private fun pruneEmptyDirs(dir: Path) {
+        if (!Files.isDirectory(dir)) return
+        Files.walk(dir).use { w -> w.sorted(Comparator.reverseOrder()).filter { Files.isDirectory(it) }.toList() }.forEach { runCatching { Files.deleteIfExists(it) } }
     }
 
     /** Een nieuwe test begint schoon: een nog lopend programma wordt gestopt en de console leeggemaakt. */
@@ -743,6 +850,7 @@ class TestRunService(
     }
 
     private companion object {
+        const val LEFTOVERS_MESSAGE = "Er staan nog bestanden van een eerdere run in je invoermap of in de mappen van pdf2zcbs.exe of images.exe. Verplaats of verwijder ze eerst (of kies bij je invoermap voor \"horen erbij\")."
         const val UPLOAD_QUESTION = "UPLOADEN aangemaakte images"
         const val RECORDS_QUESTION = "AANMAKEN en UPLOADEN van de bijbehorende"
     }

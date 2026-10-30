@@ -36,7 +36,8 @@ De app begint met **inloggen bij ZCBS**, daarna kies je de **collectie** (nu all
 [docs/specs-nieuwe-bestanden.md](docs/specs-nieuwe-bestanden.md).
 
 - **Nieuwe bestanden in ZCBS zetten** — de flow van Carla, volgens het stappenplan van Jan, in zes fasen met een overzicht en een knop per stap:
-  1. **Bestanden kiezen**: bladeren door de mappen met scans op K: (Jelly en Ria), aanvinken (Shift-klik kiest "X t/m Y") en naar de invoermap kopiëren.
+  1. **Bestanden kiezen**: bladeren door de mappen met scans op K: (de eerste uit de instellingen staat meteen open), aanvinken (Shift-klik kiest "X t/m Y") en naar je eigen invoermap kopiëren
+     (een submap met je ZCBS-naam). Staat er nog werk van een eerdere keer in je invoermap of in de mappen van de programma's, dan moet je dat eerst verplaatsen of verwijderen.
   2. **Nummers**: de vrije nummers uit ZCBS (zoals bij een nieuw record) en het laatste record; een beginnummer kiezen. De bestanden moeten aaneengesloten in een vrije reeks passen.
   3. **pdf2zcbs.exe**, daarna controleren (afbeelding, tekst, pdf).
   4. **images.exe**, daarna controleren. Handmatig typen: de app onthoudt de antwoorden en stelt ze de volgende keer voor; automatisch gebruikt hij de onthouden antwoorden.

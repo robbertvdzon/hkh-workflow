@@ -45,7 +45,8 @@ class NewFilesController(
     ): String {
         val settings = settingsService.get()
         val flow = testRunService.flowView()
-        val rootName = rootName?.takeIf { it.isNotBlank() }
+        // Standaard de eerste map met scans uit de instellingen, zodat Carla meteen bestanden ziet.
+        val rootName = rootName?.takeIf { it.isNotBlank() } ?: sourceFiles.roots().firstOrNull()?.name.takeIf { flow.current == 1 }
         model.addAttribute("active", "nieuw")
         model.addAttribute("returnTo", "/nieuw")
         model.addAttribute("settings", settings)
@@ -53,6 +54,10 @@ class NewFilesController(
         model.addAttribute("run", flow.run)
         model.addAttribute("console", exeRunner.snapshot())
         model.addAttribute("settingsProblems", settingsProblems())
+        val leftovers = if (flow.current <= 2 && flow.run == null) testRunService.leftovers() else emptyList()
+        model.addAttribute("leftovers", leftovers)
+        model.addAttribute("leftoversTarget", testRunService.leftoversTarget()?.toString().orEmpty())
+        model.addAttribute("inputFolder", testRunService.inputFolder()?.toString().orEmpty())
         when (flow.current) {
             1 -> {
                 val pdfs = testRunService.pdfsInTestFolder().map {
@@ -119,6 +124,7 @@ class NewFilesController(
         redirect: RedirectAttributes,
     ): String = attempt(redirect, "bron" to rootName, "pad" to path) {
         val result = sourceFiles.copy(rootName, path, files.orEmpty())
+        testRunService.acceptInput()
         val skipped = if (result.skipped.isEmpty()) "" else " Overgeslagen: ${result.skipped.joinToString()}."
         redirect.addFlashAttribute("info", "${result.copied.size} bestanden gekopieerd naar de invoermap. De originelen blijven staan.$skipped")
         null
@@ -134,7 +140,17 @@ class NewFilesController(
     ): String = attempt(redirect, *listOfNotNull(rootName?.takeIf { it.isNotBlank() }?.let { "bron" to it }, rootName?.takeIf { it.isNotBlank() }?.let { "pad" to path }).toTypedArray()) { sourceFiles.removeCopy(name); null }
 
     @PostMapping("/nieuw/bestanden/bevestig")
-    fun confirm(redirect: RedirectAttributes): String = attempt(redirect) { testRunService.confirmFiles(); null }
+    fun confirm(redirect: RedirectAttributes): String = attempt(redirect) { testRunService.confirmFiles() }
+
+    /** Resten van een eerdere run uit de mappen van de programma's halen: verplaatsen of verwijderen. */
+    @PostMapping("/nieuw/resten")
+    fun leftovers(@RequestParam("actie") action: String, redirect: RedirectAttributes): String = attempt(redirect) {
+        if (action == "accepteer") {
+            testRunService.acceptInput()
+            redirect.addFlashAttribute("info", "De bestanden in je invoermap horen erbij.")
+        } else redirect.addFlashAttribute("info", testRunService.clearLeftovers(move = action == "verplaats"))
+        null
+    }
 
     @PostMapping("/nieuw/bestanden/andere")
     fun reselect(redirect: RedirectAttributes): String = attempt(redirect) { testRunService.reopenFiles(); null }

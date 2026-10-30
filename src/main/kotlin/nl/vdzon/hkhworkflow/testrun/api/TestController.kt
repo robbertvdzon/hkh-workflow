@@ -34,6 +34,7 @@ class TestController(
         model.addAttribute("active", "test")
         model.addAttribute("returnTo", "/test")
         model.addAttribute("settings", settings)
+        model.addAttribute("inputFolder", testRunService.inputFolder()?.toString().orEmpty())
         model.addAttribute("problems", settingsService.check(settings) + settingsService.checkExtras(settings))
         model.addAttribute("pdfs", testRunService.pdfsInTestFolder().map { PdfRow(it.fileName.toString(), sourceFiles.origin(it.fileName.toString())?.by.orEmpty()) })
         model.addAttribute("run", testRunService.view())

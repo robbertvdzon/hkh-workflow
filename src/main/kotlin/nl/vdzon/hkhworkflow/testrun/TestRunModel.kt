@@ -130,6 +130,15 @@ data class TestRunView(
 )
 
 
+/**
+ * Wat een eerdere run in de map van een programma (of in de invoermap van de gebruiker) heeft laten staan: [files] staan onder [base]; [area] is
+ * `pdf2zcbs`, `images` of `invoer`. pdf2zcbs wist zijn `output` bij de start
+ * en images.exe zou oude small, large en 100pct opnieuw uploaden, dus dit moet weg of opzij voordat een nieuwe doorloop begint.
+ */
+data class Leftover(val area: String, val label: String, val base: Path, val files: List<Path>) {
+    val names: List<String> get() = files.map { base.relativize(it).toString() }
+}
+
 /** Eén fase in de balk bovenaan de pagina Nieuwe bestanden. [state] is done, now of todo. */
 data class PhaseView(val nr: Int, val title: String, val state: String, val note: String?)
 

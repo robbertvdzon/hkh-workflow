@@ -41,13 +41,13 @@ data class CopyResult(val copied: List<String>, val skipped: List<String>)
  * vinden maar blijkt uit de bronmap: die wordt per bestand onthouden.
  */
 @Service
-class SourceFilesService(private val settingsService: SettingsService, private val processed: ProcessedLog) {
+class SourceFilesService(private val settingsService: SettingsService, private val processed: ProcessedLog, private val input: InputFolder) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val dateFormat = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm").withZone(ZoneId.systemDefault())
 
     fun roots(): List<SourceRoot> = settingsService.get().sourceRoots()
 
-    private fun originsFile(): Path? = settingsService.get().testFolder.trim().takeIf { it.isNotEmpty() }?.let { Path.of(it).resolve("herkomst.tsv") }
+    private fun originsFile(): Path? = input.path()?.resolve("herkomst.tsv")
 
     /** De map onder de bronmap [rootName], op [relPath] (met `/`). Weigert paden die buiten de bronmap uitkomen. */
     private fun resolve(root: SourceRoot, relPath: String): Path {
@@ -84,10 +84,7 @@ class SourceFilesService(private val settingsService: SettingsService, private v
     /** Kopieert de gekozen pdf's (op naam) uit één map naar de invoermap. Al aanwezige bestanden worden overgeslagen. */
     @Synchronized
     fun copy(rootName: String, relPath: String, names: List<String>): CopyResult {
-        val s = settingsService.get()
-        require(s.testFolder.isNotBlank()) { "Stel eerst de invoermap in bij Instellingen." }
-        val target = Path.of(s.testFolder)
-        require(Files.isDirectory(target)) { "De invoermap bestaat niet: $target" }
+        val target = input.ensure()
         require(names.isNotEmpty()) { "Kies minstens één bestand." }
         val root = root(rootName)
         val dir = resolve(root, relPath)
@@ -118,10 +115,9 @@ class SourceFilesService(private val settingsService: SettingsService, private v
     /** Haalt een bestand dat de app zelf in de invoermap heeft gezet weer weg (de kopie; het origineel blijft staan). */
     @Synchronized
     fun removeCopy(name: String) {
-        val s = settingsService.get()
-        require(s.testFolder.isNotBlank()) { "Stel eerst de invoermap in bij Instellingen." }
+        val folder = requireNotNull(input.path()) { "Stel eerst de invoermap in bij Instellingen." }
         require(name == Path.of(name).fileName.toString()) { "Ongeldige bestandsnaam." }
-        Files.deleteIfExists(Path.of(s.testFolder).resolve(name))
+        Files.deleteIfExists(folder.resolve(name))
         forget(listOf(name))
     }
 

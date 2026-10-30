@@ -47,6 +47,7 @@ class TestRunServiceTest {
     private lateinit var zcbs: FakeZcbs
     private lateinit var runner: ExeRunner
     private lateinit var processed: ProcessedLog
+    private lateinit var input: InputFolder
 
     private fun fake(name: String, into: Path, asName: String): Path {
         Files.createDirectories(into)
@@ -82,7 +83,8 @@ class TestRunServiceTest {
         items = ItemEditService(settings)
         runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
         processed = ProcessedLog(settings, properties)
-        service = TestRunService(settings, runner, SftpService(settings), items, SourceFilesService(settings, processed), processed)
+        input = InputFolder(settings, items)
+        service = TestRunService(settings, runner, SftpService(settings), items, SourceFilesService(settings, processed, input), processed, input)
     }
 
     @AfterEach
@@ -125,6 +127,13 @@ class TestRunServiceTest {
             val result = runNext()
             assertEquals("DONE", result.status, "${result.type}: ${result.message}")
         }
+    }
+
+    /** Zet de pdf's uit de gemeenschappelijke invoermap in de map van de ingelogde gebruiker, zoals de app ze daar zou neerzetten. */
+    private fun useUserFolder(): Path {
+        val mine = input.ensure()
+        listOf("xx01.pdf", "xx02.pdf", "notes.txt").forEach { Files.move(inbox.resolve(it), mine.resolve(it)) }
+        return mine
     }
 
     private fun filesIn(path: Path): List<String> =
@@ -231,8 +240,10 @@ class TestRunServiceTest {
     @Test
     fun `de flow loopt in zes fasen met een controle na pdf2zcbs en na images`() {
         assertEquals(null, items.login("Test Beheerder", "Beheer1"))
+        val mine = useUserFolder()
         assertEquals(1, service.flowView().current, "eerst de bestanden kiezen")
-        service.confirmFiles()
+        service.acceptInput()
+        assertNull(service.confirmFiles())
         assertEquals(2, service.flowView().current, "dan de nummers")
 
         // een reeks die niet aaneengesloten past (11 bestaat al) wordt geweigerd; er is dan niets gekopieerd
@@ -240,11 +251,11 @@ class TestRunServiceTest {
         assertTrue(service.prepare("90000010")!!.contains("passen niet"))
         assertTrue(service.prepare("abc")!!.contains("alleen cijfers"))
         assertEquals(2, service.flowView().current)
-        assertFalse(Files.exists(inbox.resolve("werk")))
+        assertFalse(Files.exists(mine.resolve("werk")))
 
         // 12 en 13 zijn vrij en sluiten aan
         assertEquals(null, service.prepare("90000012"))
-        assertEquals(listOf("90000012.pdf", "90000013.pdf"), filesIn(inbox.resolve("werk")))
+        assertEquals(listOf("90000012.pdf", "90000013.pdf"), filesIn(mine.resolve("werk")))
         assertEquals(3, service.flowView().current)
         assertEquals(listOf("done", "done", "now", "todo", "todo", "todo"), service.flowView().phases.map { it.state })
         assertEquals("90000012 t/m 90000013", service.flowView().phases[1].note)
@@ -280,22 +291,25 @@ class TestRunServiceTest {
         assertEquals(7, done.current)
         assertEquals(listOf("90000012.jpg", "90000013.jpg"), filesIn(backup))
         assertEquals(listOf("90000012.pdf", "90000013.pdf"), filesIn(backupPdf))
-        assertEquals(listOf("notes.txt"), filesIn(inbox))
+        assertEquals(listOf("notes.txt"), filesIn(mine), "de kopieën en de werkmap zijn opgeruimd")
         assertEquals(listOf("Test Beheerder", "Test Beheerder"), processed.all().map { it.user })
     }
 
     @Test
     fun `de nummers moeten allemaal in een vrije reeks passen`() {
         assertEquals(null, items.login("Test Beheerder", "Beheer1"))
+        val mine = useUserFolder()
+        service.acceptInput()
         zcbs.addRecord("edit-leeg.html", "00000003")
         // de vrije nummers zijn 1-2 en 4 en hoger: twee bestanden passen op 1 en 2, maar niet op 2 en 3
         assertTrue(service.prepare("00000002")!!.contains("passen niet"))
         assertEquals(null, service.prepare("00000001"))
-        assertEquals(listOf("00000001.pdf", "00000002.pdf"), filesIn(inbox.resolve("werk")), "voorloopnullen blijven staan")
+        assertEquals(listOf("00000001.pdf", "00000002.pdf"), filesIn(mine.resolve("werk")), "voorloopnullen blijven staan")
     }
 
     @Test
     fun `zonder lijst met vrije nummers uit ZCBS start er niets`() {
+        service.acceptInput()
         assertTrue(service.prepare("90000000")!!.contains("vrije nummers"), "niet ingelogd")
         assertFalse(Files.exists(inbox.resolve("werk")))
     }
@@ -411,6 +425,152 @@ class TestRunServiceTest {
         service.retry(failed.id)
         assertEquals("DONE", runNext().status)
         assertEquals(listOf("10.txt", "11.txt"), filesIn(remote("/public_html/archief/ocr")))
+    }
+
+    // ---- resten van een eerdere run ----
+
+    private fun makeLeftovers() {
+        Files.createDirectories(p2zDir.resolve("output/ocr"))
+        Files.writeString(p2zDir.resolve("output/ocr/555.txt"), "oud")
+        Files.createDirectories(p2zDir.resolve("output/log"))
+        Files.writeString(p2zDir.resolve("output/log/pdf2zcbs.log"), "blijft")
+        Files.writeString(p2zDir.resolve("output/updates.txt"), "blijft")
+        Files.writeString(p2zDir.resolve("777.pdf"), "pdf van iemand anders")
+        Files.createDirectories(imgDir.resolve("images"))
+        Files.writeString(imgDir.resolve("images/555.jpg"), "bron")
+        Files.createDirectories(imgDir.resolve("small"))
+        Files.writeString(imgDir.resolve("small/555.jpg"), "klein")
+    }
+
+    @Test
+    fun `een schone werkplek heeft geen resten, en logs en het programma zelf tellen niet`() {
+        service.acceptInput()
+        Files.writeString(imgDir.resolve("log-261019-2000.txt"), "log")
+        assertEquals(emptyList(), service.leftovers())
+    }
+
+    @Test
+    fun `resten van een eerdere run worden gevonden, behalve de logs`() {
+        service.acceptInput()
+        makeLeftovers()
+        val found = service.leftovers()
+        assertEquals(
+            listOf("pdf2zcbs: pdf's in de map van het programma", "pdf2zcbs: de map output", "images.exe: bronbestanden in de map images", "images.exe: de map small"),
+            found.map { it.label },
+        )
+        assertEquals(listOf("output/ocr/555.txt"), found[1].names, "output/log en updates.txt blijven buiten beschouwing")
+    }
+
+    @Test
+    fun `zolang er resten zijn gaat de flow niet verder`() {
+        service.acceptInput()
+        makeLeftovers()
+        assertTrue(service.confirmFiles()!!.contains("eerdere run"))
+        assertEquals(1, service.flowView().current)
+        assertTrue(service.prepare("10")!!.contains("eerdere run"))
+        assertFalse(Files.exists(inbox.resolve("werk")))
+    }
+
+    @Test
+    fun `resten verplaatsen zet ze in een submap met dezelfde indeling en laat de rest met rust`() {
+        service.acceptInput()
+        makeLeftovers()
+        val message = service.clearLeftovers(move = true)
+        assertTrue(message.contains("4 bestanden") || message.contains("bestanden verplaatst"), message)
+        assertEquals(emptyList(), service.leftovers())
+        val target = inbox.resolve("resten").listDirectoryEntries().single()
+        assertEquals("oud", Files.readString(target.resolve("pdf2zcbs/output/ocr/555.txt")))
+        assertEquals("pdf van iemand anders", Files.readString(target.resolve("pdf2zcbs/777.pdf")))
+        assertEquals("bron", Files.readString(target.resolve("images/images/555.jpg")))
+        assertEquals("klein", Files.readString(target.resolve("images/small/555.jpg")))
+        assertTrue(Files.exists(p2zDir.resolve("output/log/pdf2zcbs.log")), "het log van pdf2zcbs blijft staan")
+        assertTrue(Files.exists(p2zDir.resolve("output/updates.txt")))
+        assertTrue(Files.exists(p2zDir.resolve("pdf2zcbs.sh")), "het programma zelf blijft staan")
+        assertFalse(Files.exists(imgDir.resolve("small")), "lege mappen verdwijnen")
+        assertTrue(Files.isDirectory(imgDir.resolve("images")), "de invoermap van images.exe blijft")
+        assertNull(service.confirmFiles())
+        assertEquals(2, service.flowView().current)
+    }
+
+    @Test
+    fun `resten verplaatsen gaat naar de ingestelde map voor resten`() {
+        service.acceptInput()
+        makeLeftovers()
+        val custom = dir.resolve("k-resten")
+        save { it.copy(leftoversFolder = custom.toString()) }
+        service.clearLeftovers(move = true)
+        assertEquals(1, custom.listDirectoryEntries().size)
+        assertFalse(Files.exists(inbox.resolve("resten")))
+    }
+
+    @Test
+    fun `resten verwijderen wist alleen die bestanden`() {
+        service.acceptInput()
+        makeLeftovers()
+        assertTrue(service.clearLeftovers(move = false).contains("verwijderd"))
+        assertEquals(emptyList(), service.leftovers())
+        assertFalse(Files.exists(inbox.resolve("resten")))
+        assertTrue(Files.exists(p2zDir.resolve("pdf2zcbs.sh")))
+        assertTrue(Files.exists(p2zDir.resolve("output/updates.txt")))
+    }
+
+    @Test
+    fun `bestanden die al in de invoermap staan zijn ook een rest, tot ze erbij horen`() {
+        val found = service.leftovers().single()
+        assertEquals("invoer", found.area)
+        assertEquals(listOf("notes.txt", "xx01.pdf", "xx02.pdf"), found.names)
+        assertTrue(service.confirmFiles()!!.contains("eerdere run"))
+        assertTrue(service.prepare("10")!!.contains("eerdere run"))
+
+        service.acceptInput()
+        assertEquals(emptyList(), service.leftovers())
+        assertNull(service.confirmFiles())
+    }
+
+    @Test
+    fun `bevestigen zonder bestanden in de invoermap kan niet`() {
+        Files.list(inbox).use { it.toList() }.forEach { Files.delete(it) }
+        service.acceptInput()
+        assertTrue(service.confirmFiles()!!.contains("geen pdf"))
+        assertEquals(1, service.flowView().current)
+    }
+
+    @Test
+    fun `de invoermap opruimen verplaatst alles uit je map, ook de werkmap, en vraagt daarna niets meer`() {
+        Files.createDirectories(inbox.resolve("werk"))
+        Files.writeString(inbox.resolve("werk/1.pdf"), "kopie")
+        service.clearLeftovers(move = true)
+        assertEquals(emptyList(), service.leftovers())
+        assertEquals(listOf("resten"), filesIn(inbox), "alleen de map voor resten blijft over")
+        val target = inbox.resolve("resten").listDirectoryEntries().single()
+        assertEquals(listOf("notes.txt", "werk", "xx01.pdf", "xx02.pdf"), filesIn(target.resolve("invoer")))
+        assertEquals("kopie", Files.readString(target.resolve("invoer/werk/1.pdf")))
+    }
+
+    @Test
+    fun `elke gebruiker heeft een eigen invoermap`() {
+        assertNull(items.login("Test Beheerder", "Beheer1"))
+        val first = input.ensure()
+        assertEquals(inbox.resolve("Test Beheerder"), first)
+        Files.writeString(first.resolve("a.pdf"), "van de eerste")
+        assertEquals(listOf("a.pdf"), service.pdfsInTestFolder().map { it.name })
+        assertEquals(inbox.resolve("resten").resolve("Test Beheerder"), service.leftoversTarget())
+        service.acceptInput()
+        assertEquals(emptyList(), service.leftovers())
+
+        items.logout()
+        assertNull(items.login("Test Bewerker", "Bewerk1"))
+        assertEquals(inbox.resolve("Test Bewerker"), input.path())
+        assertEquals(emptyList(), service.pdfsInTestFolder(), "de bestanden van de ander zijn niet de mijne")
+        assertTrue(Files.exists(first.resolve("a.pdf")))
+    }
+
+    @Test
+    fun `opruimen weigert tijdens een doorloop`() {
+        service.start("10")
+        makeLeftovers()
+        assertTrue(service.clearLeftovers(move = true).contains("al een doorloop"))
+        assertEquals(4, service.leftovers().size)
     }
 
     // ---- de antwoorden die images.exe krijgt ----

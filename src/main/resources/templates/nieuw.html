@@ -26,12 +26,35 @@
             </span>
         </div>
 
+        <!-- Resten van een eerdere run: eerst opruimen voordat je begint -->
+        <section class="card pad stack leftovers" th:if="${!leftovers.isEmpty()}">
+            <h2 style="margin:0">Eerst opruimen: er staan nog bestanden van een eerdere keer</h2>
+            <p class="muted" style="margin:0">In je invoermap of in de mappen van pdf2zcbs.exe en images.exe staat nog werk dat niet is opgeruimd. pdf2zcbs.exe wist zijn map <span class="mono">output</span> bij de start,
+                images.exe zou oude afbeeldingen opnieuw uploaden, en bestanden in je invoermap zouden ongemerkt meedoen. Zet ze dus eerst opzij of verwijder ze, voordat je nieuwe bestanden kiest.</p>
+            <ul class="leftlist">
+                <li th:each="x : ${leftovers}">
+                    <b th:text="${x.label}">pdf2zcbs: de map output</b>
+                    <span class="muted" th:text="${x.files.size()} + (${x.files.size() == 1} ? ' bestand' : ' bestanden') + ': ' + ${#strings.listJoin(x.names.subList(0, x.names.size() > 6 ? 6 : x.names.size()), ', ')} + (${x.names.size() > 6} ? ' en ' + (${x.names.size()} - 6) + ' andere' : '')">4 bestanden</span>
+                </li>
+            </ul>
+            <div class="row-actions">
+                <form method="post" th:action="@{/nieuw/resten}"><input type="hidden" name="actie" value="verplaats">
+                    <button class="btn btn-p" type="submit" th:disabled="${leftoversTarget == ''}">Verplaats ze naar een map met resten</button></form>
+                <form method="post" th:action="@{/nieuw/resten}" th:if="${#lists.contains(leftovers.![area], 'invoer')}"><input type="hidden" name="actie" value="accepteer">
+                    <button class="btn btn-s" type="submit" title="Bijvoorbeeld als je de app opnieuw hebt gestart en deze bestanden zelf hebt klaargezet">De bestanden in mijn invoermap horen erbij</button></form>
+                <form method="post" th:action="@{/nieuw/resten}" onsubmit="return confirm('Deze bestanden definitief verwijderen? Dit kan niet ongedaan worden gemaakt.')"><input type="hidden" name="actie" value="verwijder">
+                    <button class="btn btn-s" type="submit" style="color:var(--err)">Verwijder ze</button></form>
+            </div>
+            <p class="hint" style="margin:0" th:if="${leftoversTarget != ''}">Verplaatsen zet ze in een submap met datum en tijd onder <span class="mono" th:text="${leftoversTarget}"></span>, met dezelfde mapindeling, zodat je ze altijd kunt terugvinden. Alleen deze bestanden worden aangeraakt.</p>
+            <p class="hint" style="margin:0" th:if="${leftoversTarget == ''}">Stel eerst de invoermap of de map voor resten in bij Instellingen om te kunnen verplaatsen.</p>
+        </section>
+
         <!-- 1. Bestanden kiezen -->
         <th:block th:if="${flow.current == 1}">
             <section class="card pad stack">
                 <h2>1. Bestanden kiezen</h2>
                 <p class="muted" style="margin:0">Jelly of Ria geeft aan welke bestanden op het archief moeten ("bestand X t/m Y uit map Z"). Blader naar die map, vink de bestanden aan en kopieer ze naar de invoermap
-                    <span class="mono" th:text="${settings.testFolder}"></span>. De bestanden op K: blijven staan.</p>
+                    <span class="mono" th:text="${inputFolder}"></span> (je eigen map). De bestanden op K: blijven staan.</p>
                 <div class="warn" th:if="${roots.isEmpty()}">Er zijn geen mappen met scans ingesteld. Dat doet de beheerder bij Instellingen. Je kunt de pdf's ook zelf in de invoermap zetten.</div>
 
                 <!-- Welke bronmap -->
@@ -92,7 +115,7 @@
                     </div>
                 </div>
                 <div class="row-actions">
-                    <form th:action="@{/nieuw/bestanden/bevestig}" method="post"><button class="btn btn-p" type="submit" th:disabled="${pdfs.isEmpty()}">Klopt, verder naar de nummers</button></form>
+                    <form th:action="@{/nieuw/bestanden/bevestig}" method="post"><button class="btn btn-p" type="submit" th:disabled="${pdfs.isEmpty() or !leftovers.isEmpty()}">Klopt, verder naar de nummers</button></form>
                 </div>
             </section>
         </th:block>

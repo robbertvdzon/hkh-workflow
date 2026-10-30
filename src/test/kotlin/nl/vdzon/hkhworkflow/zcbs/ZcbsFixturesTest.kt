@@ -188,6 +188,11 @@ class ZcbsFixturesTest {
     }
 
     @Test
+    fun `zonder bestanden is er geen voorstel`() {
+        assertNull(ZcbsPages.freeNumbers(Fixtures.page("vrije-nummers.html"), last = 11934)!!.suggest(0))
+    }
+
+    @Test
     fun `een pagina zonder de lijst met vrije nummers geeft null`() {
         assertNull(ZcbsPages.freeNumbers(Fixtures.page("login-ok.html")))
     }

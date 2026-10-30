@@ -36,6 +36,8 @@ data class WorkflowSettings(
     val backup100pctFolder: String = "",
     /** Map waar de verwerkte pdf's met hun recordnummer een back-up krijgen (`backup_invoer_org`). */
     val backupPdfFolder: String = "",
+    /** Hierheen worden resten van een eerdere run verplaatst als Carla ze opruimt. Leeg = de submap `resten` van de invoermap. */
+    val leftoversFolder: String = "",
     /** Adres van ZCBS, bijvoorbeeld http://localhost:8081 (lokale kopie om tegen te testen) of https://www.historischekringheemskerk.nl. */
     val zcbsBaseUrl: String = "",
     /** De mappen met scans waar Carla uit kiest: één per regel, `naam=pad`, bijvoorbeeld `Ria=K:\scans ria`. */

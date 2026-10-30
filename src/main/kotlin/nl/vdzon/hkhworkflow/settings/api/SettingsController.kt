@@ -43,6 +43,7 @@ class SettingsController(private val settingsService: SettingsService) {
                 collection = param("collection"),
                 backup100pctFolder = param("backup100pctFolder"),
                 backupPdfFolder = param("backupPdfFolder"),
+                leftoversFolder = param("leftoversFolder"),
                 zcbsBaseUrl = param("zcbsBaseUrl"),
                 sourceFolders = param("sourceFolders"),
                 sftpHost = param("sftpHost"),

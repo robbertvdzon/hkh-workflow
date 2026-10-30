@@ -14,7 +14,7 @@
             <div class="field">
                 <label class="f" for="testFolder">Invoermap</label>
                 <input type="text" id="testFolder" name="testFolder" th:value="${settings.testFolder}" placeholder="C:\zcbs\invoer">
-                <span class="hint">Hier komen de pdf's te staan die Carla op de pagina Nieuwe bestanden kiest, voordat ze verwerkt worden (<span class="mono">c:\zcbs\invoer</span>). Na afloop ruimt de app de kopieën hier op.</span>
+                <span class="hint">Hier komen de pdf's te staan die Carla op de pagina Nieuwe bestanden kiest, voordat ze verwerkt worden (<span class="mono">c:\zcbs\invoer</span>). Elke gebruiker krijgt hierin een eigen submap met zijn of haar ZCBS-naam. Na afloop ruimt de app de kopieën op.</span>
                 <span class="warn" th:if="${problems['testFolder']}" th:text="${problems['testFolder']}"></span>
             </div>
             <div class="field">
@@ -67,6 +67,11 @@
                     <input type="text" id="backupPdfFolder" name="backupPdfFolder" th:value="${settings.backupPdfFolder}" placeholder="K:\backup_invoer_org">
                     <span class="hint">De verwerkte pdf's, met hun recordnummer als naam, worden hierheen gekopieerd voordat de invoermap wordt opgeruimd.</span>
                     <span class="warn" th:if="${problems['backupPdfFolder']}" th:text="${problems['backupPdfFolder']}"></span>
+                </div>
+                <div class="field">
+                    <label class="f" for="leftoversFolder">Map voor resten van een eerdere run</label>
+                    <input type="text" id="leftoversFolder" name="leftoversFolder" th:value="${settings.leftoversFolder}" placeholder="K:\resten (leeg = submap resten van de invoermap)">
+                    <span class="hint">Staan er bij het begin nog bestanden in de mappen van pdf2zcbs.exe en images.exe, dan kan Carla ze hierheen verplaatsen (of verwijderen) voordat ze begint.</span>
                 </div>
             </fieldset>
             <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">

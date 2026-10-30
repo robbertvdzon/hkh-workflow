@@ -10,6 +10,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
@@ -37,7 +38,7 @@ class SourceFilesServiceTest {
         val settings = SettingsService(ObjectMapper(), props)
         settings.save(WorkflowSettings(testFolder = inbox.toString(), sourceFolders = "Jelly=$jelly\nRia=$ria"))
         processed = ProcessedLog(settings, props)
-        return SourceFilesService(settings, processed)
+        return SourceFilesService(settings, processed, InputFolder(settings, ItemEditService(settings)))
     }
 
     @Test

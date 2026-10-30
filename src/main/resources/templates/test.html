@@ -28,7 +28,7 @@
         <section th:if="${run == null}" class="card pad" style="display:flex;flex-direction:column;gap:18px;max-width:820px">
             <h2>Nieuwe test starten</h2>
             <div>
-                <div class="hint">Invoermap: <span class="mono" th:text="${settings.testFolder != '' ? settings.testFolder : '(niet ingesteld)'}"></span></div>
+                <div class="hint">Invoermap: <span class="mono" th:text="${inputFolder != '' ? inputFolder : '(niet ingesteld)'}"></span></div>
                 <div th:if="${pdfs.isEmpty()}" class="warn" style="margin-top:6px">Er staan geen pdf's in de invoermap.</div>
                 <ul th:unless="${pdfs.isEmpty()}" style="margin:10px 0 0;padding-left:20px">
                     <li th:each="p : ${pdfs}"><span th:text="${p.name}"></span><span class="hint" th:if="${p.by != ''}" th:text="' · gescand door ' + ${p.by}"></span></li>

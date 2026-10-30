@@ -31,12 +31,20 @@ Jans stappenplan, met erboven de stap die er nog niet in stond (de bestanden sta
 
 | Fase | Wat Carla ziet en doet | Jans stap |
 |---|---|---|
-| 1. Bestanden kiezen | Kiest Jelly of Ria, bladert door de submappen en vinkt de pdf's aan (Shift-klik kiest alles tussen twee bestanden: "X t/m Y uit map Z"). Kopieert ze naar de invoermap. Al verwerkte bestanden zijn gemarkeerd en niet aan te vinken. | `copy K:\… c:\zcbs\invoer` |
+| 1. Bestanden kiezen | Ziet meteen de eerste map met scans uit de instellingen (zet Ria bovenaan), kiest eventueel Jelly, bladert door de submappen en vinkt de pdf's aan (Shift-klik kiest alles tussen twee bestanden: "X t/m Y uit map Z"). Kopieert ze naar de invoermap. Al verwerkte bestanden zijn gemarkeerd en niet aan te vinken. | `copy K:\… c:\zcbs\invoer` |
 | 2. Nummers | Ziet het laatste record en alle vrije reeksen uit ZCBS, kiest een beginnummer. Passen alle bestanden niet aaneengesloten in een vrije reeks, dan geeft de app een foutmelding. De app maakt kopieën `<nummer>.pdf` in de submap `werk`. | het nummer geven in de bestandsnaam |
 | 3. pdf2zcbs | Start `pdf2zcbs.exe` (zet de pdf's in de map van het programma), en **controleert daarna**: per bestand een kleine afbeelding, de eerste tekst, links naar de pdf en de tekst, en de vinkjes voor tekst, pdf, small en large. "Ja, goed" of "pdf2zcbs opnieuw". | `pdf2zcbs.exe` en het nakijken van `output\large\pdf\ocr` |
 | 4. images.exe | Kopieert de large-jpg's en start `images.exe`; daarna weer **controleren**: de afbeelding, de vinkjes small, large en 100pct, en of de records in ZCBS staan. | `copy large\*.jpg images\images`, `images.exe`, `dir small large 100pct` |
 | 5. Upload | Tekst en pdf's met sftp naar `<collectie>/ocr` en `<collectie>/pdf`. Nooit overschrijven, eerst alles controleren. | Total Commander |
 | 6. Back-up | Kopieert de **100pct** en de **pdf's** (met hun recordnummer) naar de back-upmappen op K:, ruimt dan de werkmappen op en zet de bestanden in het verwerkt-log. | `backup_100pct`, `backup_invoer_org`, `rmdir`, `del` |
+
+**Eerst opruimen.** Aan het begin van de flow controleert de app of er nog werk van een eerdere keer staat: bestanden in je eigen invoermap die je niet in deze
+doorloop hebt gekozen, de pdf's, de map `output` en de bestanden in `images`, `small`, `large` en `100pct` bij de programma's. Zolang er iets staat, kan Carla niet verder en toont de
+pagina wat het is. Ze kiest **Verplaats** (naar een submap met datum en tijd onder `resten`, met dezelfde mapindeling, of naar de ingestelde map voor resten), **Verwijder**, of, voor de eigen
+invoermap, **horen erbij** (bijvoorbeeld na een herstart van de app). Alleen de genoemde bestanden worden aangeraakt; `output\log` en `updates.txt` blijven staan.
+
+**Een eigen invoermap per gebruiker.** De instelling is de gemeenschappelijke map (`c:\zcbs\invoer`); wie is ingelogd werkt in de submap met zijn of haar ZCBS-naam. Zo zitten de bestanden
+van twee mensen elkaar niet in de weg. De mappen van pdf2zcbs.exe en images.exe zijn wel gedeeld, vandaar de controle hierboven.
 
 De programma's draaien één keer voor alle bestanden samen (ze verwerken alles wat in hun map staat; pdf2zcbs leegt zijn `output` bij elke start).
 Een stap is pas klaar als de verwachte bestanden er zijn; de exitcode alleen is niet genoeg. De volgende stap kan niet voordat Carla de
@@ -85,14 +93,14 @@ seconde langer. De beheerder (een sessie in de browser) heeft toegang tot **Inst
 
 ## 8. Instellingen (alleen beheerder)
 
-`testFolder` (invoermap, `c:\zcbs\invoer`), `sourceFolders` (één regel per map met scans, `naam=pad`: `Jelly=K:\scans jelly`), `pdf2zcbsExe`, `imagesExe`,
+`testFolder` (de gemeenschappelijke invoermap, `c:\zcbs\invoer`; per gebruiker komt er een submap in), `leftoversFolder` (waar resten naartoe gaan; leeg = `resten` in de invoermap), `sourceFolders` (één regel per map met scans, `naam=pad`: `Jelly=K:\scans jelly`), `pdf2zcbsExe`, `imagesExe`,
 `backup100pctFolder` en `backupPdfFolder` (op K:), `collection`, `zcbsBaseUrl`, de sftp-instellingen en de lijsten met antwoorden. Vervallen: `archivedFolder`,
 `sourceFolder`, `imagesFileType`, `imagesResolution`, `imagesInstitution` (die zitten nu in de onthouden antwoorden).
 
 ## 9. Wat nog niet kan of niet getest is
 
-- **Eén ZCBS-login voor de hele app.** Er is geen eigen login per gebruiker; de ingelogde ZCBS-gebruiker geldt voor iedereen die de app opent. Twee mensen
-  tegelijk is dus niet bedoeld.
+- **Eén ZCBS-login voor de hele app.** Er is geen eigen login per gebruiker; de ingelogde ZCBS-gebruiker geldt voor iedereen die de app opent. De invoermap is wel per gebruiker, maar de
+  stand van de flow, de mappen van de programma's en de login zijn gedeeld: twee mensen tegelijk is dus niet bedoeld.
 - **De stand van een doorloop zit in het geheugen.** Na een herstart van de app staan de bestanden nog op schijf (invoermap, `werk`, map van de
   programma's), maar de app weet niet meer waar hij was; dan eerst met de hand opruimen of "Opnieuw beginnen".
 - Niets is getest tegen de echte HKH-server of op Windows met `K:\`-paden; alleen op de Mac met de nep-programma's, de lokale ZCBS in Docker en een sftp-server
