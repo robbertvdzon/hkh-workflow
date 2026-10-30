@@ -642,21 +642,32 @@ class TestRunService(
         val env = if (s.perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
         val label = "${step.type.label} – ${step.files.size} ${if (step.files.size == 1) "bestand" else "bestanden"} (${step.fileNames})"
         exeRunner.start(exe, exeDir, label, mode, env, notes, autoAnswers, knownQuestions, forcedAnswers) { code ->
-            val missing = if (code == 0) expected.filter { !it.second.present(allowEmpty = it.first == "tekst") } else emptyList()
-            // Buiten het slot: dit leest een paar pagina's van ZCBS.
-            val note = if (code == 0 && missing.isEmpty() && step.type == StepType.IMAGES) imagesNote(step) else ""
-            if (code == 0 && missing.isEmpty() && autoAnswers == null) learn(step.type, exeRunner.typedAnswers(), exeRunner.typedSecretAnswers())
-            synchronized(this) {
-                if (code != 0) {
+            try {
+                val missing = if (code == 0) expected.filter { !it.second.present(allowEmpty = it.first == "tekst") } else emptyList()
+                // Buiten het slot: dit leest een paar pagina's van ZCBS.
+                val note = if (code == 0 && missing.isEmpty() && step.type == StepType.IMAGES) imagesNote(step) else ""
+                if (code == 0 && missing.isEmpty() && autoAnswers == null) learn(step.type, exeRunner.typedAnswers(), exeRunner.typedSecretAnswers())
+                synchronized(this) {
+                    if (code != 0) {
+                        step.status = StepStatus.FAILED
+                        step.message = "Gestopt met exitcode ${code ?: "onbekend"}. Controleer de uitvoer; zet de stap handmatig op klaar als het toch goed ging."
+                    } else if (missing.isEmpty()) {
+                        step.status = StepStatus.DONE
+                        step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt.$note"
+                        // Automatisch uitgevoerd en niets bijzonders: dan hoeft Carla de gemaakte bestanden niet eerst te bevestigen.
+                        if (autoAnswers != null && "Let op" !in note) current.reviewed += step.type
+                    } else {
+                        step.status = StepStatus.FAILED
+                        step.message = "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: " +
+                            names(missing.map { "${it.first} ${it.second}" }, 6) + ". Bekijk het log; zet de stap handmatig op klaar als het toch goed ging."
+                    }
+                }
+            } catch (e: Exception) {
+                // Een stap mag nooit op "bezig" blijven staan als het afronden mislukt.
+                log.warn("Afronden van stap {} ({}) mislukt", step.id, step.type, e)
+                synchronized(this) {
                     step.status = StepStatus.FAILED
-                    step.message = "Gestopt met exitcode ${code ?: "onbekend"}. Controleer de uitvoer; zet de stap handmatig op klaar als het toch goed ging."
-                } else if (missing.isEmpty()) {
-                    step.status = StepStatus.DONE
-                    step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt.$note"
-                } else {
-                    step.status = StepStatus.FAILED
-                    step.message = "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: " +
-                        names(missing.map { "${it.first} ${it.second}" }, 6) + ". Bekijk het log; zet de stap handmatig op klaar als het toch goed ging."
+                    step.message = "Het programma is klaar, maar het afronden is mislukt: ${e.message ?: e.javaClass.simpleName}. Bekijk het log; zet de stap handmatig op klaar als het toch goed ging."
                 }
             }
         }
