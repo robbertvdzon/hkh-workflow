@@ -7,6 +7,8 @@ import nl.vdzon.hkhworkflow.items.OpenOutcome
 import nl.vdzon.hkhworkflow.items.PreviewOutcome
 import nl.vdzon.hkhworkflow.items.SaveOutcome
 import nl.vdzon.hkhworkflow.zcbs.ControlKind
+import jakarta.servlet.http.HttpServletResponse
+import nl.vdzon.hkhworkflow.items.RememberLogin
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.util.MultiValueMap
@@ -18,7 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /** Inloggen bij ZCBS en de pagina's om records te bewerken via het ZCBS-formulier. */
 @Controller
-class ItemsController(private val items: ItemEditService) {
+class ItemsController(private val items: ItemEditService, private val remember: RememberLogin) {
 
     private fun back(target: String): String = when (target) { "/records" -> "redirect:/records"; "/nieuw" -> "redirect:/nieuw"; "/test" -> "redirect:/test"; else -> "redirect:/" }
 
@@ -28,15 +30,17 @@ class ItemsController(private val items: ItemEditService) {
         @RequestParam("wachtwoord", defaultValue = "") password: String,
         @RequestParam("terug", defaultValue = "/") target: String,
         redirect: RedirectAttributes,
+        response: HttpServletResponse,
     ): String {
         val error = items.login(name, password)
-        if (error != null) redirect.addFlashAttribute("error", error)
+        if (error != null) redirect.addFlashAttribute("error", error) else remember.remember(response, name, password)
         return back(target)
     }
 
     @PostMapping("/zcbs/logout")
-    fun logout(@RequestParam("terug", defaultValue = "/") target: String): String {
+    fun logout(@RequestParam("terug", defaultValue = "/") target: String, response: HttpServletResponse): String {
         items.logout()
+        remember.forget(response)
         return back(target)
     }
 

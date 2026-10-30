@@ -414,6 +414,7 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 | Succes van een stap | Aan de verwachte bestanden, niet aan de exitcode | Perl-programma's geven bijna altijd 0 |
 | Schrijven in productie | Upload en records standaard uit en per run te kiezen; ftp overschrijft en verwijdert nooit, controleert eerst alles | Voorzichtigheid bij de eerste echte run |
 | Opruimen | Pas na de upload en met back-up van de 100pct; originelen pas in de laatste stap archiveren | Zo blijft de oude werkwijze altijd mogelijk |
+| Ingelogd blijven | Naam en wachtwoord van ZCBS versleuteld (AES-GCM) in een cookie van 30 dagen; sleutel in `hkh-workflow-inloggen.key` naast het instellingenbestand; uitloggen wist het cookie | Carla heeft een eigen pc; opnieuw inloggen na elke herstart was vervelend (Robbert, 30 oktober) |
 
 ---
 

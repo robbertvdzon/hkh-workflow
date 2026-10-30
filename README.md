@@ -19,6 +19,8 @@ Open daarna http://localhost:9000 (of `http://<computernaam>:9000` vanaf een and
 op alle netwerkadressen en start .exe-bestanden: zet hem alleen op een server waar niet iedereen bij kan, of zet `HKH_WORKFLOW_ADDRESS=127.0.0.1`.
 Je logt in met je eigen ZCBS-naam en -wachtwoord; de instellingen en de technische pagina's vragen daarnaast het **beheerderswachtwoord**, dat in het
 configuratiebestand staat (`hkh.workflow.admin-password` in `application.properties` naast de jar). Zonder dat wachtwoord blijven ze dicht.
+Na het inloggen blijf je ingelogd, ook na een herstart van de app: de naam en het wachtwoord staan versleuteld in een cookie van 30 dagen (alleen op
+de computer van de gebruiker), met de sleutel in `hkh-workflow-inloggen.key` naast het instellingenbestand (niet in git zetten). Uitloggen haalt het cookie weg.
 Instelbaar met omgevingsvariabelen:
 
 | Variabele | Standaard | Betekenis |

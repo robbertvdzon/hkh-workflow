@@ -17,3 +17,4 @@ docs/server/*
 tools/mock/images-werk/images-mock.ini
 tools/mock/images-werk/log-*.txt
 oude-tests
+hkh-workflow-inloggen.key
