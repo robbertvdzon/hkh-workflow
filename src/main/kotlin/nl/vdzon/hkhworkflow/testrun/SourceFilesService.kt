@@ -112,13 +112,14 @@ class SourceFilesService(private val settingsService: SettingsService, private v
         return CopyResult(copied, skipped)
     }
 
-    /** Haalt een bestand dat de app zelf in de invoermap heeft gezet weer weg (de kopie; het origineel blijft staan). */
+    /** Haalt alle kopieën weg die de app zelf in de invoermap heeft gezet (wat Carla zelf neerzette, blijft staan). @return hoeveel. */
     @Synchronized
-    fun removeCopy(name: String) {
-        val folder = requireNotNull(input.path()) { "Stel eerst de invoermap in bij Instellingen." }
-        require(name == Path.of(name).fileName.toString()) { "Ongeldige bestandsnaam." }
-        Files.deleteIfExists(folder.resolve(name))
-        forget(listOf(name))
+    fun removeAllCopies(): Int {
+        val folder = input.path() ?: return 0
+        val names = readOrigins().keys.toList()
+        val removed = names.count { Files.deleteIfExists(folder.resolve(it)) }
+        forget(names)
+        return removed
     }
 
     fun origin(fileName: String): Origin? = readOrigins()[fileName]

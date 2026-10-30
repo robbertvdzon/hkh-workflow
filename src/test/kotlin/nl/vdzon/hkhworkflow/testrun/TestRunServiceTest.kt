@@ -48,6 +48,7 @@ class TestRunServiceTest {
     private lateinit var runner: ExeRunner
     private lateinit var processed: ProcessedLog
     private lateinit var input: InputFolder
+    private lateinit var sources: SourceFilesService
 
     private fun fake(name: String, into: Path, asName: String): Path {
         Files.createDirectories(into)
@@ -85,7 +86,8 @@ class TestRunServiceTest {
         runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
         processed = ProcessedLog(settings, properties)
         input = InputFolder(settings, items)
-        service = TestRunService(settings, runner, FtpService(settings), items, SourceFilesService(settings, processed, input), processed, input)
+        sources = SourceFilesService(settings, processed, input)
+        service = TestRunService(settings, runner, FtpService(settings), items, sources, processed, input)
     }
 
     @AfterEach
@@ -431,6 +433,20 @@ class TestRunServiceTest {
         assertEquals(listOf("10.txt", "11.txt"), filesIn(remote("/public_html/archief/ocr")))
     }
 
+    @Test
+    fun `opnieuw beginnen voor de doorloop wist de gekozen kopieen en laat de originelen en eigen bestanden staan`() {
+        Files.writeString(dir.resolve("k-scans/a.pdf"), "scan a")
+        sources.copy("Ria", "", listOf("a.pdf"))
+        service.acceptInput()
+        assertEquals(listOf("a.pdf", "notes.txt", "xx01.pdf", "xx02.pdf", "herkomst.tsv").sorted(), filesIn(inbox))
+
+        service.reset()
+
+        assertEquals(listOf("notes.txt", "xx01.pdf", "xx02.pdf"), filesIn(inbox), "wat Carla zelf neerzette blijft staan")
+        assertTrue(Files.exists(dir.resolve("k-scans/a.pdf")), "het origineel blijft staan")
+        assertEquals(1, service.flowView().current)
+    }
+
     // ---- fase 1: de omgeving controleren ----
 
     private fun check(id: String) = service.environment().first { it.id == id }
@@ -698,18 +714,18 @@ class TestRunServiceTest {
 
     private fun rememberedAnswer(pattern: String): String? = settings.get().imagesAnswers.firstOrNull { it.pattern == pattern }?.answer
 
-    /** Typt de antwoorden voor een handmatige run: wacht tot het programma een bekende vraag stelt en antwoordt op die vraag. */
+    /** Typt de antwoorden voor een handmatige run: wacht tot het programma een vraag stelt waar een antwoord voor is en antwoordt erop. Wat de app zelf beantwoordt, slaat het over. */
     private fun answerManually(answers: Map<String, String>, seen: MutableList<String> = mutableListOf()) {
-        var sent = 0
+        var handledAt = -1
         val deadline = System.currentTimeMillis() + 15_000
         while (System.currentTimeMillis() < deadline) {
             val snap = runner.snapshot() ?: break
             if (!snap.running) break
             val question = snap.question
-            if (question != null && snap.inputsSent == sent) {
+            if (question != null && question in answers && snap.inputsSent != handledAt) {
                 seen += "$question => ${snap.suggestion}"
-                runner.sendInput(answers[question] ?: error("Onverwachte vraag: $question"))
-                sent++
+                handledAt = snap.inputsSent
+                runner.sendInput(answers.getValue(question))
             } else Thread.sleep(30)
         }
     }
@@ -754,12 +770,16 @@ class TestRunServiceTest {
             mapOf(
                 "Type ENTER/RETURN indien OK" to "a", "Kies 1,2,3" to "7", "UPLOADEN aangemaakte images" to "j",
                 "Nummer, naam of plaats instelling" to "4", "FTP wachtwoord" to "ander-wachtwoord", "Kies de ZCBS-toepassing" to "archief",
-                "OVERSCHRIJVEN" to "n", "AANMAKEN en UPLOADEN van de bijbehorende" to "j",
-                "VERWIJDEREN (tijdelijk) aangemaakte mappen" to "n", "VERWIJDEREN inhoud van de map [images]" to "n",
+                "AANMAKEN en UPLOADEN van de bijbehorende" to "j",
             ),
             seen,
         )
         assertEquals("DONE", waitFor(images).status)
+        // de vragen over overschrijven en verwijderen beantwoordt de app zelf met nee, ook bij handmatig uitvoeren
+        assertEquals("n", runner.givenAnswers()["OVERSCHRIJVEN"])
+        assertEquals("n", runner.givenAnswers()["VERWIJDEREN (tijdelijk) aangemaakte mappen"])
+        assertEquals("n", runner.givenAnswers()["VERWIJDEREN inhoud van de map [images]"])
+        assertTrue(runner.typedAnswers().keys.none { it.startsWith("VERWIJDEREN") || it == "OVERSCHRIJVEN" }, "die onthoudt de app niet als getypt")
         assertTrue(seen.contains("Kies 1,2,3 => 6"), seen.toString())
         assertTrue(seen.contains("UPLOADEN aangemaakte images => n"), "het voorstel is het onthouden antwoord: $seen")
         assertTrue(seen.contains("FTP wachtwoord => null"), "een wachtwoord wordt nooit voorgesteld: $seen")

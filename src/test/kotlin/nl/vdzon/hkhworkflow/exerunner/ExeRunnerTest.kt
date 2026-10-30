@@ -159,4 +159,60 @@ class ExeRunnerTest {
         assertEquals(mapOf("splitsen?" to "n"), runner.givenAnswers())
         assertEquals(emptyMap(), runner.typedAnswers())
     }
+
+    @Test
+    fun `answers forced questions itself even when a person answers the rest`() {
+        val exe = script(
+            """
+            printf 'Uploaden? [J/N] '; read a; echo "upload=${'$'}a"
+            printf 'VERWIJDEREN mappen? [J/N] '; read b; echo "verwijder=${'$'}b"
+            printf 'Type return to exit'; read x; echo klaar
+            """.trimIndent(),
+        )
+        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val done = CountDownLatch(1)
+        runner.start(
+            exe, dir, "handmatig", RunMode.IN_APP,
+            knownQuestions = listOf(AutoAnswer("uploaden?", "n"), AutoAnswer("return to exit", "")),
+            forcedAnswers = listOf(AutoAnswer("VERWIJDEREN mappen", "n")),
+        ) { done.countDown() }
+
+        fun waitForQuestion(pattern: String) {
+            val deadline = System.currentTimeMillis() + 10_000
+            while (runner.snapshot()?.question != pattern && System.currentTimeMillis() < deadline) Thread.sleep(20)
+            assertEquals(pattern, runner.snapshot()?.question)
+        }
+        waitForQuestion("uploaden?")
+        assertFalse(runner.snapshot()!!.auto, "dit is geen automatische run")
+        runner.sendInput("j")
+        waitForQuestion("return to exit")
+        runner.sendInput("")
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+
+        val output = runner.snapshot()!!.output
+        assertTrue(output.contains("upload=j"), output)
+        assertTrue(output.contains("verwijder=n"), "de app antwoordde nee: $output")
+        assertEquals(mapOf("VERWIJDEREN mappen" to "n", "uploaden?" to "j", "return to exit" to ""), runner.givenAnswers())
+        assertEquals(mapOf("uploaden?" to "j", "return to exit" to ""), runner.typedAnswers(), "alleen wat de gebruiker typte")
+    }
+
+    @Test
+    fun `recognises a question whatever the amount of whitespace, also automatically`() {
+        // het echte images.exe schrijft "Kies  1,2,3 (...),  of kies  6,7,8" met dubbele spaties
+        val exe = script(
+            """
+            printf '  Kies  1,2,3 (objecten),  of kies  6,7,8 (foto s)\n'; read a; echo "res=${'$'}a"
+            printf 'Type return to exit'; read x; echo klaar
+            """.trimIndent(),
+        )
+        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val done = CountDownLatch(1)
+        runner.start(
+            exe, dir, "spaties", RunMode.IN_APP,
+            autoAnswers = listOf(AutoAnswer("Kies 1,2,3", "7"), AutoAnswer("return to exit", "")),
+        ) { done.countDown() }
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+        assertTrue(runner.snapshot()!!.output.contains("res=7"), runner.snapshot()!!.output)
+        assertEquals("7", runner.givenAnswers()["Kies 1,2,3"])
+    }
 }

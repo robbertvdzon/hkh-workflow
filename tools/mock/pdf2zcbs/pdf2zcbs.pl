@@ -8,6 +8,8 @@
 use strict; use warnings; use File::Copy; use File::Path qw(make_path remove_tree);
 $| = 1 if $ENV{MOCK_UNBUFFERED};
 use FindBin qw($RealBin);
+use lib "$RealBin/..";
+use MockImage qw(pdf_to_jpg find_tool);
 # Met pdf2zcbs.ini naast het programma: geen vragen en geen uitvoer (zoals de echte exe bij HKH).
 my $silent = -f "$RealBin/pdf2zcbs.ini";
 sub say_ { print @_ unless $silent; }
@@ -19,16 +21,8 @@ if (-d "output") { remove_tree("output"); say_(" Map output geleegd (vorige resu
 opendir(my $dh, ".") or die; my @pdfs = sort grep { /\.pdf$/i && -f $_ } readdir($dh); closedir($dh);
 if (!@pdfs) { say_(" Geen PDF gevonden in de huidige map.\n"); ask(" Type return to exit\n"); exit 1; }
 make_path("output/pdf", "output/ocr", "output/small", "output/large", "output/log");
-# Eerste pagina als jpg met de gegeven hoogte; zonder pdftoppm (of bij een kapotte pdf) een klein nep-bestand.
-sub jpg {
-  my ($pdf, $out, $height) = @_;
-  my $tmp = "$out.tmp";
-  if (system("pdftoppm -jpeg -f 1 -l 1 -singlefile -scale-to-y $height -scale-to-x -1 \"$pdf\" \"$tmp\" >/dev/null 2>&1") == 0 && -s "$tmp.jpg") {
-    rename("$tmp.jpg", $out);
-  } else {
-    open(my $fh, '>:raw', $out) or die; print $fh "NEP-JPG $out\n"; close $fh;
-  }
-}
+# Eerste pagina als echte jpg met de gegeven hoogte (zie ../MockImage.pm: pdftoppm, anders sips, anders een voorbeeldafbeelding).
+sub jpg { my ($pdf, $out, $height) = @_; pdf_to_jpg($pdf, $out, $height); }
 if (@pdfs == 1) {
   say_(" Aanwezige PDF in de huidige map:\n - $pdfs[0]\n");
   my $s = ask(" > Deze PDF splitsen in (groepen van) losse pagina's (default = N)?\n");
@@ -38,7 +32,8 @@ ask(" > PDF's in map output/pdf verwerken naar txt + jpg's? (default = J)\n");
 ask(" > Betreft het (presentatie) slides? (default= N)\n");
 for my $p (@pdfs) {
   (my $base = $p) =~ s/\.pdf$//i;
-  my $text = `pdftotext output/pdf/$p - 2>/dev/null` // '';
+  my $pdftotext = find_tool('pdftotext');
+  my $text = $pdftotext ? (`"$pdftotext" output/pdf/$p - 2>/dev/null` // '') : '';
   my @zinnen = grep { /\S/ } split(/(?<=[.!?])\s+/, $text);
   # Een scan heeft geen tekstlaag, dus pdftotext vindt niets; de echte pdf2zcbs.exe doet OCR en levert wel tekst. Zet dan een vaste tekst neer.
   push @zinnen, "[mock] Geen tekst in $p gevonden; de echte pdf2zcbs.exe zet hier de herkende tekst (OCR)." unless @zinnen;

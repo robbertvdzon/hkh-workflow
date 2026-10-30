@@ -80,9 +80,6 @@ class TestRunService(
         return null
     }
 
-    @Synchronized
-    fun reopenFiles() { filesConfirmed = false }
-
     /** Pdf's die nu in de invoermap van de gebruiker staan (alleen de map zelf, geen submappen). */
     fun pdfsInTestFolder(): List<Path> {
         val dir = input.path() ?: return emptyList()
@@ -116,6 +113,8 @@ class TestRunService(
     @Synchronized
     fun reset() {
         stopPrevious()
+        // Nog geen doorloop gestart: dan is er alleen een keuze gemaakt, en die gaat weg (de kopieën, niet de originelen).
+        if (run == null) sourceFiles.removeAllCopies()
         run = null
         filesConfirmed = false
         started = false
@@ -530,7 +529,9 @@ class TestRunService(
         val copies = step.files.map { l.p2zLarge(it)!! to l.imgIn(it)!! }
         val expected = step.files.flatMap { listOf("small" to l.imgSmall(it)!!, "large" to l.imgLarge(it)!!, "100pct" to l.img100(it)!!) }
         val known = s.imagesAnswers.map { AutoAnswer(it.pattern, it.answer, it.secret) }
-        runExe(current, step, s, Path.of(s.imagesExe), dir, copies, expected, mode, if (auto) imagesRules(s) + known else null, known)
+        // De vragen over verwijderen en overschrijven beantwoordt de app ook bij handmatig uitvoeren zelf met nee: images.exe wist anders de
+        // afbeeldingen die de app nog nodig heeft voor de controle en de back-up (het opruimen doet de app daarna zelf).
+        runExe(current, step, s, Path.of(s.imagesExe), dir, copies, expected, mode, if (auto) imagesRules(s) + known else null, known, if (auto) emptyList() else safetyRules())
     }
 
     /**
@@ -538,8 +539,10 @@ class TestRunService(
      * overschreven of verwijderd (de app ruimt zelf op, ná de back-up). De rest (bestandstype, resolutie, instelling, uploaden, records
      * aanmaken) zijn de onthouden antwoorden uit Instellingen, die de app van de laatste handmatige run overneemt.
      */
-    private fun imagesRules(s: WorkflowSettings): List<AutoAnswer> = listOf(
-        AutoAnswer("Kies de ZCBS-toepassing", s.collection),
+    private fun imagesRules(s: WorkflowSettings): List<AutoAnswer> = listOf(AutoAnswer("Kies de ZCBS-toepassing", s.collection)) + safetyRules()
+
+    /** Nooit overschrijven op de server en nooit de afbeeldingen van images.exe wissen: dat is altijd nee, ook als iemand zelf typt. */
+    private fun safetyRules(): List<AutoAnswer> = listOf(
         AutoAnswer("OVERSCHRIJVEN", "n"),
         AutoAnswer("VERWIJDEREN (tijdelijk) aangemaakte mappen", "n"),
         AutoAnswer("VERWIJDEREN inhoud van de map [images]", "n"),
@@ -577,6 +580,7 @@ class TestRunService(
         mode: RunMode,
         autoAnswers: List<AutoAnswer>?,
         knownQuestions: List<AutoAnswer>,
+        forcedAnswers: List<AutoAnswer> = emptyList(),
     ) {
         val notes = mutableListOf<String>()
         var replaced = 0
@@ -592,7 +596,7 @@ class TestRunService(
         step.message = "${copies.size} bestanden klaargezet" + (if (replaced > 0) " ($replaced overschreven)" else "")
         val env = if (s.perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
         val label = "${step.type.label} – ${step.files.size} ${if (step.files.size == 1) "bestand" else "bestanden"} (${step.fileNames})"
-        exeRunner.start(exe, exeDir, label, mode, env, notes, autoAnswers, knownQuestions) { code ->
+        exeRunner.start(exe, exeDir, label, mode, env, notes, autoAnswers, knownQuestions, forcedAnswers) { code ->
             val missing = if (code == 0) expected.filter { !it.second.present(allowEmpty = it.first == "tekst") } else emptyList()
             // Buiten het slot: dit leest een paar pagina's van ZCBS.
             val note = if (code == 0 && missing.isEmpty() && step.type == StepType.IMAGES) imagesNote(step) else ""
@@ -802,7 +806,7 @@ class TestRunService(
                 "Zet de $n large-jpg's uit ${l.p2zOutput()?.resolve("large") ?: unset} in ${l.img?.resolve("images") ?: unset}.",
                 "Start ${s.imagesExe.ifBlank { unset }} één keer. Handmatig typ je zelf de antwoorden; de app onthoudt ze en stelt ze de volgende keer voor.",
                 "Automatisch geeft de app de onthouden antwoorden: uploaden naar de server ${yn(remembered(s, UPLOAD_QUESTION))}, records aanmaken ${yn(remembered(s, RECORDS_QUESTION))}, collectie ${s.collection}.",
-                "Er wordt nooit overschreven en niets verwijderd: de mappen small, large, 100pct en images blijven staan.",
+                "Er wordt nooit overschreven en niets verwijderd: de vragen daarover beantwoordt de app zelf met nee (ook bij handmatig), zodat de mappen small, large, 100pct en images blijven staan.",
                 "Verwacht per bestand in ${l.img ?: unset}: small, large en 100pct.",
             )
             StepType.UPLOAD -> listOf(
@@ -916,7 +920,12 @@ class TestRunService(
                 val path = resultFile(kind, f.number) ?: return@mapNotNull null
                 val bytes = runCatching { Files.size(path) }.getOrDefault(0)
                 val resolution = if (kind == "tekst" || kind == "pdf") "" else imageSize(path)
-                ProducedFile(f.number, kind, label, readableSize(bytes), resolution, if (kind == "tekst" && bytes == 0L) "leeg: geen tekst gevonden" else "")
+                val note = when {
+                    kind == "tekst" && bytes == 0L -> "leeg: geen tekst gevonden"
+                    kind != "tekst" && kind != "pdf" && resolution.isEmpty() -> "geen geldige afbeelding"
+                    else -> ""
+                }
+                ProducedFile(f.number, kind, label, readableSize(bytes), resolution, note)
             }
         }
     }

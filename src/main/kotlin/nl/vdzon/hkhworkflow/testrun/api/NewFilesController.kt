@@ -5,6 +5,7 @@ import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.testrun.ProcessedLog
+import nl.vdzon.hkhworkflow.testrun.CopyResult
 import nl.vdzon.hkhworkflow.testrun.SourceFilesService
 import nl.vdzon.hkhworkflow.testrun.StepType
 import nl.vdzon.hkhworkflow.testrun.TestRunService
@@ -117,33 +118,39 @@ class NewFilesController(
         return "redirect:/nieuw"
     }
 
-    /** De aangevinkte pdf's uit de map waar Carla nu is naar de invoermap kopiëren. */
+    /**
+     * "Verder" bij het kiezen: de aangevinkte pdf's uit de map waar Carla nu is worden gekozen (naar de invoermap gekopieerd) en de flow gaat door naar de nummers.
+     * Lukt dat niet (niets aangevinkt, alles al verwerkt), dan blijft ze in de map met een melding.
+     */
     @PostMapping("/nieuw/kopieer")
     fun copy(
         @RequestParam("bron") rootName: String,
         @RequestParam("pad", defaultValue = "") path: String,
         @RequestParam("files", required = false) files: List<String>?,
         redirect: RedirectAttributes,
-    ): String = attempt(redirect, "bron" to rootName, "pad" to path) {
-        val result = sourceFiles.copy(rootName, path, files.orEmpty())
-        testRunService.acceptInput()
-        val skipped = if (result.skipped.isEmpty()) "" else " Overgeslagen: ${result.skipped.joinToString()}."
-        val n = result.copied.size
-        redirect.addFlashAttribute("info", "$n ${if (n == 1) "bestand" else "bestanden"} gekozen. De originelen blijven staan.$skipped")
-        null
+    ): String {
+        fun stay(message: String): String {
+            redirect.addFlashAttribute("error", message)
+            redirect.addAttribute("bron", rootName)
+            redirect.addAttribute("pad", path)
+            return "redirect:/nieuw"
+        }
+        return try {
+            val result = if (files.isNullOrEmpty()) CopyResult(emptyList(), emptyList()) else sourceFiles.copy(rootName, path, files)
+            testRunService.acceptInput()
+            val skipped = if (result.skipped.isEmpty()) "" else " Overgeslagen: ${result.skipped.joinToString()}."
+            if (testRunService.pdfsInTestFolder().isEmpty()) return stay("Vink minstens één bestand aan.$skipped")
+            testRunService.confirmFiles()?.let { return stay(it) }
+            if (skipped.isNotEmpty()) redirect.addFlashAttribute("info", skipped.trim())
+            "redirect:/nieuw"
+        } catch (e: Exception) {
+            stay(e.message ?: e.javaClass.simpleName)
+        }
     }
 
-    /** Haalt een kopie weer uit de invoermap (het origineel blijft staan). */
-    @PostMapping("/nieuw/bestanden/verwijder")
-    fun remove(
-        @RequestParam("naam") name: String,
-        @RequestParam("bron", required = false) rootName: String?,
-        @RequestParam("pad", defaultValue = "") path: String,
-        redirect: RedirectAttributes,
-    ): String = attempt(redirect, *listOfNotNull(rootName?.takeIf { it.isNotBlank() }?.let { "bron" to it }, rootName?.takeIf { it.isNotBlank() }?.let { "pad" to path }).toTypedArray()) { sourceFiles.removeCopy(name); null }
-
-    @PostMapping("/nieuw/bestanden/bevestig")
-    fun confirm(redirect: RedirectAttributes): String = attempt(redirect) { testRunService.confirmFiles() }
+    /** Haalt de gekozen bestanden weer weg (alleen de kopieën; de originelen blijven staan). */
+    @PostMapping("/nieuw/bestanden/leeg")
+    fun clearChosen(redirect: RedirectAttributes): String = attempt(redirect) { sourceFiles.removeAllCopies(); null }
 
     /** Resten van een eerdere run uit de mappen van de programma's halen: verplaatsen of verwijderen. */
     @PostMapping("/nieuw/resten")
@@ -154,9 +161,6 @@ class NewFilesController(
         } else redirect.addFlashAttribute("info", testRunService.clearLeftovers(move = action == "verplaats"))
         null
     }
-
-    @PostMapping("/nieuw/bestanden/andere")
-    fun reselect(redirect: RedirectAttributes): String = attempt(redirect) { testRunService.reopenFiles(); null }
 
     /** Geeft de bestanden hun recordnummers en maakt kopieën met het nummer als naam. */
     @PostMapping("/nieuw/voorbereiden")

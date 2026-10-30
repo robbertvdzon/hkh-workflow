@@ -18,6 +18,12 @@ De scripts schrijven in hun eigen map (`output/`, `images/`, `small/` …); die 
 
 ## Echte plaatjes en uitvoer
 
+- Beide programma's maken **echte jpg's** (die je in de browser kunt openen), met `pdftoppm`, anders `sips` (macOS) en anders een kleine voorbeeldafbeelding; zie `MockImage.pm`.
+  Ook als de app is gestart met een PATH zonder `/opt/homebrew/bin` worden de bekende mappen geprobeerd. Een gescande pdf zonder tekstlaag krijgt een vaste mock-tekst.
+- `images.pl` volgt het **echte images.exe 3.27** zoals dat is gemeten (zie `docs/zcbs-achtergrond.md`, "De vragen van images.exe 3.27 in volgorde"): dezelfde teksten en dezelfde
+  volgorde, ook de vraag om de afgeleide images opnieuw aan te maken en de vraag om `updates-add.txt` te verwijderen, en het doet echt wat je antwoordt: bij J op "VERWIJDEREN ... [small], [large]
+  en [100pct]" zijn die mappen weg (de app beantwoordt die vragen daarom zelf met nee).
+
 - `pdf2zcbs.pl` doet net als de echte pdf2zcbs.exe bij HKH **niets op het scherm** zolang `pdf2zcbs.ini` naast het programma staat (dat is hier zo):
   de vragen zijn dan al beantwoord, het programma toont niets en wacht nergens op. Haal `pdf2zcbs.ini` weg (of hernoem het) om de vragen en de
   voortgang van de handleiding te zien; de automatische antwoorden bij Instellingen zijn alleen dan nodig.

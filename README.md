@@ -38,7 +38,7 @@ De app begint met **inloggen bij ZCBS**, daarna kies je de **collectie** (nu all
 - **Nieuwe bestanden in ZCBS zetten** — de flow van Carla, volgens het stappenplan van Jan, in zeven fasen met een knop per stap:
   1. **Controleren**: een lijstje met vinkjes (ingelogd, vrije nummers uit ZCBS, K: bereikbaar, de programma's, de back-upmappen, de upload, en geen werk van een eerdere keer).
      Staat er nog werk van een eerdere keer, dan verplaats of verwijder je dat hier. Staat alles groen, dan is er een knop voor de volgende fase.
-  2. **Bestanden kiezen**: bladeren door de mappen met scans op K: (de eerste uit de instellingen staat meteen open), aanvinken (Shift-klik kiest "X t/m Y"). Elke gebruiker werkt in een eigen submap van de invoermap.
+  2. **Bestanden kiezen**: bladeren door de mappen met scans op K: (de eerste uit de instellingen staat meteen open), aanvinken (Shift-klik kiest "X t/m Y") en op Verder klikken. Elke gebruiker werkt in een eigen submap van de invoermap.
   3. **Nummers**: de vrije nummers uit ZCBS (zoals bij een nieuw record) en het laatste record; een beginnummer kiezen. De bestanden moeten aaneengesloten in een vrije reeks passen.
   4. **pdf2zcbs.exe**: twee knoppen (handmatig of automatisch); daarna een lijst van wat het maakte, met grootte, afmeting en een link om het te openen, en jouw controle.
   5. **images.exe**: idem. Handmatig typen: de app onthoudt de antwoorden en stelt ze de volgende keer voor; automatisch gebruikt hij de onthouden antwoorden.

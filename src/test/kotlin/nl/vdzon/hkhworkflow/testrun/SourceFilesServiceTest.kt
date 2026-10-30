@@ -122,17 +122,17 @@ class SourceFilesServiceTest {
     }
 
     @Test
-    fun `een kopie weghalen laat het origineel staan en vergeet de herkomst`() {
+    fun `de gekozen kopieën weghalen laat de originelen en eigen bestanden staan`() {
         val s = service()
         s.copy("Ria", "map57", listOf("scan_1.pdf", "scan_2.pdf"))
-        s.removeCopy("scan_1.pdf")
+        Files.writeString(dir.resolve("invoer/zelf.pdf"), "door Carla zelf neergezet")
+        assertEquals(2, s.removeAllCopies())
         assertFalse(Files.exists(dir.resolve("invoer/scan_1.pdf")))
         assertTrue(Files.exists(dir.resolve("k/scans ria/map57/scan_1.pdf")))
+        assertTrue(Files.exists(dir.resolve("invoer/zelf.pdf")), "wat de app niet zelf kopieerde, blijft staan")
         assertNull(s.origin("scan_1.pdf"))
-        assertNotNull(s.origin("scan_2.pdf"))
-        s.forget(listOf("scan_2.pdf"))
-        assertFalse(Files.exists(dir.resolve("invoer/herkomst.tsv")), "zonder bestanden geen herkomstlijst")
-        assertFailsWith<IllegalArgumentException> { s.removeCopy("../s.json") }
+        assertFalse(Files.exists(dir.resolve("invoer/herkomst.tsv")), "zonder kopieën geen herkomstlijst")
+        assertEquals(0, s.removeAllCopies())
     }
 
     @Test

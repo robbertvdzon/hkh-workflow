@@ -143,3 +143,5 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 .envlist .detail{display:block;font-size:13px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
 .envlist li.bad .detail{color:var(--err)}
 .leftovers.stack{border:1px solid var(--busy);border-radius:10px;padding:16px;background:#fffaf0}
+
+.tr.groupstart{border-top:1px solid var(--line)}

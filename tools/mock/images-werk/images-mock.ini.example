@@ -1,9 +1,11 @@
 # Kopieer naar images-mock.ini (staat in .gitignore) om de nep-images.exe echt naar een FTP-server te laten uploaden.
 # Zonder dit bestand uploadt hij niets. Het wachtwoord vraagt hij zoals het echte programma (via de vraag).
+# Dit is de ftp-account van de echte images.exe (ZCBS@historischekringheemskerk.nl), zoals die in de lokale ZCBS in Docker (tools/docker/zcbs) bestaat:
+# de thuismap is de map boven public_html, dus alle paden beginnen met /public_html. Wachtwoord in Docker: hkhtest.
 ftp_host = localhost
-ftp_port = 2121
-ftp_user = hkhadmin
-ftp_base = domains/historischekringheemskerk.nl/public_html
+ftp_port = 21
+ftp_user = ZCBS@historischekringheemskerk.nl
+ftp_base = /public_html
 id1 = HKH
 id2 = 997
 pc_user = Carla

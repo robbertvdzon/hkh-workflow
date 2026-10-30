@@ -32,7 +32,7 @@ Jans stappenplan, met erboven de stap die er nog niet in stond (de bestanden sta
 | Fase | Wat Carla ziet en doet | Jans stap |
 |---|---|---|
 | 1. Controleren | Een lijstje met vinkjes: ingelogd, ZCBS geeft de vrije nummers, de mappen met scans bereikbaar (is K: gekoppeld?), pdf2zcbs.exe en images.exe gevonden, de back-upmappen bereikbaar, de upload ingesteld, en **geen werk van een eerdere keer**. Staat er iets rood, dan zegt het punt zelf wat er niet klopt ("De back-upmappen zijn niet bereikbaar") met eronder wat te doen; staat alles groen, dan is er meteen een knop voor fase 2. | (nieuw: de omgeving klaarzetten) |
-| 2. Bestanden kiezen | Ziet meteen de eerste map met scans uit de instellingen (zet Ria bovenaan), kiest eventueel Jelly, bladert door de submappen en vinkt de pdf's aan (Shift-klik kiest alles tussen twee bestanden: "X t/m Y uit map Z"). Al verwerkte bestanden zijn gemarkeerd en niet aan te vinken. De gekozen bestanden staan eronder. | `copy K:\… c:\zcbs\invoer` |
+| 2. Bestanden kiezen | Ziet meteen de eerste map met scans uit de instellingen (zet Ria bovenaan), kiest eventueel Jelly, bladert door de submappen en vinkt de pdf's aan (Shift-klik kiest alles tussen twee bestanden: "X t/m Y uit map Z"). Al verwerkte bestanden zijn gemarkeerd en niet aan te vinken. Je kiest uit één map en klikt op **Verder**: de bestanden worden gekozen en de flow gaat meteen door naar de nummers. Wil je anders kiezen, dan wist "Opnieuw beginnen" (rechtsboven) je keuze. | `copy K:\… c:\zcbs\invoer` |
 | 3. Nummers | Ziet het laatste record en alle vrije reeksen uit ZCBS, kiest een beginnummer. Passen alle bestanden niet aaneengesloten in een vrije reeks, dan geeft de app een foutmelding. De app geeft de bestanden het recordnummer als naam (op een kopie in `werk`). | het nummer geven in de bestandsnaam |
 | 4. pdf2zcbs | Alleen twee knoppen: handmatig of automatisch (wat er gebeurt staat ingeklapt). Is het programma klaar, dan staat onderaan een lijst van wat het maakte: per bestand de soort (tekst, pdf, small, large), de grootte, de afmeting van een afbeelding en een link om het te openen. Een lege tekst valt op, maar laat de stap niet mislukken. "Ja, goed" of "pdf2zcbs opnieuw". | `pdf2zcbs.exe` en het nakijken van `output\large\pdf\ocr` |
 | 5. images.exe | Idem: twee knoppen, daarna de lijst (small, large, 100pct) en de melding of de records in ZCBS staan. | `copy large\*.jpg images\images`, `images.exe`, `dir small large 100pct` |
@@ -80,6 +80,9 @@ geen vergrendeling; het werkt voor een gebruiker die records mag aanmaken). Geco
   antwoord alvast in** en onthoudt wat ze intypt (alleen als het programma goed eindigt). Wachtwoorden worden nooit voorgesteld of onthouden.
 - **Automatisch uitvoeren**: de app geeft de onthouden antwoorden. Alleen de collectie (uit de instellingen), het overschrijven en het verwijderen van de
   mappen van images.exe staan vast en gaan voor: altijd `n`, want de app ruimt zelf op, ná de back-up.
+- **Die vragen over overschrijven en verwijderen beantwoordt de app ook bij handmatig uitvoeren zelf met nee.** Zonder dat wist images.exe, net als het echte programma, de
+  afbeeldingen als iemand "J" typt, en dan ontbreken ze bij de controle en de back-up (zo ging een eerdere run mis). In de console staan die antwoorden als "(auto) n".
+- Vragen worden herkend zonder te letten op het aantal spaties: het echte images.exe schrijft "Kies  1,2,3" met twee spaties.
 - Zolang er niet handmatig is geantwoord, zijn uploaden en records aanmaken `n`: de app waarschuwt daarvoor. Na afloop meldt de app of de
   afbeeldingen zijn geüpload en of de records in ZCBS staan.
 - Het FTP-wachtwoord voor automatisch uploaden staat bij de beheerder in de antwoordenlijst (veld "wachtwoord").

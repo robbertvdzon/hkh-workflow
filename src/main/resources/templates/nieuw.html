@@ -13,6 +13,7 @@
             </div>
             <div class="row-actions">
                 <form th:if="${run != null and !flow.finished}" method="post" th:action="@{/nieuw/opnieuw}" onsubmit="return confirm('Opnieuw beginnen? Wat je hier hebt gedaan wordt gewist; bestanden op schijf blijven staan.')"><button class="btn btn-s btn-sm" type="submit" title="Stopt een nog lopend programma en begint opnieuw">Opnieuw beginnen</button></form>
+                <form th:if="${run == null and flow.current >= 2 and flow.current <= 3}" method="post" th:action="@{/nieuw/opnieuw}" onsubmit="return confirm('Opnieuw beginnen? Je keuze van bestanden wordt gewist; de bestanden op K: blijven staan.')"><button class="btn btn-s btn-sm" type="submit" title="Wist je keuze van bestanden en begint opnieuw bij de controle">Opnieuw beginnen</button></form>
             </div>
         </div>
 
@@ -68,7 +69,7 @@
         <th:block th:if="${flow.current == 2}">
             <section class="card pad stack">
                 <h2>2. Bestanden kiezen</h2>
-                <p class="muted" style="margin:0">Jelly of Ria geeft aan welke bestanden op het archief moeten ("bestand X t/m Y uit map Z"). Blader naar die map en vink de bestanden aan. De bestanden op K: blijven staan.</p>
+                <p class="muted" style="margin:0">Jelly of Ria geeft aan welke bestanden op het archief moeten ("bestand X t/m Y uit map Z"). Blader naar die map, vink de bestanden aan en klik op Verder. De bestanden op K: blijven staan.</p>
                 <div class="warn" th:if="${roots.isEmpty()}">Er zijn geen mappen met scans ingesteld. Dat doet de beheerder bij Instellingen.</div>
 
                 <!-- Welke bronmap -->
@@ -108,33 +109,23 @@
                         </div>
                         <p class="hint" style="margin:0">Tip: vink het eerste bestand aan, houd Shift ingedrukt en klik op het laatste: dan staat alles ertussen ook aan ("X t/m Y"). Bestanden die al verwerkt zijn, kun je niet aanvinken.
                             <span id="count"></span></p>
-                        <div><button class="btn btn-p" type="submit" id="copy">Kies de aangevinkte bestanden</button></div>
+                        <div><button class="btn btn-p" type="submit" id="copy" th:attr="data-ready=${pdfs.isEmpty()} ? '0' : '1'">Verder</button></div>
                     </form>
                 </th:block>
             </section>
 
-            <!-- Wat Carla tot nu toe gekozen heeft -->
-            <section class="card pad stack">
-                <h2>Gekozen bestanden <span class="muted" th:text="'(' + ${pdfs.size()} + ')'"></span></h2>
-                <div class="warn" th:if="${pdfs.isEmpty()}">Je hebt nog geen bestanden gekozen.</div>
-                <div class="table" th:unless="${pdfs.isEmpty()}">
-                    <div class="tr th" style="grid-template-columns:minmax(0,1fr) 110px 90px"><span>Bestand</span><span>Gescand door</span><span></span></div>
-                    <div class="tr" th:each="f : ${pdfs}" style="grid-template-columns:minmax(0,1fr) 110px 90px">
-                        <span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="pdf">PDF</span><span class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.name}" th:title="${f.folder}">scan.pdf</span></span>
-                        <span th:text="${f.by != ''} ? ${f.by} : '–'">Ria</span>
-                        <form method="post" th:action="@{/nieuw/bestanden/verwijder}"><input type="hidden" name="naam" th:value="${f.name}"><input type="hidden" name="bron" th:value="${listing != null} ? ${listing.root.name}"><input type="hidden" name="pad" th:value="${listing != null} ? ${listing.relPath} : ''"><button class="btn btn-s btn-sm" type="submit" title="Haal dit bestand uit je keuze; het bestand op K: blijft staan">Haal weg</button></form>
-                    </div>
-                </div>
-                <div class="row-actions">
-                    <form th:action="@{/nieuw/bestanden/bevestig}" method="post"><button class="btn btn-p" type="submit" th:disabled="${pdfs.isEmpty()}">Klopt, verder naar de nummers</button></form>
-                </div>
+            <!-- Bestanden die al klaarstonden (alleen na "horen erbij"): ze doen mee, dus ze worden getoond -->
+            <section class="alert alert-info" th:if="${!pdfs.isEmpty()}">
+                <b th:text="${pdfs.size()} + (${pdfs.size() == 1} ? ' bestand stond' : ' bestanden stonden') + ' al klaar en ' + (${pdfs.size() == 1} ? 'doet' : 'doen') + ' mee:'">2 bestanden stonden al klaar en doen mee:</b>
+                <span class="mono" th:text="${#strings.listJoin(pdfs.![name], ', ')}"></span>
+                <form method="post" th:action="@{/nieuw/bestanden/leeg}" style="display:inline"><button class="btn btn-s btn-sm" type="submit">Haal ze weg</button></form>
             </section>
         </th:block>
 
         <!-- 3. Nummers -->
         <section class="card pad stack" th:if="${flow.current == 3}">
             <h2>3. Nummers</h2>
-            <p class="muted" style="margin:0">De <b th:text="${count}">12</b> bestanden krijgen aaneengesloten recordnummers. Kies een beginnummer uit de nummers die in ZCBS nog vrij zijn.</p>
+            <p class="muted" style="margin:0">Je hebt <b th:text="${count}">12</b> <span th:text="${count == 1} ? 'bestand' : 'bestanden'">bestanden</span> gekozen. Ze krijgen aaneengesloten recordnummers: kies een beginnummer uit de nummers die in ZCBS nog vrij zijn.</p>
             <div class="alert alert-err" th:if="${free == null}">ZCBS gaf de lijst met vrije nummers niet. Is je sessie verlopen, heb je geen recht om records aan te maken, of is ZCBS niet bereikbaar? <a th:href="@{/}">Log opnieuw in</a>.</div>
             <th:block th:if="${free != null}">
                 <p style="margin:0" th:if="${lastNumber != null}">Laatste record in ZCBS: <b class="mono" th:text="${lastNumber}">11934</b></p>
@@ -155,13 +146,9 @@
                     <p class="hint" style="margin:0">De app geeft de bestanden het recordnummer als naam, op een kopie. De originelen blijven staan.</p>
                     <div class="row-actions">
                         <button class="btn btn-p" type="submit">Geef de bestanden deze nummers en ga verder</button>
-                        <button class="btn btn-s" type="submit" formaction="/nieuw/bestanden/andere" formnovalidate>Andere bestanden kiezen</button>
                     </div>
                 </form>
             </th:block>
-            <div class="row-actions" th:if="${free == null}">
-                <form th:action="@{/nieuw/bestanden/andere}" method="post"><button class="btn btn-s" type="submit">Terug naar de bestanden</button></form>
-            </div>
         </section>
 
         <!-- 4 t/m 7: een stap met een knop, en na pdf2zcbs en images.exe een lijst van wat er gemaakt is -->
@@ -172,10 +159,10 @@
                 <h3 style="margin:0" th:text="${reviewType == 'PDF2ZCBS'} ? 'Dit heeft pdf2zcbs.exe gemaakt' : 'Dit heeft images.exe gemaakt'">Dit is gemaakt</h3>
                 <div class="alert alert-ok" th:if="${reviewType == 'IMAGES'}" th:text="${#strings.defaultString(run.rows[0].cells[2].message, '')}" style="white-space:pre-line"></div>
                 <div class="table">
-                    <div class="tr th" style="grid-template-columns:90px minmax(0,1fr) 80px 90px 140px 70px"><span>Nummer</span><span>Bestand</span><span>Soort</span><span>Grootte</span><span>Afmeting</span><span></span></div>
-                    <div class="tr" th:each="p : ${produced}" style="grid-template-columns:90px minmax(0,1fr) 80px 90px 140px 70px">
-                        <span class="mono" th:text="${p.number}">11935</span>
-                        <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${names[p.number]}" th:title="${names[p.number]}">scan.pdf</span>
+                    <div class="tr th" style="grid-template-columns:90px minmax(0,1fr) 80px 90px 150px 70px"><span>Nummer</span><span>Bestand</span><span>Soort</span><span>Grootte</span><span>Afmeting</span><span></span></div>
+                    <div class="tr" th:each="p, st : ${produced}" style="grid-template-columns:90px minmax(0,1fr) 80px 90px 150px 70px" th:classappend="${st.first or produced[st.index - 1].number != p.number} ? 'groupstart'">
+                        <span class="mono" th:text="${st.first or produced[st.index - 1].number != p.number} ? ${p.number} : ''">11935</span>
+                        <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${st.first or produced[st.index - 1].number != p.number} ? ${names[p.number]} : ''" th:title="${names[p.number]}">scan.pdf</span>
                         <span th:text="${p.label}">small</span>
                         <span th:text="${p.size}">193 kB</span>
                         <span><span th:text="${p.resolution != ''} ? ${p.resolution} : '–'">250 × 177 px</span><span class="warn" th:if="${p.note != ''}" th:text="' ' + ${p.note}"></span></span>
@@ -230,7 +217,7 @@
         function update() {
             var n = boxes.filter(function (b) { return b.checked; }).length;
             count.textContent = n ? ' ' + n + ' aangevinkt.' : '';
-            copy.disabled = n === 0;
+            copy.disabled = n === 0 && copy.getAttribute('data-ready') !== '1';
         }
         boxes.forEach(function (b) {
             b.addEventListener('click', function (e) {

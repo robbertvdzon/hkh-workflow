@@ -121,6 +121,8 @@ class ExeRunner(
         val startNanos: Long,
         val newline: String,
         val auto: List<AutoAnswer>?,
+        /** Vragen die de app ook bij handmatig uitvoeren zelf beantwoordt (bijvoorbeeld "verwijderen? nee"), zodat een verkeerde J ze niet kan veroorzaken. */
+        val forced: List<AutoAnswer>,
         /** De vragen die we kennen, met het onthouden antwoord: voor een voorstel in de handmatige stand en om antwoorden te onthouden. */
         val known: List<AutoAnswer>,
     ) {
@@ -194,7 +196,7 @@ class ExeRunner(
     private fun currentQuestion(run: Run): AutoAnswer? {
         val text = synchronized(run.output) { run.sinceInput.toString() }
         return run.known.filter { it.pattern.isNotBlank() }
-            .map { it to text.lastIndexOf(it.pattern, ignoreCase = true) }
+            .map { it to text.lastIndexOf(squeeze(it.pattern), ignoreCase = true) }
             .filter { it.second >= 0 }
             .maxByOrNull { it.second }?.first
     }
@@ -307,6 +309,7 @@ class ExeRunner(
         notes: List<String> = emptyList(),
         autoAnswers: List<AutoAnswer>? = null,
         knownQuestions: List<AutoAnswer> = emptyList(),
+        forcedAnswers: List<AutoAnswer> = emptyList(),
         onExit: (Int?) -> Unit,
     ): RunSnapshot {
         check(!isRunning()) { "Er draait al een programma: ${current?.label}" }
@@ -338,7 +341,8 @@ class ExeRunner(
         // Met PERLIO=:unix valt Perl's CRLF-vertaling weg; stuur dan alleen LF, anders komt er een \r in het antwoord.
         val newline = if (isWindows() && extraEnv["PERLIO"] == null) "\r\n" else "\n"
         val run = Run(id, label, mode, command.joinToString(" "), process, writer, logWriter, logFile, Instant.now(), startNanos, newline,
-            autoAnswers?.takeIf { mode == RunMode.IN_APP }, (autoAnswers.orEmpty() + knownQuestions).distinctBy { it.pattern })
+            autoAnswers?.takeIf { mode == RunMode.IN_APP }, forcedAnswers.takeIf { mode == RunMode.IN_APP && autoAnswers == null }.orEmpty(),
+            (autoAnswers.orEmpty() + forcedAnswers + knownQuestions).distinctBy { it.pattern })
         current = run
 
         run.logLine("START $label")
@@ -451,11 +455,11 @@ class ExeRunner(
                     run.logLine("OUT   $n tekens: ${quote(chunk)}")
                     synchronized(run.output) {
                         run.output.append(chunk)
-                        run.sinceInput.append(chunk)
+                        appendSqueezed(run.sinceInput, chunk)
                         if (run.sinceInput.length > MAX_OUTPUT) run.sinceInput.delete(0, run.sinceInput.length - MAX_OUTPUT)
                         if (run.output.length > MAX_OUTPUT) run.output.delete(0, run.output.length - MAX_OUTPUT)
                     }
-                    if (run.autoEnabled) autoRespond(run, chunk)
+                    if (run.autoEnabled || run.forced.isNotEmpty()) autoRespond(run, chunk)
                 }
             }
             run.logLine("EOF   uitvoerstroom gesloten")
@@ -464,24 +468,37 @@ class ExeRunner(
         }
     }
 
+    /**
+     * Vragen worden herkend zonder te letten op witruimte: het echte images.exe schrijft "Kies  1,2,3" met twee spaties, de handleiding en de instellingen
+     * met één. Daarom staan de uitvoer (hier) en de teksten (in [squeeze]) beide met één spatie voor elke reeks witruimte, ook over brokken heen.
+     */
+    private fun appendSqueezed(buffer: StringBuilder, chunk: String) {
+        var space = buffer.isNotEmpty() && buffer.last() == ' '
+        for (c in chunk) {
+            if (c.isWhitespace()) { if (!space) buffer.append(' '); space = true } else { buffer.append(c); space = false }
+        }
+    }
+
+    private fun squeeze(text: String): String = text.replace(Regex("\\s+"), " ")
+
     /** Zoekt in de nieuwe uitvoer naar herkende vragen en beantwoordt ze, in volgorde van verschijnen. */
     private fun autoRespond(run: Run, chunk: String) {
-        val rules = run.auto ?: return
-        run.autoBuffer.append(chunk)
-        while (run.autoEnabled) {
+        val rules = run.auto ?: run.forced.takeIf { it.isNotEmpty() } ?: return
+        appendSqueezed(run.autoBuffer, chunk)
+        while (run.autoEnabled || run.auto == null) {
             val text = run.autoBuffer.toString()
             var best: AutoAnswer? = null
             var bestIndex = Int.MAX_VALUE
             for (rule in rules) {
                 if (rule.pattern.isBlank()) continue
-                val i = text.indexOf(rule.pattern, ignoreCase = true)
+                val i = text.indexOf(squeeze(rule.pattern), ignoreCase = true)
                 if (i in 0 until bestIndex) {
                     best = rule
                     bestIndex = i
                 }
             }
             val rule = best ?: return
-            run.autoBuffer.delete(0, bestIndex + rule.pattern.length)
+            run.autoBuffer.delete(0, bestIndex + squeeze(rule.pattern).length)
             if (run.autoAnswered >= MAX_AUTO_ANSWERS) {
                 run.autoEnabled = false
                 run.logLine("AUTO  uitgezet: al $MAX_AUTO_ANSWERS antwoorden gegeven (loopt het programma in een kringetje?)")
