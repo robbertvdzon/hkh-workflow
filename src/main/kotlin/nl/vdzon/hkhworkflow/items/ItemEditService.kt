@@ -137,6 +137,19 @@ class ItemEditService(private val settingsService: SettingsService) {
         if (c.fileExists(path)) c.fileUrl(path) else null
     }
 
+    /** De grote afbeelding van het record op de site (zoals ZCBS die zelf toont), als hij er staat. */
+    fun imageUrl(number: String): String? = client?.let { c ->
+        val path = "${settingsService.get().collection.trim()}/large/$number.jpg"
+        if (c.fileExists(path)) c.fileUrl(path) else null
+    }
+
+    /** Het volgende record in de lijst na [number] dat nog niet is opgeslagen, of null als er geen meer is. */
+    fun nextNumber(number: String): String? {
+        val i = batch.indexOfFirst { it.number == number }
+        if (i < 0) return null
+        return batch.drop(i + 1).firstOrNull { it.status != EditStatus.OPGESLAGEN }?.number
+    }
+
     fun ocrText(number: String): String? = client?.fetchText("${settingsService.get().collection.trim()}/ocr/$number.txt")
 
     /**

@@ -75,8 +75,11 @@ class ItemsController(private val items: ItemEditService) {
         model.addAttribute("openedAt", items.openedAt(number))
         model.addAttribute("openedUntil", items.openedUntil(number))
         model.addAttribute("zcbsUrl", items.recordUrl(number))
-        model.addAttribute("pdfUrl", items.pdfUrl(number))
+        val pdfUrl = items.pdfUrl(number)
+        model.addAttribute("pdfUrl", pdfUrl)
+        model.addAttribute("imageUrl", if (pdfUrl == null) items.imageUrl(number) else null)
         model.addAttribute("ocr", items.ocrText(number))
+        model.addAttribute("nextNumber", items.nextNumber(number))
         return "record"
     }
 
@@ -112,6 +115,8 @@ class ItemsController(private val items: ItemEditService) {
         model.addAttribute("openedUntil", null)
         model.addAttribute("zcbsUrl", items.recordUrl(number))
         model.addAttribute("pdfUrl", null)
+        model.addAttribute("imageUrl", null)
+        model.addAttribute("nextNumber", items.nextNumber(number))
         model.addAttribute("ocr", null)
         return "record"
     }
@@ -153,8 +158,17 @@ class ItemsController(private val items: ItemEditService) {
     }
 
     @PostMapping("/records/{nr}/opslaan")
-    fun save(@PathVariable("nr") number: String, @RequestParam params: MultiValueMap<String, String>, model: Model, redirect: RedirectAttributes): String =
-        handle(number, items.save(number, values(number, params)), model, redirect)
+    fun save(
+        @PathVariable("nr") number: String,
+        @RequestParam params: MultiValueMap<String, String>,
+        @RequestParam("volgende", required = false) next: String?,
+        model: Model,
+        redirect: RedirectAttributes,
+    ): String {
+        // Het volgende record bepalen vóór het opslaan: daarna staat dit record op opgeslagen.
+        val nextNumber = items.nextNumber(number)
+        return handle(number, items.save(number, values(number, params)), model, redirect, if (next != null) nextNumber else null)
+    }
 
     @PostMapping("/records/{nr}/conflict")
     fun resolve(
@@ -169,8 +183,11 @@ class ItemsController(private val items: ItemEditService) {
         else showForm(model, number, "info", listOf("De velden die botsten zijn vervangen door de versie uit ZCBS. Controleer het formulier en sla dan op."))
     }
 
-    private fun handle(number: String, outcome: SaveOutcome, model: Model, redirect: RedirectAttributes): String = when (outcome) {
-        is SaveOutcome.Saved -> "redirect:/records?opgeslagen=$number"
+    private fun handle(number: String, outcome: SaveOutcome, model: Model, redirect: RedirectAttributes, next: String? = null): String = when (outcome) {
+        is SaveOutcome.Saved -> if (next != null) {
+            redirect.addFlashAttribute("saved", number)
+            "redirect:/records/$next"
+        } else "redirect:/records?opgeslagen=$number"
         is SaveOutcome.NoChanges -> showForm(model, number, "info", listOf("Er is niets gewijzigd; er is niets opgeslagen."))
         is SaveOutcome.Blocked -> showForm(model, number, "blocked", outcome.messages)
         is SaveOutcome.Locked -> showForm(model, number, "locked", listOf(outcome.message))
@@ -180,8 +197,9 @@ class ItemsController(private val items: ItemEditService) {
     }
 
     @PostMapping("/records/{nr}/later")
-    fun later(@PathVariable("nr") number: String): String {
+    fun later(@PathVariable("nr") number: String, @RequestParam("volgende", required = false) next: String?): String {
+        val nextNumber = items.nextNumber(number)
         items.later(number)
-        return "redirect:/records"
+        return if (next != null && nextNumber != null) "redirect:/records/$nextNumber" else "redirect:/records"
     }
 }

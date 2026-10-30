@@ -15,6 +15,7 @@
             <a class="btn btn-s btn-sm" th:if="${zcbsUrl}" th:href="${zcbsUrl}" target="_blank">Open in ZCBS</a>
         </div>
 
+        <div class="alert alert-ok" th:if="${saved != null}" th:text="'Record ' + ${saved} + ' is opgeslagen en teruggecontroleerd. De beheerder krijgt een e-mail met het record.'"></div>
         <div class="alert alert-err stack" th:if="${panel == 'unsafe' or panel == 'error'}" style="gap:10px">
             <b th:text="${panel == 'unsafe'} ? 'Dit record is niet veilig te bewerken in deze app.' : 'Er ging iets mis.'"></b>
             <span th:each="m : ${messages}" th:text="${m}" style="white-space:pre-line"></span>
@@ -37,7 +38,7 @@
             <span th:each="m : ${messages}" th:text="${m}"></span>
         </div>
 
-        <form th:unless="${controls.isEmpty()}" method="post" th:action="@{/records/{nr}/voorbeeld(nr=${r.number})}" class="stack" style="gap:18px">
+        <form th:unless="${controls.isEmpty()}" method="post" th:action="@{/records/{nr}/opslaan(nr=${r.number})}" class="stack" style="gap:18px">
             <div class="alert alert-warn stack" th:if="${panel == 'locked'}" style="gap:8px">
                 <button class="btn btn-p btn-sm" type="submit" th:formaction="@{/records/{nr}/opslaan(nr=${r.number})}" style="align-self:flex-start">Probeer opnieuw op te slaan</button>
             </div>
@@ -55,7 +56,11 @@
                     <div class="docbox" style="height:auto;min-height:340px;padding:0;overflow:hidden" th:if="${pdfUrl}">
                         <iframe th:src="${pdfUrl}" style="border:0;width:100%;height:480px" title="De pdf van dit record"></iframe>
                     </div>
-                    <div class="docbox" th:unless="${pdfUrl}"><span class="pdf" style="width:46px;height:58px;font-size:12px">PDF</span>
+                    <div class="docbox" style="height:auto;padding:8px" th:if="${imageUrl}">
+                        <a th:href="${imageUrl}" target="_blank"><img th:src="${imageUrl}" alt="De afbeelding van dit record" style="max-width:100%;display:block"></a>
+                    </div>
+                    <span class="hint" th:if="${imageUrl}">De pdf van dit record staat (nog) niet op de site; dit is de afbeelding (archief/large/<span th:text="${r.number}"></span>.jpg).</span>
+                    <div class="docbox" th:unless="${pdfUrl != null or imageUrl != null}"><span class="pdf" style="width:46px;height:58px;font-size:12px">PDF</span>
                         <span>de pdf van dit record staat (nog) niet op de site</span><span class="hint">archief/pdf/<span th:text="${r.number}"></span>.pdf</span></div>
                     <a th:if="${pdfUrl}" th:href="${pdfUrl}" target="_blank" class="hint">Open de pdf in een apart venster</a>
                     <div class="card pad" style="padding:14px 16px" th:if="${ocr}"><b style="font-size:13px">Tekst uit het document (ocr)</b>
@@ -81,9 +86,16 @@
                     </div>
                 </div>
             </div>
+            <!-- Opslaan staat vooraan in de pagina, zodat Enter in een veld opslaat; met CSS staat het rechts. -->
             <div class="selbar">
-                <button class="btn btn-s" type="submit" th:formaction="@{/records/{nr}/later(nr=${r.number})}" formnovalidate>Doe ik later</button>
-                <span style="display:flex;gap:14px;align-items:center"><span class="hint">Er is nog niets opgeslagen.</span><button class="btn btn-p" type="submit">Voorbeeld van de wijziging</button></span>
+                <span style="display:flex;gap:10px;align-items:center;order:2">
+                    <button th:class="${nextNumber} ? 'btn btn-s' : 'btn btn-p'" type="submit">Opslaan</button>
+                    <button class="btn btn-p" th:if="${nextNumber}" type="submit" name="volgende" value="1">Opslaan en volgende</button>
+                </span>
+                <span style="display:flex;gap:10px;align-items:center;order:1">
+                    <button class="btn btn-s" th:if="${nextNumber}" type="submit" name="volgende" value="1" th:formaction="@{/records/{nr}/later(nr=${r.number})}" formnovalidate title="Dit record niet opslaan en het volgende openen">Volgende zonder opslaan</button>
+                    <button class="btn btn-s" th:unless="${nextNumber}" type="submit" th:formaction="@{/records/{nr}/later(nr=${r.number})}" formnovalidate title="Dit record niet opslaan en terug naar de lijst">Doe ik later</button>
+                </span>
             </div>
         </form>
     </main>
