@@ -62,7 +62,10 @@
                     </ul>
                     <div class="alert alert-info" style="margin:4px 0 0" th:each="w : ${run.next.warnings}" th:text="${w}"></div>
                     <span class="hint" th:if="${run.next.status == 'FAILED'}" style="color:var(--err);white-space:pre-line" th:text="${run.next.message}"></span>
-                    <span class="hint" th:if="${run.next.status == 'RUNNING' and run.next.usesExe}">Bezig… beantwoord de vragen hieronder.</span>
+                    <span class="hint" th:if="${run.next.status == 'RUNNING' and run.next.usesExe and !(console != null and console.auto)}">Bezig… beantwoord de vragen hieronder.</span>
+                    <span class="hint" th:if="${run.next.status == 'RUNNING' and run.next.usesExe and console != null and console.auto}">Bezig… even geduld, de pagina gaat vanzelf verder.</span>
+                    <!-- Het programma is klaar maar de stap wordt nog afgerond (controle van de bestanden): kom zo terug, zonder dat Carla hoeft te verversen. -->
+                    <script th:if="${run.next.status == 'RUNNING' and run.next.usesExe and !(console != null and console.running)}">setTimeout(function () { location.reload(); }, 1000);</script>
                     <span class="hint" th:if="${run.next.status == 'RUNNING' and !run.next.usesExe}">Bezig… even geduld, de pagina laadt opnieuw als het klaar is.</span>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'PENDING'}" style="align-items:flex-end;flex-direction:column;gap:10px">
@@ -89,10 +92,16 @@
             <!-- Console: alleen zolang er een programma draait. Daarna staat het resultaat bij de stap en het log onder Runs. -->
             <section th:fragment="consolesection" th:if="${console != null and console.running}" style="display:flex;flex-direction:column;gap:10px">
                 <div th:fragment="console" id="console"
-                     th:attr="hx-get=${console != null and console.running} ? @{/test/console} : null,
+                     th:attr="hx-get=${console != null and console.running} ? @{/test/console(terug=${returnTo})} : null,
                               hx-trigger=${console != null and console.running} ? 'every 1s' : null"
                      hx-swap="outerHTML">
-                    <th:block th:if="${console != null}">
+                    <!-- Automatisch bij Nieuwe bestanden: geen console, tenzij een vraag niet wordt herkend -->
+                    <div class="hint" th:if="${console != null and returnTo == '/nieuw' and console.auto and !console.autoStuck}" style="display:flex;gap:10px;align-items:center">
+                        <span class="chip c-busy">Bezig</span>
+                        <span th:text="${console.label}"></span>
+                        <span>Even geduld, de pagina gaat vanzelf verder.</span>
+                    </div>
+                    <th:block th:if="${console != null and !(returnTo == '/nieuw' and console.auto and !console.autoStuck)}">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                             <span style="font-weight:600" th:text="${console.label} + ' (' + ${console.mode.label} + (${console.auto} ? ', automatisch' : '') + ')'"></span>
                             <span th:if="${console.running}" class="chip c-busy">Draait</span>
@@ -124,7 +133,7 @@
                         <div class="hint" style="margin-top:6px">Commando: <span class="mono" th:text="${console.command}"></span> · log: <span class="mono" th:text="${console.logFile}"></span></div>
                     </th:block>
                 </div>
-                <div th:if="${console.running and console.mode.name() == 'IN_APP'}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <div th:if="${console.running and console.mode.name() == 'IN_APP' and !(returnTo == '/nieuw' and console.auto and !console.autoStuck)}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                     <form hx-post="/test/console/input" hx-swap="none" hx-on::after-request="this.reset()" style="display:flex;gap:8px;flex-grow:1">
                         <label for="line" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Antwoord</label>
                         <input type="text" id="line" name="line" autocomplete="off" placeholder="Typ een antwoord en druk op Enter" autofocus>

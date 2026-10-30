@@ -65,13 +65,14 @@ class TestController(
 
     /** Fragment dat elke seconde wordt opgehaald zolang er een programma draait. */
     @GetMapping("/test/console")
-    fun console(model: Model, response: HttpServletResponse): String {
+    fun console(@RequestParam("terug", required = false) returnTo: String?, model: Model, response: HttpServletResponse): String {
         val snapshot = exeRunner.snapshot()
         if (snapshot == null || !snapshot.running) {
             // Programma is klaar: laat de hele pagina verversen zodat de stappen bijgewerkt worden.
             response.setHeader("HX-Refresh", "true")
         }
         model.addAttribute("console", snapshot)
+        model.addAttribute("returnTo", returnTo)
         return "test :: console"
     }
 
