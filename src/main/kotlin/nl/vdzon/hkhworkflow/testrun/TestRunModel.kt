@@ -139,6 +139,12 @@ data class Leftover(val area: String, val label: String, val base: Path, val fil
     val names: List<String> get() = files.map { base.relativize(it).toString() }
 }
 
+/** Eén controle van de omgeving aan het begin van de flow: [ok] of niet, en bij niet ok in [detail] wat er mis is en wat Carla kan doen. */
+data class EnvCheck(val label: String, val ok: Boolean, val detail: String = "")
+
+/** Een bestand dat pdf2zcbs.exe of images.exe heeft gemaakt, om te controleren: wat het is, hoe groot en (bij een afbeelding) in welke afmeting. */
+data class ProducedFile(val number: String, val kind: String, val label: String, val size: String, val resolution: String, val note: String = "")
+
 /** Eén fase in de balk bovenaan de pagina Nieuwe bestanden. [state] is done, now of todo. */
 data class PhaseView(val nr: Int, val title: String, val state: String, val note: String?)
 

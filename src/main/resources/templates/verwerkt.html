@@ -5,6 +5,7 @@
 <div class="app">
     <nav th:replace="~{fragments/layout :: side}"></nav>
     <main>
+        <a class="back" th:href="@{/collectie/{c}(c=${collectionName})}">← Start</a>
         <div class="head">
             <div>
                 <h1>Wat is al verwerkt</h1>

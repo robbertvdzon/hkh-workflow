@@ -5,10 +5,11 @@
 <div class="app">
     <nav th:replace="~{fragments/layout :: side}"></nav>
     <main>
+        <a class="back" th:href="@{/collectie/{c}(c=${collectionName})}">← Start</a>
         <div class="head">
             <div>
                 <h1>Nieuwe bestanden in ZCBS zetten</h1>
-                <p class="sub">Van de scans op K: naar het archief, stap voor stap. Elke stap start je zelf, na een overzicht van wat hij gaat doen. De gegevens (titel enzovoort) vul je op een andere dag in bij <a th:href="@{/records}">ZCBS records aanpassen</a>.</p>
+                <p class="sub">Van de scans op K: naar het archief, stap voor stap. De gegevens (titel enzovoort) vul je op een andere dag in bij ZCBS records aanpassen.</p>
             </div>
             <div class="row-actions">
                 <form th:if="${run != null and !flow.finished}" method="post" th:action="@{/nieuw/opnieuw}" onsubmit="return confirm('Opnieuw beginnen? Wat je hier hebt gedaan wordt gewist; bestanden op schijf blijven staan.')"><button class="btn btn-s btn-sm" type="submit" title="Stopt een nog lopend programma en begint opnieuw">Opnieuw beginnen</button></form>
@@ -26,36 +27,49 @@
             </span>
         </div>
 
-        <!-- Resten van een eerdere run: eerst opruimen voordat je begint -->
-        <section class="card pad stack leftovers" th:if="${!leftovers.isEmpty()}">
-            <h2 style="margin:0">Eerst opruimen: er staan nog bestanden van een eerdere keer</h2>
-            <p class="muted" style="margin:0">In je invoermap of in de mappen van pdf2zcbs.exe en images.exe staat nog werk dat niet is opgeruimd. pdf2zcbs.exe wist zijn map <span class="mono">output</span> bij de start,
-                images.exe zou oude afbeeldingen opnieuw uploaden, en bestanden in je invoermap zouden ongemerkt meedoen. Zet ze dus eerst opzij of verwijder ze, voordat je nieuwe bestanden kiest.</p>
-            <ul class="leftlist">
-                <li th:each="x : ${leftovers}">
-                    <b th:text="${x.label}">pdf2zcbs: de map output</b>
-                    <span class="muted" th:text="${x.files.size()} + (${x.files.size() == 1} ? ' bestand' : ' bestanden') + ': ' + ${#strings.listJoin(x.names.subList(0, x.names.size() > 6 ? 6 : x.names.size()), ', ')} + (${x.names.size() > 6} ? ' en ' + (${x.names.size()} - 6) + ' andere' : '')">4 bestanden</span>
+        <!-- 1. Controleren -->
+        <section class="card pad stack" th:if="${flow.current == 1}">
+            <h2>1. Controleer of alles klaarstaat</h2>
+            <ul class="envlist">
+                <li th:each="c : ${checks}" th:classappend="${c.ok} ? 'ok' : 'bad'">
+                    <span class="mark" th:text="${c.ok} ? '✓' : '✗'">✓</span>
+                    <span><b th:text="${c.label}">Ingelogd bij ZCBS</b><span class="detail" th:if="${c.detail != ''}" th:text="${c.detail}"></span></span>
                 </li>
             </ul>
-            <div class="row-actions">
-                <form method="post" th:action="@{/nieuw/resten}"><input type="hidden" name="actie" value="verplaats">
-                    <button class="btn btn-p" type="submit" th:disabled="${leftoversTarget == ''}">Verplaats ze naar een map met resten</button></form>
-                <form method="post" th:action="@{/nieuw/resten}" th:if="${#lists.contains(leftovers.![area], 'invoer')}"><input type="hidden" name="actie" value="accepteer">
-                    <button class="btn btn-s" type="submit" title="Bijvoorbeeld als je de app opnieuw hebt gestart en deze bestanden zelf hebt klaargezet">De bestanden in mijn invoermap horen erbij</button></form>
-                <form method="post" th:action="@{/nieuw/resten}" onsubmit="return confirm('Deze bestanden definitief verwijderen? Dit kan niet ongedaan worden gemaakt.')"><input type="hidden" name="actie" value="verwijder">
-                    <button class="btn btn-s" type="submit" style="color:var(--err)">Verwijder ze</button></form>
+
+            <!-- Resten van een eerdere keer: eerst opruimen -->
+            <div class="leftovers stack" th:if="${!leftovers.isEmpty()}">
+                <h3 style="margin:0">Eerst opruimen: er staat nog werk van een eerdere keer</h3>
+                <p class="muted" style="margin:0">pdf2zcbs.exe wist zijn map <span class="mono">output</span> bij de start, images.exe zou oude afbeeldingen opnieuw uploaden, en bestanden die je eerder hebt gekozen zouden ongemerkt meedoen.
+                    Zet ze dus eerst opzij of verwijder ze.</p>
+                <ul class="leftlist">
+                    <li th:each="x : ${leftovers}">
+                        <b th:text="${x.label}">pdf2zcbs: de map output</b>
+                        <span class="muted" th:text="${x.files.size()} + (${x.files.size() == 1} ? ' bestand' : ' bestanden') + ': ' + ${#strings.listJoin(x.names.subList(0, x.names.size() > 6 ? 6 : x.names.size()), ', ')} + (${x.names.size() > 6} ? ' en ' + (${x.names.size()} - 6) + ' andere' : '')">4 bestanden</span>
+                    </li>
+                </ul>
+                <div class="row-actions">
+                    <form method="post" th:action="@{/nieuw/resten}"><input type="hidden" name="actie" value="verplaats">
+                        <button class="btn btn-p" type="submit" th:disabled="${leftoversTarget == ''}">Verplaats ze naar een map met resten</button></form>
+                    <form method="post" th:action="@{/nieuw/resten}" th:if="${#lists.contains(leftovers.![area], 'invoer')}"><input type="hidden" name="actie" value="accepteer">
+                        <button class="btn btn-s" type="submit" title="Bijvoorbeeld als je de app opnieuw hebt gestart en deze bestanden zelf hebt klaargezet">Mijn gekozen bestanden horen erbij</button></form>
+                    <form method="post" th:action="@{/nieuw/resten}" onsubmit="return confirm('Deze bestanden definitief verwijderen? Dit kan niet ongedaan worden gemaakt.')"><input type="hidden" name="actie" value="verwijder">
+                        <button class="btn btn-s" type="submit" style="color:var(--err)">Verwijder ze</button></form>
+                </div>
+                <p class="hint" style="margin:0" th:if="${leftoversTarget != ''}">Verplaatsen zet ze in een submap met datum en tijd onder <span class="mono" th:text="${leftoversTarget}"></span>, met dezelfde mapindeling, zodat je ze altijd kunt terugvinden. Alleen deze bestanden worden aangeraakt.</p>
             </div>
-            <p class="hint" style="margin:0" th:if="${leftoversTarget != ''}">Verplaatsen zet ze in een submap met datum en tijd onder <span class="mono" th:text="${leftoversTarget}"></span>, met dezelfde mapindeling, zodat je ze altijd kunt terugvinden. Alleen deze bestanden worden aangeraakt.</p>
-            <p class="hint" style="margin:0" th:if="${leftoversTarget == ''}">Stel eerst de invoermap of de map voor resten in bij Instellingen om te kunnen verplaatsen.</p>
+
+            <form method="post" th:action="@{/nieuw/start}">
+                <button class="btn btn-p" type="submit" th:disabled="${!allOk}" th:text="${allOk} ? 'Alles in orde: verder met bestanden kiezen' : 'Los eerst de rode punten op'">Verder</button>
+            </form>
         </section>
 
-        <!-- 1. Bestanden kiezen -->
-        <th:block th:if="${flow.current == 1}">
+        <!-- 2. Bestanden kiezen -->
+        <th:block th:if="${flow.current == 2}">
             <section class="card pad stack">
-                <h2>1. Bestanden kiezen</h2>
-                <p class="muted" style="margin:0">Jelly of Ria geeft aan welke bestanden op het archief moeten ("bestand X t/m Y uit map Z"). Blader naar die map, vink de bestanden aan en kopieer ze naar de invoermap
-                    <span class="mono" th:text="${inputFolder}"></span> (je eigen map). De bestanden op K: blijven staan.</p>
-                <div class="warn" th:if="${roots.isEmpty()}">Er zijn geen mappen met scans ingesteld. Dat doet de beheerder bij Instellingen. Je kunt de pdf's ook zelf in de invoermap zetten.</div>
+                <h2>2. Bestanden kiezen</h2>
+                <p class="muted" style="margin:0">Jelly of Ria geeft aan welke bestanden op het archief moeten ("bestand X t/m Y uit map Z"). Blader naar die map en vink de bestanden aan. De bestanden op K: blijven staan.</p>
+                <div class="warn" th:if="${roots.isEmpty()}">Er zijn geen mappen met scans ingesteld. Dat doet de beheerder bij Instellingen.</div>
 
                 <!-- Welke bronmap -->
                 <div class="roots" th:unless="${roots.isEmpty()}">
@@ -94,35 +108,32 @@
                         </div>
                         <p class="hint" style="margin:0">Tip: vink het eerste bestand aan, houd Shift ingedrukt en klik op het laatste: dan staat alles ertussen ook aan ("X t/m Y"). Bestanden die al verwerkt zijn, kun je niet aanvinken.
                             <span id="count"></span></p>
-                        <div><button class="btn btn-p" type="submit" id="copy">Kopieer de aangevinkte bestanden naar de invoermap</button></div>
+                        <div><button class="btn btn-p" type="submit" id="copy">Kies de aangevinkte bestanden</button></div>
                     </form>
                 </th:block>
-
-                <p class="hint" th:if="${listing == null and !roots.isEmpty()}" style="margin:0">Kies hierboven een map.</p>
             </section>
 
-            <!-- Wat er nu in de invoermap staat -->
+            <!-- Wat Carla tot nu toe gekozen heeft -->
             <section class="card pad stack">
-                <h2>In de invoermap <span class="muted" th:text="'(' + ${pdfs.size()} + ')'"></span></h2>
-                <div class="warn" th:if="${pdfs.isEmpty()}">Er staan nog geen pdf's in de invoermap. Kies hierboven bestanden en kopieer ze.</div>
+                <h2>Gekozen bestanden <span class="muted" th:text="'(' + ${pdfs.size()} + ')'"></span></h2>
+                <div class="warn" th:if="${pdfs.isEmpty()}">Je hebt nog geen bestanden gekozen.</div>
                 <div class="table" th:unless="${pdfs.isEmpty()}">
-                    <div class="tr th" style="grid-template-columns:minmax(0,1fr) 110px minmax(0,1.2fr) 90px"><span>Bestand</span><span>Gescand door</span><span>Map op K:</span><span></span></div>
-                    <div class="tr" th:each="f : ${pdfs}" style="grid-template-columns:minmax(0,1fr) 110px minmax(0,1.2fr) 90px">
-                        <span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="pdf">PDF</span><span class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.name}" th:title="${f.name}">scan.pdf</span></span>
+                    <div class="tr th" style="grid-template-columns:minmax(0,1fr) 110px 90px"><span>Bestand</span><span>Gescand door</span><span></span></div>
+                    <div class="tr" th:each="f : ${pdfs}" style="grid-template-columns:minmax(0,1fr) 110px 90px">
+                        <span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="pdf">PDF</span><span class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.name}" th:title="${f.folder}">scan.pdf</span></span>
                         <span th:text="${f.by != ''} ? ${f.by} : '–'">Ria</span>
-                        <span class="mono muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.folder != ''} ? ${f.folder} : 'zelf neergezet'" th:title="${f.folder}">K:\</span>
-                        <form method="post" th:action="@{/nieuw/bestanden/verwijder}"><input type="hidden" name="naam" th:value="${f.name}"><input type="hidden" name="bron" th:value="${listing != null} ? ${listing.root.name}"><input type="hidden" name="pad" th:value="${listing != null} ? ${listing.relPath} : ''"><button class="btn btn-s btn-sm" type="submit" title="Haal de kopie uit de invoermap; het bestand op K: blijft staan">Haal weg</button></form>
+                        <form method="post" th:action="@{/nieuw/bestanden/verwijder}"><input type="hidden" name="naam" th:value="${f.name}"><input type="hidden" name="bron" th:value="${listing != null} ? ${listing.root.name}"><input type="hidden" name="pad" th:value="${listing != null} ? ${listing.relPath} : ''"><button class="btn btn-s btn-sm" type="submit" title="Haal dit bestand uit je keuze; het bestand op K: blijft staan">Haal weg</button></form>
                     </div>
                 </div>
                 <div class="row-actions">
-                    <form th:action="@{/nieuw/bestanden/bevestig}" method="post"><button class="btn btn-p" type="submit" th:disabled="${pdfs.isEmpty() or !leftovers.isEmpty()}">Klopt, verder naar de nummers</button></form>
+                    <form th:action="@{/nieuw/bestanden/bevestig}" method="post"><button class="btn btn-p" type="submit" th:disabled="${pdfs.isEmpty()}">Klopt, verder naar de nummers</button></form>
                 </div>
             </section>
         </th:block>
 
-        <!-- 2. Nummers -->
-        <section class="card pad stack" th:if="${flow.current == 2}">
-            <h2>2. Nummers</h2>
+        <!-- 3. Nummers -->
+        <section class="card pad stack" th:if="${flow.current == 3}">
+            <h2>3. Nummers</h2>
             <p class="muted" style="margin:0">De <b th:text="${count}">12</b> bestanden krijgen aaneengesloten recordnummers. Kies een beginnummer uit de nummers die in ZCBS nog vrij zijn.</p>
             <div class="alert alert-err" th:if="${free == null}">ZCBS gaf de lijst met vrije nummers niet. Is je sessie verlopen, heb je geen recht om records aan te maken, of is ZCBS niet bereikbaar? <a th:href="@{/}">Log opnieuw in</a>.</div>
             <th:block th:if="${free != null}">
@@ -141,7 +152,7 @@
                     <div class="field" style="max-width:260px"><label class="f" for="start">Eerste recordnummer</label>
                         <input type="text" id="start" name="start" class="mono" inputmode="numeric" th:value="${suggestion}" required></div>
                     <p style="margin:0" id="eind-regel">De bestanden krijgen de nummers <b class="mono" id="eind-van"></b> t/m <b class="mono" id="eind"></b>.</p>
-                    <p class="hint" style="margin:0">De app maakt kopieën met het recordnummer als naam in de submap <span class="mono">werk</span> van de invoermap. De originelen blijven staan.</p>
+                    <p class="hint" style="margin:0">De app geeft de bestanden het recordnummer als naam, op een kopie. De originelen blijven staan.</p>
                     <div class="row-actions">
                         <button class="btn btn-p" type="submit">Geef de bestanden deze nummers en ga verder</button>
                         <button class="btn btn-s" type="submit" formaction="/nieuw/bestanden/andere" formnovalidate>Andere bestanden kiezen</button>
@@ -153,33 +164,24 @@
             </div>
         </section>
 
-        <!-- 3 t/m 6: een stap met overzicht, goedkeuring en controle -->
-        <th:block th:if="${flow.current >= 3 and flow.current <= 6 and run != null}">
+        <!-- 4 t/m 7: een stap met een knop, en na pdf2zcbs en images.exe een lijst van wat er gemaakt is -->
+        <th:block th:if="${flow.current >= 4 and flow.current <= 7 and run != null}">
             <h2 th:text="${flow.current} + '. ' + ${flow.phases[flow.current - 1].title}">Stap</h2>
 
-            <!-- Controle van de uitvoer van pdf2zcbs.exe of images.exe -->
             <section class="card pad stack" th:if="${flow.review}">
-                <h3 style="margin:0" th:text="${reviewType == 'PDF2ZCBS'} ? 'Controleer wat pdf2zcbs.exe heeft gemaakt' : 'Controleer wat images.exe heeft gemaakt'">Controleer</h3>
-                <p class="muted" style="margin:0" th:if="${reviewType == 'PDF2ZCBS'}">Per bestand: een kleine afbeelding, de eerste tekst uit de pdf, en de pdf zelf. Kijk of de afbeelding klopt en of er tekst staat die erbij hoort.</p>
-                <p class="muted" style="margin:0" th:if="${reviewType == 'IMAGES'}">Per bestand: de kleine afbeelding en de controle dat small, large en 100pct er zijn. Kijk of de afbeeldingen kloppen. Is het programma klaar, dan staan de afbeeldingen op de server en zijn de records aangemaakt (zie de melding hieronder).</p>
+                <h3 style="margin:0" th:text="${reviewType == 'PDF2ZCBS'} ? 'Dit heeft pdf2zcbs.exe gemaakt' : 'Dit heeft images.exe gemaakt'">Dit is gemaakt</h3>
+                <div class="alert alert-ok" th:if="${reviewType == 'IMAGES'}" th:text="${#strings.defaultString(run.rows[0].cells[2].message, '')}" style="white-space:pre-line"></div>
                 <div class="table">
-                    <div class="tr review" th:each="row : ${run.rows}">
-                        <a th:href="@{/nieuw/resultaat/{k}/{n}(k=${fullKind},n=${row.number})}" target="_blank" class="thumb"><img th:src="@{/nieuw/resultaat/{k}/{n}(k=${thumbKind},n=${row.number})}" th:alt="'Afbeelding van ' + ${row.number}" loading="lazy"></a>
-                        <div class="info">
-                            <div><b class="mono" th:text="${row.number}">11935</b> <span class="muted" th:text="${row.originalName}">scan.pdf</span></div>
-                            <div class="hint" th:if="${row.by != ''}" th:text="'gescand door ' + ${row.by}"></div>
-                            <div class="excerpt" th:if="${reviewType == 'PDF2ZCBS'}" th:text="${excerpts[row.number] != null and excerpts[row.number] != ''} ? ${excerpts[row.number]} : '(geen tekst gevonden)'">tekst…</div>
-                            <div class="links">
-                                <a th:href="@{/nieuw/resultaat/{k}/{n}(k=${fullKind},n=${row.number})}" target="_blank">grote afbeelding</a>
-                                <a th:if="${reviewType == 'PDF2ZCBS'}" th:href="@{/nieuw/resultaat/pdf/{n}(n=${row.number})}" target="_blank">pdf</a>
-                                <a th:if="${reviewType == 'PDF2ZCBS'}" th:href="@{/nieuw/resultaat/tekst/{n}(n=${row.number})}" target="_blank">tekst</a>
-                            </div>
-                        </div>
-                        <div class="checks"><span th:each="g : ${row.checks}" th:if="${g.label == 'pdf2zcbs' and reviewType == 'PDF2ZCBS' or g.label == 'images' and reviewType == 'IMAGES'}">
-                            <span th:each="i : ${g.items}" class="chip chk" th:classappend="${i.state == 'OK'} ? 'c-ok' : (${i.state == 'MISSING'} ? 'c-err' : 'c-neutral')" th:title="${i.path}" th:text="${(i.state == 'OK' ? '✓ ' : '✗ ') + i.label}"></span></span></div>
+                    <div class="tr th" style="grid-template-columns:90px minmax(0,1fr) 80px 90px 140px 70px"><span>Nummer</span><span>Bestand</span><span>Soort</span><span>Grootte</span><span>Afmeting</span><span></span></div>
+                    <div class="tr" th:each="p : ${produced}" style="grid-template-columns:90px minmax(0,1fr) 80px 90px 140px 70px">
+                        <span class="mono" th:text="${p.number}">11935</span>
+                        <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${names[p.number]}" th:title="${names[p.number]}">scan.pdf</span>
+                        <span th:text="${p.label}">small</span>
+                        <span th:text="${p.size}">193 kB</span>
+                        <span><span th:text="${p.resolution != ''} ? ${p.resolution} : '–'">250 × 177 px</span><span class="warn" th:if="${p.note != ''}" th:text="' ' + ${p.note}"></span></span>
+                        <a class="btn btn-s btn-sm" th:href="@{/nieuw/resultaat/{k}/{n}(k=${p.kind},n=${p.number})}" target="_blank">Open</a>
                     </div>
                 </div>
-                <div class="alert alert-ok" th:if="${reviewType == 'IMAGES'}" th:text="${#strings.defaultString(run.rows[0].cells[2].message, '')}" style="white-space:pre-line"></div>
                 <div class="row-actions">
                     <form method="post" th:action="@{/nieuw/gecontroleerd}"><input type="hidden" name="stap" th:value="${reviewType}">
                         <button class="btn btn-p" type="submit" th:text="${reviewType == 'PDF2ZCBS'} ? 'Ja, goed: verder met images.exe' : 'Ja, goed: verder met de upload'">Verder</button></form>
@@ -203,17 +205,16 @@
             <h2>Klaar</h2>
             <p style="margin:0"><b th:text="${run.fileCount}">12</b> bestanden staan nu op het archief, met de recordnummers <b class="mono" th:text="${run.rows[0].number}">11935</b> t/m <b class="mono" th:text="${run.rows[run.rows.size() - 1].number}">11946</b>.
                 De 100pct en de pdf's hebben een back-up, de werkmappen zijn opgeruimd en de bestanden staan in het <a th:href="@{/verwerkt}">overzicht van wat al verwerkt is</a>.</p>
-            <p class="muted" style="margin:0">De gegevens (titel enzovoort) vul je op een andere dag in via <a th:href="@{/records}">ZCBS records aanpassen</a>.</p>
+            <p class="muted" style="margin:0">De gegevens (titel enzovoort) vul je op een andere dag in via ZCBS records aanpassen.</p>
             <div class="row-actions">
                 <form th:action="@{/nieuw/opnieuw}" method="post"><button class="btn btn-p" type="submit">Nieuwe bestanden verwerken</button></form>
                 <a class="btn btn-s" th:href="@{/records}">ZCBS records aanpassen</a>
             </div>
         </section>
 
-        <!-- per bestand: wat is er klaar en wat staat er -->
-        <th:block th:if="${run != null and flow.current >= 3 and !flow.review}">
+        <!-- per bestand: wat is er klaar (pas bij de upload en de back-up, niet bij pdf2zcbs en images.exe) -->
+        <th:block th:if="${run != null and flow.current >= 6 and !flow.review}">
             <section th:replace="~{test :: filetable}"></section>
-            <p class="hint" style="margin:0">Werkmap: <span class="mono" th:text="${run.workDir}"></span> · beginnummer <span class="mono" th:text="${run.startNumber}"></span></p>
         </th:block>
     </main>
 </div>

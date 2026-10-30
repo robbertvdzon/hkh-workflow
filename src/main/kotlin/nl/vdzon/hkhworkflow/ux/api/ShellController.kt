@@ -26,6 +26,9 @@ class ShellAdvice(private val items: ItemEditService, private val admin: AdminAc
     @ModelAttribute("zcbsRealArchive")
     fun realArchive(): Boolean = items.loggedIn() && !settingsService.get().zcbsIsLocal()
 
+    @ModelAttribute("collectionName")
+    fun collectionName(): String = settingsService.get().collection.ifBlank { "archief" }
+
     @ModelAttribute("zcbsAddress")
     fun zcbsAddress(): String = settingsService.get().zcbsBaseUrl
 }

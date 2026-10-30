@@ -56,6 +56,10 @@ class TestRunService(
     @Volatile
     private var filesConfirmed: Boolean = false
 
+    /** Heeft Carla de controle van de omgeving gehad en op "verder" gedrukt (fase 1)? */
+    @Volatile
+    private var started: Boolean = false
+
     /** De gebruiker voor wie de bestanden in de invoermap bij deze doorloop horen ("" zonder inlog), of null als dat nog niet bevestigd is. */
     @Volatile
     private var inputAcceptedFor: String? = null
@@ -114,6 +118,7 @@ class TestRunService(
         stopPrevious()
         run = null
         filesConfirmed = false
+        started = false
         inputAcceptedFor = null
     }
 
@@ -156,7 +161,7 @@ class TestRunService(
         return null
     }
 
-    /** De flow in zes fasen, zoals de gebruiker hem ziet. */
+    /** De flow in zeven fasen, zoals de gebruiker hem ziet. */
     @Synchronized
     fun flowView(): FlowView {
         val v = view()
@@ -165,25 +170,71 @@ class TestRunService(
         val gated = current?.gated == true
         var review = false
         val phase = when {
-            v == null && !filesConfirmed -> 1
-            v == null -> 2
-            nextType == null -> 7
-            nextType == StepType.RENAME -> 2
-            nextType == StepType.PDF2ZCBS -> 3
-            nextType == StepType.IMAGES -> if (gated && StepType.PDF2ZCBS !in current!!.reviewed) { review = true; 3 } else 4
-            nextType == StepType.UPLOAD -> if (gated && StepType.IMAGES !in current!!.reviewed) { review = true; 4 } else 5
-            else -> 6
+            v == null && !started -> 1
+            v == null && !filesConfirmed -> 2
+            v == null -> 3
+            nextType == null -> 8
+            nextType == StepType.RENAME -> 3
+            nextType == StepType.PDF2ZCBS -> 4
+            nextType == StepType.IMAGES -> if (gated && StepType.PDF2ZCBS !in current!!.reviewed) { review = true; 4 } else 5
+            nextType == StepType.UPLOAD -> if (gated && StepType.IMAGES !in current!!.reviewed) { review = true; 5 } else 6
+            else -> 7
         }
-        val titles = listOf("Bestanden kiezen", "Nummers", "pdf2zcbs", "images.exe", "Upload ocr en pdf", "Back-up")
+        val titles = listOf("Controleren", "Bestanden kiezen", "Nummers", "pdf2zcbs", "images.exe", "Upload ocr en pdf", "Back-up")
+        val chosen = pdfsInTestFolder().size
         val notes = mapOf(
-            1 to pdfsInTestFolder().size.takeIf { it > 0 }?.let { "$it in de invoermap" },
-            2 to current?.files?.let { it.first().number + (if (it.size > 1) " t/m " + it.last().number else "") },
+            2 to chosen.takeIf { it > 0 }?.let { "$it gekozen" },
+            3 to current?.files?.let { it.first().number + (if (it.size > 1) " t/m " + it.last().number else "") },
         )
         val phases = titles.mapIndexed { i, title ->
             val nr = i + 1
             PhaseView(nr, title, when { nr < phase -> "done"; nr == phase -> "now"; else -> "todo" }, notes[nr])
         }
-        return FlowView(phases, phase, phase == 7, review, v)
+        return FlowView(phases, phase, phase == 8, review, v)
+    }
+
+    // ---- Fase 1: de omgeving controleren ----
+
+    /**
+     * Staat alles klaar om te beginnen? Ingelogd, de lijst met vrije nummers uit ZCBS, de mappen met scans, de programma's, de back-upmappen, de upload,
+     * en geen resten van een eerdere keer. Wat niet klopt, krijgt een uitleg; de instellingen zelf wijzigt de beheerder.
+     */
+    fun environment(): List<EnvCheck> {
+        val s = settingsService.get()
+        val admin = "Dit stelt de beheerder in bij Instellingen."
+        fun folder(path: String) = path.isNotBlank() && Files.isDirectory(Path.of(path))
+        fun file(path: String) = path.isNotBlank() && Files.isRegularFile(Path.of(path))
+        val roots = s.sourceRoots()
+        val unreachable = roots.filter { !folder(it.path) }
+        val sftpReady = s.sftpHost.isNotBlank() && s.sftpUser.isNotBlank() && s.sftpPassword.isNotEmpty() && s.sftpHostKey.isNotBlank()
+        val leftovers = leftovers()
+        return listOf(
+            if (itemEditService.loggedIn()) EnvCheck("Ingelogd bij ZCBS als ${itemEditService.user}", true)
+            else EnvCheck("Ingelogd bij ZCBS", false, "Log eerst in via Start."),
+            if (itemEditService.freeNumbers() != null) EnvCheck("ZCBS geeft de vrije recordnummers", true)
+            else EnvCheck("ZCBS geeft de vrije recordnummers", false, "Is je sessie verlopen, of heb je geen recht om records aan te maken? Log opnieuw in via Start."),
+            when {
+                roots.isEmpty() -> EnvCheck("De mappen met scans zijn bereikbaar", false, "Er zijn geen mappen met scans ingesteld. $admin")
+                unreachable.isNotEmpty() -> EnvCheck("De mappen met scans zijn bereikbaar", false, "Niet bereikbaar: ${unreachable.joinToString { it.path }}. Is de schijf (K:) gekoppeld?")
+                else -> EnvCheck("De mappen met scans zijn bereikbaar", true, roots.joinToString { it.name })
+            },
+            if (file(s.pdf2zcbsExe) && file(s.imagesExe)) EnvCheck("pdf2zcbs.exe en images.exe zijn gevonden", true)
+            else EnvCheck("pdf2zcbs.exe en images.exe zijn gevonden", false, "Niet gevonden: ${listOf(s.pdf2zcbsExe, s.imagesExe).filter { !file(it) }.joinToString { it.ifBlank { "(niet ingesteld)" } }}. $admin"),
+            if (folder(s.backup100pctFolder) && folder(s.backupPdfFolder)) EnvCheck("De back-upmappen zijn bereikbaar", true)
+            else EnvCheck("De back-upmappen zijn bereikbaar", false, "Niet bereikbaar: ${listOf(s.backup100pctFolder, s.backupPdfFolder).filter { !folder(it) }.joinToString { it.ifBlank { "(niet ingesteld)" } }}. Is de schijf (K:) gekoppeld? Anders: $admin"),
+            if (sftpReady) EnvCheck("De upload naar de server is ingesteld", true)
+            else EnvCheck("De upload naar de server is ingesteld", false, "De sftp-gegevens of de vingerafdruk van de server ontbreken. $admin"),
+            if (leftovers.isEmpty()) EnvCheck("Er staat geen werk van een eerdere keer", true)
+            else EnvCheck("Er staat geen werk van een eerdere keer", false, "Zie hieronder: verplaats of verwijder het."),
+        )
+    }
+
+    /** Fase 1 is klaar: alles is in orde en Carla gaat verder. @return een melding als er nog iets niet klopt, anders null. */
+    @Synchronized
+    fun startFlow(): String? {
+        if (run != null) return null
+        val problem = environment().firstOrNull { !it.ok } ?: run { started = true; return null }
+        return "${problem.label}: ${problem.detail}".trim().trimEnd(':')
     }
 
     // ---- Resten van een eerdere run ----
@@ -206,8 +257,8 @@ class TestRunService(
             input.path()?.takeIf { run == null && inputAcceptedFor != input.user() }?.let { dir ->
                 // Zonder inlog is dit de gemeenschappelijke map: de map met resten daarin telt dan niet mee.
                 val own = dir == input.base()
-                regular(dir, true) { own && dir.relativize(it).getName(0).toString() == InputFolder.LEFTOVERS_DIR }.takeIf { it.isNotEmpty() }
-                    ?.let { add(Leftover("invoer", "de invoermap (${dir.fileName})", dir, it)) }
+                regular(dir, true) { (own && dir.relativize(it).getName(0).toString() == InputFolder.LEFTOVERS_DIR) || it.name == "herkomst.tsv" }.takeIf { it.isNotEmpty() }
+                    ?.let { add(Leftover("invoer", "je gekozen bestanden", dir, it)) }
             }
             l.p2z?.let { dir ->
                 regular(dir, false) { !it.extension.equals("pdf", ignoreCase = true) }.takeIf { it.isNotEmpty() }?.let { add(Leftover("pdf2zcbs", "pdf2zcbs: pdf's in de map van het programma", dir, it)) }
@@ -262,7 +313,10 @@ class TestRunService(
             }
             val l = Layout(settingsService.get())
             listOfNotNull(l.p2zOutput(), l.img?.resolve("small"), l.img?.resolve("large"), l.img?.resolve("100pct"), input.path()?.resolve("werk")).forEach { pruneEmptyDirs(it) }
-            if (items.any { it.area == "invoer" }) inputAcceptedFor = null
+            if (items.any { it.area == "invoer" }) {
+                inputAcceptedFor = null
+                input.path()?.resolve("herkomst.tsv")?.let { Files.deleteIfExists(it) }
+            }
         } catch (e: Exception) {
             log.warn("Resten opruimen mislukt: {}", e.message)
             return "Opruimen is niet helemaal gelukt: ${e.message ?: e.javaClass.simpleName}. Controleer de mappen van de programma's."
@@ -347,7 +401,9 @@ class TestRunService(
         fun p2zInput(f: TestFile): Path? = p2z?.resolve("${f.number}.pdf")
     }
 
-    private fun Path?.present(): Boolean = this != null && Files.isRegularFile(this) && runCatching { Files.size(this) > 0 }.getOrDefault(false)
+    /** Bestaat het bestand en is het niet leeg? Een tekstbestand mag leeg zijn: een pagina zonder tekst geeft een lege tekst (dat zie je dan bij het controleren). */
+    private fun Path?.present(allowEmpty: Boolean = false): Boolean =
+        this != null && Files.isRegularFile(this) && (allowEmpty || runCatching { Files.size(this) > 0 }.getOrDefault(false))
 
     private fun names(list: List<String>, max: Int = 8): String =
         list.take(max).joinToString() + if (list.size > max) " en ${list.size - max} andere" else ""
@@ -412,7 +468,7 @@ class TestRunService(
                 if (s.sftpHostKey.isBlank()) add("De vingerafdruk van de server is nog niet vastgezet (Instellingen, Test verbinding).")
                 if (s.collection.isBlank()) add("Collectie is niet ingesteld (Instellingen).")
                 step.files.forEach {
-                    if (!l.ocr(it).present()) add("Tekstbestand ontbreekt: ${l.ocr(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")
+                    if (!l.ocr(it).present(allowEmpty = true)) add("Tekstbestand ontbreekt: ${l.ocr(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")
                     if (!l.pdf(it).present()) add("Pdf ontbreekt: ${l.pdf(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")
                 }
             }
@@ -534,7 +590,7 @@ class TestRunService(
         val env = if (s.perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
         val label = "${step.type.label} – ${step.files.size} ${if (step.files.size == 1) "bestand" else "bestanden"} (${step.fileNames})"
         exeRunner.start(exe, exeDir, label, mode, env, notes, autoAnswers, knownQuestions) { code ->
-            val missing = if (code == 0) expected.filter { !it.second.present() } else emptyList()
+            val missing = if (code == 0) expected.filter { !it.second.present(allowEmpty = it.first == "tekst") } else emptyList()
             // Buiten het slot: dit leest een paar pagina's van ZCBS.
             val note = if (code == 0 && missing.isEmpty() && step.type == StepType.IMAGES) imagesNote(step) else ""
             if (code == 0 && missing.isEmpty() && autoAnswers == null) learn(step.type, exeRunner.typedAnswers())
@@ -771,7 +827,7 @@ class TestRunService(
             val status = stepOf(type).status
             val state = when {
                 status == StepStatus.PENDING -> "PENDING"
-                path.present() -> "OK"
+                path.present(allowEmpty = label == "tekst") -> "OK"
                 status == StepStatus.RUNNING -> "PENDING" // wordt nog gemaakt: niet alarmerend rood
                 else -> "MISSING"
             }
@@ -837,17 +893,49 @@ class TestRunService(
             "100pct" -> l.img100(file)
             else -> null
         }
-        return path?.takeIf { it.present() }
+        return path?.takeIf { it.present(allowEmpty = kind == "tekst") }
     }
 
-    /** De eerste tekens van de tekst die pdf2zcbs uit de pdf haalde, om te zien of er iets zinnigs in staat. */
-    fun ocrExcerpt(number: String, max: Int = 200): String? {
-        val path = resultFile("tekst", number) ?: return null
-        return runCatching {
-            val bytes = Files.newInputStream(path).use { it.readNBytes(max * 4) }
-            String(bytes, Charsets.UTF_8).replace(Regex("\\s+"), " ").trim().take(max)
-        }.getOrNull()
+    /**
+     * De bestanden die pdf2zcbs.exe of images.exe voor de gebruiker heeft gemaakt, om te controleren: per bestand de soort, de grootte en (bij een afbeelding) de afmeting.
+     * Een leeg tekstbestand (een pagina zonder herkende tekst) staat er met een opmerking bij.
+     */
+    @Synchronized
+    fun producedFiles(type: StepType): List<ProducedFile> {
+        val current = run ?: return emptyList()
+        val kinds = when (type) {
+            StepType.PDF2ZCBS -> listOf("tekst" to "tekst", "pdf" to "pdf", "p2z-small" to "small", "p2z-large" to "large")
+            StepType.IMAGES -> listOf("small" to "small", "large" to "large", "100pct" to "100pct")
+            else -> return emptyList()
+        }
+        return current.files.flatMap { f ->
+            kinds.mapNotNull { (kind, label) ->
+                val path = resultFile(kind, f.number) ?: return@mapNotNull null
+                val bytes = runCatching { Files.size(path) }.getOrDefault(0)
+                val resolution = if (kind == "tekst" || kind == "pdf") "" else imageSize(path)
+                ProducedFile(f.number, kind, label, readableSize(bytes), resolution, if (kind == "tekst" && bytes == 0L) "leeg: geen tekst gevonden" else "")
+            }
+        }
     }
+
+    private fun readableSize(bytes: Long): String = when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "${(bytes + 512) / 1024} kB"
+        else -> "%.1f MB".format(java.util.Locale.forLanguageTag("nl"), bytes / 1024.0 / 1024.0)
+    }
+
+    /** "1654 × 2339 px" voor een afbeelding, zonder haar helemaal te lezen; leeg als dat niet lukt. */
+    private fun imageSize(path: Path): String = runCatching {
+        javax.imageio.ImageIO.createImageInputStream(path.toFile()).use { stream ->
+            val readers = javax.imageio.ImageIO.getImageReaders(stream)
+            if (!readers.hasNext()) return@runCatching ""
+            val reader = readers.next()
+            try {
+                reader.input = stream
+                "${reader.getWidth(0)} × ${reader.getHeight(0)} px"
+            } finally { reader.dispose() }
+        }
+    }.getOrDefault("")
 
     private companion object {
         const val LEFTOVERS_MESSAGE = "Er staan nog bestanden van een eerdere run in je invoermap of in de mappen van pdf2zcbs.exe of images.exe. Verplaats of verwijder ze eerst (of kies bij je invoermap voor \"horen erbij\")."

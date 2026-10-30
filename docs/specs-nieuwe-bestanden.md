@@ -9,7 +9,7 @@ doet precies wat Jans stappenplan doet, zonder meer. Dit document is de bron voo
 
 | Voor | Nu |
 |---|---|
-| Eén batch met acht fasen, waarvan het bewerken van de records er een was | Zes fasen, **zonder bewerken**: het invullen van titel enzovoort gebeurt op een andere dag, soms door iemand anders |
+| Eén batch met acht fasen, waarvan het bewerken van de records er een was | Zeven fasen (de eerste is een controle), **zonder bewerken**: het invullen van titel enzovoort gebeurt op een andere dag, soms door iemand anders |
 | Het woord "batch", met een batchoverzicht | Geen batches. Een **log** van wat er verwerkt is (pagina Verwerkt) |
 | Een bronmap met een submap per persoon, en vinkjes in één lange lijst | **Twee mappen met scans** (`K:\scans jelly`, `K:\scans ria`) waar Carla zelf doorheen **bladert**, met vinkjes per map |
 | Beginnummer = hoogste nummer + 1 (`LAST`) | Een beginnummer uit **de vrije nummers van ZCBS**, aaneengesloten |
@@ -22,8 +22,8 @@ doet precies wat Jans stappenplan doet, zonder meer. Dit document is de bron voo
 
 1. **Inloggen bij ZCBS** met je eigen naam en wachtwoord (alleen in het geheugen). Zonder inlog komt niemand op de pagina's van Carla.
 2. **Collectie kiezen.** Nu alleen `archief` (de instelling *Collectie*).
-3. Twee knoppen: **Nieuwe bestanden in ZCBS zetten** (`/nieuw`) en **ZCBS records aanpassen** (`/records`). Verder in het menu: **Verwerkt**
-   (`/verwerkt`), en onder Beheer de pagina's voor de beheerder.
+3. Twee knoppen: **Nieuwe bestanden in ZCBS zetten** (`/nieuw`) en **ZCBS records aanpassen** (`/records`), met daaronder een link naar **Verwerkt** (`/verwerkt`).
+   Het menu links bevat alleen **Start** en onder Beheer de pagina's voor de beheerder; elke andere pagina heeft een link terug naar Start.
 
 ## 3. De flow Nieuwe bestanden (`/nieuw`)
 
@@ -31,17 +31,18 @@ Jans stappenplan, met erboven de stap die er nog niet in stond (de bestanden sta
 
 | Fase | Wat Carla ziet en doet | Jans stap |
 |---|---|---|
-| 1. Bestanden kiezen | Ziet meteen de eerste map met scans uit de instellingen (zet Ria bovenaan), kiest eventueel Jelly, bladert door de submappen en vinkt de pdf's aan (Shift-klik kiest alles tussen twee bestanden: "X t/m Y uit map Z"). Kopieert ze naar de invoermap. Al verwerkte bestanden zijn gemarkeerd en niet aan te vinken. | `copy K:\… c:\zcbs\invoer` |
-| 2. Nummers | Ziet het laatste record en alle vrije reeksen uit ZCBS, kiest een beginnummer. Passen alle bestanden niet aaneengesloten in een vrije reeks, dan geeft de app een foutmelding. De app maakt kopieën `<nummer>.pdf` in de submap `werk`. | het nummer geven in de bestandsnaam |
-| 3. pdf2zcbs | Start `pdf2zcbs.exe` (zet de pdf's in de map van het programma), en **controleert daarna**: per bestand een kleine afbeelding, de eerste tekst, links naar de pdf en de tekst, en de vinkjes voor tekst, pdf, small en large. "Ja, goed" of "pdf2zcbs opnieuw". | `pdf2zcbs.exe` en het nakijken van `output\large\pdf\ocr` |
-| 4. images.exe | Kopieert de large-jpg's en start `images.exe`; daarna weer **controleren**: de afbeelding, de vinkjes small, large en 100pct, en of de records in ZCBS staan. | `copy large\*.jpg images\images`, `images.exe`, `dir small large 100pct` |
-| 5. Upload | Tekst en pdf's met sftp naar `<collectie>/ocr` en `<collectie>/pdf`. Nooit overschrijven, eerst alles controleren. | Total Commander |
-| 6. Back-up | Kopieert de **100pct** en de **pdf's** (met hun recordnummer) naar de back-upmappen op K:, ruimt dan de werkmappen op en zet de bestanden in het verwerkt-log. | `backup_100pct`, `backup_invoer_org`, `rmdir`, `del` |
+| 1. Controleren | Een lijstje met vinkjes: ingelogd, ZCBS geeft de vrije nummers, de mappen met scans bereikbaar (is K: gekoppeld?), pdf2zcbs.exe en images.exe gevonden, de back-upmappen bereikbaar, de upload ingesteld, en **geen werk van een eerdere keer**. Staat er iets rood, dan staat erbij wat er mis is en wat te doen; staat alles groen, dan is er meteen een knop voor fase 2. | (nieuw: de omgeving klaarzetten) |
+| 2. Bestanden kiezen | Ziet meteen de eerste map met scans uit de instellingen (zet Ria bovenaan), kiest eventueel Jelly, bladert door de submappen en vinkt de pdf's aan (Shift-klik kiest alles tussen twee bestanden: "X t/m Y uit map Z"). Al verwerkte bestanden zijn gemarkeerd en niet aan te vinken. De gekozen bestanden staan eronder. | `copy K:\… c:\zcbs\invoer` |
+| 3. Nummers | Ziet het laatste record en alle vrije reeksen uit ZCBS, kiest een beginnummer. Passen alle bestanden niet aaneengesloten in een vrije reeks, dan geeft de app een foutmelding. De app geeft de bestanden het recordnummer als naam (op een kopie in `werk`). | het nummer geven in de bestandsnaam |
+| 4. pdf2zcbs | Alleen twee knoppen: handmatig of automatisch (wat er gebeurt staat ingeklapt). Is het programma klaar, dan staat onderaan een lijst van wat het maakte: per bestand de soort (tekst, pdf, small, large), de grootte, de afmeting van een afbeelding en een link om het te openen. Een lege tekst valt op, maar laat de stap niet mislukken. "Ja, goed" of "pdf2zcbs opnieuw". | `pdf2zcbs.exe` en het nakijken van `output\large\pdf\ocr` |
+| 5. images.exe | Idem: twee knoppen, daarna de lijst (small, large, 100pct) en de melding of de records in ZCBS staan. | `copy large\*.jpg images\images`, `images.exe`, `dir small large 100pct` |
+| 6. Upload | Tekst en pdf's met sftp naar `<collectie>/ocr` en `<collectie>/pdf`. Nooit overschrijven, eerst alles controleren. Per bestand de voortgang. | Total Commander |
+| 7. Back-up | Kopieert de **100pct** en de **pdf's** (met hun recordnummer) naar de back-upmappen op K:, ruimt dan de werkmappen op en zet de bestanden in het verwerkt-log. | `backup_100pct`, `backup_invoer_org`, `rmdir`, `del` |
 
-**Eerst opruimen.** Aan het begin van de flow controleert de app of er nog werk van een eerdere keer staat: bestanden in je eigen invoermap die je niet in deze
-doorloop hebt gekozen, de pdf's, de map `output` en de bestanden in `images`, `small`, `large` en `100pct` bij de programma's. Zolang er iets staat, kan Carla niet verder en toont de
-pagina wat het is. Ze kiest **Verplaats** (naar een submap met datum en tijd onder `resten`, met dezelfde mapindeling, of naar de ingestelde map voor resten), **Verwijder**, of, voor de eigen
-invoermap, **horen erbij** (bijvoorbeeld na een herstart van de app). Alleen de genoemde bestanden worden aangeraakt; `output\log` en `updates.txt` blijven staan.
+**Eerst opruimen** (onderdeel van fase 1). De app controleert of er nog werk van een eerdere keer staat: bestanden in je eigen invoermap die je niet in deze
+doorloop hebt gekozen, de pdf's, de map `output` en de bestanden in `images`, `small`, `large` en `100pct` bij de programma's. Zolang er iets staat, kan Carla niet verder en toont fase 1
+wat het is. Ze kiest **Verplaats** (naar een submap met datum en tijd onder `resten`, met dezelfde mapindeling, of naar de ingestelde map voor resten), **Verwijder**, of, voor de eigen
+invoermap, **horen erbij** (bijvoorbeeld na een herstart van de app; het bestand `herkomst.tsv` van de app zelf telt niet mee). Alleen de genoemde bestanden worden aangeraakt; `output\log` en `updates.txt` blijven staan.
 
 **Een eigen invoermap per gebruiker.** De instelling is de gemeenschappelijke map (`c:\zcbs\invoer`); wie is ingelogd werkt in de submap met zijn of haar ZCBS-naam. Zo zitten de bestanden
 van twee mensen elkaar niet in de weg. De mappen van pdf2zcbs.exe en images.exe zijn wel gedeeld, vandaar de controle hierboven.

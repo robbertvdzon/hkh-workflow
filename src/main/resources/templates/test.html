@@ -49,10 +49,14 @@
             <section class="next" th:fragment="nextstep" th:if="${run.next != null}">
                 <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:0">
                     <span class="hint" th:unless="${returnTo == '/nieuw'}" th:text="'Stap ' + (${run.doneCount} + 1) + ' van ' + ${run.totalCount}"></span>
-                    <span class="q" th:text="${run.next.question}"></span>
-                    <ul class="plan" th:if="${run.next.status == 'PENDING' and !run.next.plan.isEmpty()}">
+                    <span class="q" th:text="${(returnTo == '/nieuw' and run.next.usesExe) ? ('Start ' + run.next.typeLabel) : run.next.question}"></span>
+                    <ul class="plan" th:if="${run.next.status == 'PENDING' and !run.next.plan.isEmpty() and !(returnTo == '/nieuw' and run.next.usesExe)}">
                         <li th:each="line : ${run.next.plan}" th:text="${line}"></li>
                     </ul>
+                    <details th:if="${run.next.status == 'PENDING' and !run.next.plan.isEmpty() and returnTo == '/nieuw' and run.next.usesExe}">
+                        <summary class="hint" style="cursor:pointer">Wat gebeurt er?</summary>
+                        <ul class="plan"><li th:each="line : ${run.next.plan}" th:text="${line}"></li></ul>
+                    </details>
                     <ul class="plan problem" th:if="${!run.next.problems.isEmpty()}">
                         <li th:each="p : ${run.next.problems}" th:text="${p}"></li>
                     </ul>

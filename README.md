@@ -35,14 +35,15 @@ Instelbaar met omgevingsvariabelen:
 De app begint met **inloggen bij ZCBS**, daarna kies je de **collectie** (nu alleen `archief`) en dan een van twee dingen. Alles staat in
 [docs/specs-nieuwe-bestanden.md](docs/specs-nieuwe-bestanden.md).
 
-- **Nieuwe bestanden in ZCBS zetten** — de flow van Carla, volgens het stappenplan van Jan, in zes fasen met een overzicht en een knop per stap:
-  1. **Bestanden kiezen**: bladeren door de mappen met scans op K: (de eerste uit de instellingen staat meteen open), aanvinken (Shift-klik kiest "X t/m Y") en naar je eigen invoermap kopiëren
-     (een submap met je ZCBS-naam). Staat er nog werk van een eerdere keer in je invoermap of in de mappen van de programma's, dan moet je dat eerst verplaatsen of verwijderen.
-  2. **Nummers**: de vrije nummers uit ZCBS (zoals bij een nieuw record) en het laatste record; een beginnummer kiezen. De bestanden moeten aaneengesloten in een vrije reeks passen.
-  3. **pdf2zcbs.exe**, daarna controleren (afbeelding, tekst, pdf).
-  4. **images.exe**, daarna controleren. Handmatig typen: de app onthoudt de antwoorden en stelt ze de volgende keer voor; automatisch gebruikt hij de onthouden antwoorden.
-  5. **Upload** van tekst en pdf met sftp (overschrijft en verwijdert nooit, vastgezette vingerafdruk).
-  6. **Back-up** van de 100pct en de pdf's naar K:, opruimen en in het verwerkt-log zetten. De originelen op K: blijven staan.
+- **Nieuwe bestanden in ZCBS zetten** — de flow van Carla, volgens het stappenplan van Jan, in zeven fasen met een knop per stap:
+  1. **Controleren**: een lijstje met vinkjes (ingelogd, vrije nummers uit ZCBS, K: bereikbaar, de programma's, de back-upmappen, de upload, en geen werk van een eerdere keer).
+     Staat er nog werk van een eerdere keer, dan verplaats of verwijder je dat hier. Staat alles groen, dan is er een knop voor de volgende fase.
+  2. **Bestanden kiezen**: bladeren door de mappen met scans op K: (de eerste uit de instellingen staat meteen open), aanvinken (Shift-klik kiest "X t/m Y"). Elke gebruiker werkt in een eigen submap van de invoermap.
+  3. **Nummers**: de vrije nummers uit ZCBS (zoals bij een nieuw record) en het laatste record; een beginnummer kiezen. De bestanden moeten aaneengesloten in een vrije reeks passen.
+  4. **pdf2zcbs.exe**: twee knoppen (handmatig of automatisch); daarna een lijst van wat het maakte, met grootte, afmeting en een link om het te openen, en jouw controle.
+  5. **images.exe**: idem. Handmatig typen: de app onthoudt de antwoorden en stelt ze de volgende keer voor; automatisch gebruikt hij de onthouden antwoorden.
+  6. **Upload** van tekst en pdf met sftp (overschrijft en verwijdert nooit, vastgezette vingerafdruk).
+  7. **Back-up** van de 100pct en de pdf's naar K:, opruimen en in het verwerkt-log zetten. De originelen op K: blijven staan.
 - **ZCBS records aanpassen** — kies een recordnummer of een reeks en vul de gegevens in via het formulier van ZCBS: voorbeeld van de wijziging, opslaan en teruglezen,
   "later" voor een record dat je overslaat. **Bij de echte site schrijft elke opslag in het echte archief en gaat er een e-mail naar de beheerder.**
 - **Verwerkt** — wat al op het archief is gezet: per doorloop de bestanden, hun recordnummer, wie het deed en uit welke map ze kwamen.

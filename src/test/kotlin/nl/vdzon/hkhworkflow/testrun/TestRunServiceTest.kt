@@ -64,6 +64,7 @@ class TestRunServiceTest {
         inbox = Files.createDirectories(dir.resolve("invoer"))
         backupPdf = Files.createDirectories(dir.resolve("backup_invoer_org"))
         backup = Files.createDirectories(dir.resolve("backup_100pct"))
+        Files.createDirectories(dir.resolve("k-scans"))
         p2zDir = dir.resolve("pdf2zcbs")
         imgDir = dir.resolve("images")
         Files.writeString(inbox.resolve("xx02.pdf"), "b")
@@ -97,7 +98,7 @@ class TestRunServiceTest {
     private fun base() = WorkflowSettings(
         testFolder = inbox.toString(), backupPdfFolder = backupPdf.toString(),
         imagesExe = imgDir.resolve("images.sh").toString(), pdf2zcbsExe = p2zDir.resolve("pdf2zcbs.sh").toString(),
-        collection = "archief", backup100pctFolder = backup.toString(),
+        collection = "archief", backup100pctFolder = backup.toString(), sourceFolders = "Ria=${dir.resolve("k-scans")}",
         sftpHost = "localhost", sftpPort = server.port, sftpUser = TestSftpServer.USER, sftpPassword = TestSftpServer.PASSWORD,
         sftpHostKey = server.fingerprint, sftpBaseDir = "/public_html", zcbsBaseUrl = zcbs.baseUrl,
     )
@@ -238,32 +239,36 @@ class TestRunServiceTest {
     // ---- de flow van Carla ----
 
     @Test
-    fun `de flow loopt in zes fasen met een controle na pdf2zcbs en na images`() {
+    fun `de flow loopt in zeven fasen met een controle na pdf2zcbs en na images`() {
+        assertEquals(1, service.flowView().current, "eerst de omgeving controleren")
+        assertTrue(service.startFlow()!!.contains("Ingelogd"), "niet ingelogd")
         assertEquals(null, items.login("Test Beheerder", "Beheer1"))
         val mine = useUserFolder()
-        assertEquals(1, service.flowView().current, "eerst de bestanden kiezen")
         service.acceptInput()
+        assertEquals(1, service.flowView().current)
+        assertNull(service.startFlow())
+        assertEquals(2, service.flowView().current, "dan de bestanden kiezen")
         assertNull(service.confirmFiles())
-        assertEquals(2, service.flowView().current, "dan de nummers")
+        assertEquals(3, service.flowView().current, "dan de nummers")
 
         // een reeks die niet aaneengesloten past (11 bestaat al) wordt geweigerd; er is dan niets gekopieerd
         zcbs.addRecord("edit-leeg.html", "90000011")
         assertTrue(service.prepare("90000010")!!.contains("passen niet"))
         assertTrue(service.prepare("abc")!!.contains("alleen cijfers"))
-        assertEquals(2, service.flowView().current)
+        assertEquals(3, service.flowView().current)
         assertFalse(Files.exists(mine.resolve("werk")))
 
         // 12 en 13 zijn vrij en sluiten aan
         assertEquals(null, service.prepare("90000012"))
         assertEquals(listOf("90000012.pdf", "90000013.pdf"), filesIn(mine.resolve("werk")))
-        assertEquals(3, service.flowView().current)
-        assertEquals(listOf("done", "done", "now", "todo", "todo", "todo"), service.flowView().phases.map { it.state })
-        assertEquals("90000012 t/m 90000013", service.flowView().phases[1].note)
+        assertEquals(4, service.flowView().current)
+        assertEquals(listOf("done", "done", "done", "now", "todo", "todo", "todo"), service.flowView().phases.map { it.state })
+        assertEquals("90000012 t/m 90000013", service.flowView().phases[2].note)
 
         // pdf2zcbs draait; daarna moet Carla controleren voordat images mag
         assertEquals("DONE", runNext().status)
         var flow = service.flowView()
-        assertEquals(3, flow.current)
+        assertEquals(4, flow.current)
         assertTrue(flow.review, "de uitvoer van pdf2zcbs wacht op controle")
         assertTrue(next().problems.any { it.contains("Controleer eerst") }, next().problems.toString())
         assertEquals("FAILED", runNext().status, "images start niet voor de controle")
@@ -272,23 +277,23 @@ class TestRunServiceTest {
         assertTrue(service.confirmReview(StepType.IMAGES)!!.contains("nog niet klaar"))
         assertEquals(null, service.confirmReview(StepType.PDF2ZCBS))
         flow = service.flowView()
-        assertEquals(4, flow.current)
+        assertEquals(5, flow.current)
         assertFalse(flow.review)
 
         assertEquals("DONE", runNext().status)
         flow = service.flowView()
-        assertEquals(4, flow.current)
+        assertEquals(5, flow.current)
         assertTrue(flow.review, "de uitvoer van images wacht op controle")
         assertTrue(next().problems.any { it.contains("Controleer eerst") })
         assertEquals(null, service.confirmReview(StepType.IMAGES))
-        assertEquals(5, service.flowView().current)
+        assertEquals(6, service.flowView().current)
 
         assertEquals("DONE", runNext().status)
-        assertEquals(6, service.flowView().current)
+        assertEquals(7, service.flowView().current)
         assertEquals("DONE", runNext().status)
         val done = service.flowView()
         assertTrue(done.finished)
-        assertEquals(7, done.current)
+        assertEquals(8, done.current)
         assertEquals(listOf("90000012.jpg", "90000013.jpg"), filesIn(backup))
         assertEquals(listOf("90000012.pdf", "90000013.pdf"), filesIn(backupPdf))
         assertEquals(listOf("notes.txt"), filesIn(mine), "de kopieën en de werkmap zijn opgeruimd")
@@ -320,7 +325,6 @@ class TestRunServiceTest {
         runUntil("IMAGES")
         assertNotNull(service.resultFile("pdf", "90000000"))
         assertNotNull(service.resultFile("p2z-small", "90000001"))
-        assertEquals("tekst van 90000000", service.ocrExcerpt("90000000"))
         assertNull(service.resultFile("pdf", "12345"), "geen nummer van deze run")
         assertNull(service.resultFile("../../etc/passwd", "90000000"))
         assertNull(service.resultFile("100pct", "90000000"), "images draaide nog niet")
@@ -427,6 +431,95 @@ class TestRunServiceTest {
         assertEquals(listOf("10.txt", "11.txt"), filesIn(remote("/public_html/archief/ocr")))
     }
 
+    // ---- fase 1: de omgeving controleren ----
+
+    private fun check(label: String) = service.environment().first { it.label.startsWith(label) }
+
+    @Test
+    fun `de omgeving is in orde als alles klaarstaat`() {
+        assertNull(items.login("Test Beheerder", "Beheer1"))
+        useUserFolder()
+        service.acceptInput()
+        assertTrue(service.environment().all { it.ok }, service.environment().filter { !it.ok }.toString())
+        assertEquals("Ingelogd bij ZCBS als Test Beheerder", service.environment().first().label)
+    }
+
+    @Test
+    fun `wat niet klopt krijgt een uitleg en houdt de flow tegen`() {
+        service.acceptInput()
+        // niet ingelogd
+        assertFalse(check("Ingelogd").ok)
+        assertFalse(check("ZCBS geeft").ok)
+        assertNull(items.login("Test Beheerder", "Beheer1"))
+        useUserFolder()
+        service.acceptInput()
+
+        save { it.copy(sourceFolders = "Ria=${dir.resolve("K-weg")}") }
+        assertTrue(check("De mappen met scans").detail.contains("K-weg"))
+        assertTrue(service.startFlow()!!.contains("mappen met scans"))
+        save { it.copy(sourceFolders = "") }
+        assertTrue(check("De mappen met scans").detail.contains("geen mappen met scans ingesteld"))
+        save { it.copy(sourceFolders = "Ria=${dir.resolve("k-scans")}", imagesExe = "/bestaat/niet.exe", backupPdfFolder = "", sftpHostKey = "") }
+        assertTrue(check("pdf2zcbs.exe en images.exe").detail.contains("/bestaat/niet.exe"))
+        assertTrue(check("De back-upmappen").detail.contains("(niet ingesteld)"))
+        assertFalse(check("De upload").ok)
+        assertEquals(1, service.flowView().current)
+    }
+
+    @Test
+    fun `werk van een eerdere keer houdt de flow in fase 1`() {
+        assertNull(items.login("Test Beheerder", "Beheer1"))
+        useUserFolder()
+        assertFalse(check("Er staat geen werk").ok, "de gekozen bestanden zijn niet in deze doorloop gekozen")
+        assertTrue(service.startFlow()!!.contains("geen werk"))
+        service.acceptInput()
+        assertNull(service.startFlow())
+        assertEquals(2, service.flowView().current)
+    }
+
+    // ---- wat de programma's gemaakt hebben ----
+
+    @Test
+    fun `de gemaakte bestanden staan met soort en grootte in de lijst`() {
+        service.start("90000000")
+        runUntil("IMAGES")
+        val produced = service.producedFiles(StepType.PDF2ZCBS)
+        assertEquals(8, produced.size, "vier bestanden per pdf")
+        assertEquals(listOf("tekst", "pdf", "small", "large"), produced.take(4).map { it.label })
+        assertEquals(listOf("p2z-small", "p2z-large"), produced.take(4).map { it.kind }.drop(2))
+        assertTrue(produced.all { it.size.endsWith(" B") }, produced.map { it.size }.toString())
+        assertTrue(produced.all { it.resolution == "" }, "de nepbestanden zijn geen echte afbeeldingen")
+        assertEquals(emptyList(), service.producedFiles(StepType.IMAGES), "images draaide nog niet")
+        assertEquals("DONE", runNext().status)
+        assertEquals(listOf("small", "large", "100pct"), service.producedFiles(StepType.IMAGES).take(3).map { it.label })
+    }
+
+    @Test
+    fun `een tekst zonder herkende tekst is geen fout, maar valt op`() {
+        fake("pdf2zcbs-leeg.sh", p2zDir, "pdf2zcbs.sh")
+        service.start("90000000")
+        runUntil("PDF2ZCBS")
+        assertEquals("DONE", runNext().status, "een lege tekst laat de stap niet mislukken")
+        val text = service.producedFiles(StepType.PDF2ZCBS).first { it.label == "tekst" }
+        assertEquals("0 B", text.size)
+        assertTrue(text.note.contains("leeg"), text.note)
+        assertEquals(listOf("OK", "OK", "OK", "OK"), states(0, "pdf2zcbs"))
+        assertNotNull(service.resultFile("tekst", "90000000"), "ook een lege tekst is te openen")
+    }
+
+    @Test
+    fun `de afmeting van een afbeelding wordt gelezen`() {
+        service.start("90000000")
+        runUntil("PDF2ZCBS")
+        val out = p2zDir.resolve("output/small")
+        // een echte jpg van 40 x 30, zoals pdf2zcbs hem zou maken
+        assertEquals("DONE", runNext().status)
+        val file = out.resolve("90000000.jpg")
+        javax.imageio.ImageIO.write(java.awt.image.BufferedImage(40, 30, java.awt.image.BufferedImage.TYPE_INT_RGB), "jpg", file.toFile())
+        val small = service.producedFiles(StepType.PDF2ZCBS).first { it.number == "90000000" && it.label == "small" }
+        assertEquals("40 × 30 px", small.resolution)
+    }
+
     // ---- resten van een eerdere run ----
 
     private fun makeLeftovers() {
@@ -489,7 +582,7 @@ class TestRunServiceTest {
         assertFalse(Files.exists(imgDir.resolve("small")), "lege mappen verdwijnen")
         assertTrue(Files.isDirectory(imgDir.resolve("images")), "de invoermap van images.exe blijft")
         assertNull(service.confirmFiles())
-        assertEquals(2, service.flowView().current)
+        assertTrue(service.environment().last().ok, "geen werk van een eerdere keer meer")
     }
 
     @Test

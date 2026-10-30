@@ -134,3 +134,12 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 .leftovers{border-color:var(--busy)}
 .leftlist{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px}
 .leftlist .muted{display:block;font-size:13px;overflow-wrap:anywhere}
+
+.envlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.envlist li{display:flex;gap:12px;align-items:flex-start;font-size:15px}
+.envlist .mark{flex:0 0 22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-top:1px}
+.envlist li.ok .mark{background:var(--ok-bg);color:var(--ok)}
+.envlist li.bad .mark{background:var(--err-bg);color:var(--err)}
+.envlist .detail{display:block;font-size:13px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.envlist li.bad .detail{color:var(--err)}
+.leftovers.stack{border:1px solid var(--busy);border-radius:10px;padding:16px;background:#fffaf0}

@@ -21,7 +21,7 @@ De scripts schrijven in hun eigen map (`output/`, `images/`, `small/` …); die 
 - `pdf2zcbs.pl` doet net als de echte pdf2zcbs.exe bij HKH **niets op het scherm** zolang `pdf2zcbs.ini` naast het programma staat (dat is hier zo):
   de vragen zijn dan al beantwoord, het programma toont niets en wacht nergens op. Haal `pdf2zcbs.ini` weg (of hernoem het) om de vragen en de
   voortgang van de handleiding te zien; de automatische antwoorden bij Instellingen zijn alleen dan nodig.
-- `pdf2zcbs.pl` maakt per pdf `output/pdf`, `output/ocr` (met `pdftotext`), `output/small` en `output/large` (met `pdftoppm`,
+- `pdf2zcbs.pl` maakt per pdf `output/pdf`, `output/ocr` (met `pdftotext`; een gescande pdf zonder tekstlaag krijgt een vaste mock-tekst, want de echte exe doet OCR), `output/small` en `output/large` (met `pdftoppm`,
   de eerste pagina) en wist `output/` bij elke start, zoals het echte programma. Zonder `pdftoppm` komen er kleine nep-jpg's.
 - `images.pl` maakt van de jpg's in `images/` een small (100 of 250 volgens de gekozen resolutie), large (700) en 100pct
   (met `sips` op macOS; het schaalt niet op) en ruimt alleen op als je op de verwijdervragen J antwoordt.

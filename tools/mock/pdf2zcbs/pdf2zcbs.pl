@@ -40,6 +40,8 @@ for my $p (@pdfs) {
   (my $base = $p) =~ s/\.pdf$//i;
   my $text = `pdftotext output/pdf/$p - 2>/dev/null` // '';
   my @zinnen = grep { /\S/ } split(/(?<=[.!?])\s+/, $text);
+  # Een scan heeft geen tekstlaag, dus pdftotext vindt niets; de echte pdf2zcbs.exe doet OCR en levert wel tekst. Zet dan een vaste tekst neer.
+  push @zinnen, "[mock] Geen tekst in $p gevonden; de echte pdf2zcbs.exe zet hier de herkende tekst (OCR)." unless @zinnen;
   open(my $fh, '>', "output/ocr/$base.txt") or die; print $fh "$_\n" for @zinnen; close $fh;
   say_(" Verwerking: $p : bevat ", scalar(@zinnen), " zinnen --> output/ocr/$base.txt)\n");
   jpg("output/pdf/$p", "output/small/$base.jpg", 193);

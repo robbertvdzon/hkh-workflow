@@ -46,20 +46,24 @@ class NewFilesController(
         val settings = settingsService.get()
         val flow = testRunService.flowView()
         // Standaard de eerste map met scans uit de instellingen, zodat Carla meteen bestanden ziet.
-        val rootName = rootName?.takeIf { it.isNotBlank() } ?: sourceFiles.roots().firstOrNull()?.name.takeIf { flow.current == 1 }
+        val rootName = rootName?.takeIf { it.isNotBlank() } ?: sourceFiles.roots().firstOrNull()?.name.takeIf { flow.current == 2 }
         model.addAttribute("active", "nieuw")
         model.addAttribute("returnTo", "/nieuw")
         model.addAttribute("settings", settings)
         model.addAttribute("flow", flow)
         model.addAttribute("run", flow.run)
         model.addAttribute("console", exeRunner.snapshot())
-        model.addAttribute("settingsProblems", settingsProblems())
-        val leftovers = if (flow.current <= 2 && flow.run == null) testRunService.leftovers() else emptyList()
-        model.addAttribute("leftovers", leftovers)
-        model.addAttribute("leftoversTarget", testRunService.leftoversTarget()?.toString().orEmpty())
-        model.addAttribute("inputFolder", testRunService.inputFolder()?.toString().orEmpty())
         when (flow.current) {
             1 -> {
+                val checks = testRunService.environment()
+                val leftovers = testRunService.leftovers()
+                model.addAttribute("checks", checks)
+                model.addAttribute("allOk", checks.all { it.ok })
+                model.addAttribute("leftovers", leftovers)
+                model.addAttribute("leftoversTarget", testRunService.leftoversTarget()?.toString().orEmpty())
+            }
+
+            2 -> {
                 val pdfs = testRunService.pdfsInTestFolder().map {
                     val origin = sourceFiles.origin(it.fileName.toString())
                     PdfRow(it.fileName.toString(), origin?.by.orEmpty(), origin?.folder.orEmpty())
@@ -75,7 +79,7 @@ class NewFilesController(
                 }
             }
 
-            2 -> {
+            3 -> {
                 val count = testRunService.pdfsInTestFolder().size
                 val free = itemEditService.freeNumbers()
                 model.addAttribute("count", count)
@@ -88,22 +92,20 @@ class NewFilesController(
                 }
             }
 
-            3, 4 -> if (flow.review && flow.run != null) {
-                val type = if (flow.current == 3) StepType.PDF2ZCBS else StepType.IMAGES
+            4, 5 -> if (flow.review && flow.run != null) {
+                val type = if (flow.current == 4) StepType.PDF2ZCBS else StepType.IMAGES
                 model.addAttribute("reviewStepId", flow.run.rows.first().cells[StepType.entries.indexOf(type)].id)
                 model.addAttribute("reviewType", type.name)
-                model.addAttribute("thumbKind", if (flow.current == 3) "p2z-small" else "small")
-                model.addAttribute("fullKind", if (flow.current == 3) "p2z-large" else "large")
-                model.addAttribute("excerpts", if (flow.current == 3) flow.run.rows.associate { it.number to testRunService.ocrExcerpt(it.number).orEmpty() } else emptyMap<String, String>())
+                model.addAttribute("produced", testRunService.producedFiles(type))
+                model.addAttribute("names", flow.run.rows.associate { it.number to it.originalName })
             }
         }
         return "nieuw"
     }
 
-    private fun settingsProblems(): Map<String, String> {
-        val s = settingsService.get()
-        return (settingsService.check(s) + settingsService.checkExtras(s)).filterKeys { it !in setOf("sftpHostKey") }
-    }
+    /** Alles is in orde en Carla gaat verder met het kiezen van bestanden. */
+    @PostMapping("/nieuw/start")
+    fun begin(redirect: RedirectAttributes): String = attempt(redirect) { testRunService.startFlow() }
 
     private fun attempt(redirect: RedirectAttributes, vararg query: Pair<String, String>, action: () -> String?): String {
         try {
@@ -126,7 +128,8 @@ class NewFilesController(
         val result = sourceFiles.copy(rootName, path, files.orEmpty())
         testRunService.acceptInput()
         val skipped = if (result.skipped.isEmpty()) "" else " Overgeslagen: ${result.skipped.joinToString()}."
-        redirect.addFlashAttribute("info", "${result.copied.size} bestanden gekopieerd naar de invoermap. De originelen blijven staan.$skipped")
+        val n = result.copied.size
+        redirect.addFlashAttribute("info", "$n ${if (n == 1) "bestand" else "bestanden"} gekozen. De originelen blijven staan.$skipped")
         null
     }
 
@@ -147,7 +150,7 @@ class NewFilesController(
     fun leftovers(@RequestParam("actie") action: String, redirect: RedirectAttributes): String = attempt(redirect) {
         if (action == "accepteer") {
             testRunService.acceptInput()
-            redirect.addFlashAttribute("info", "De bestanden in je invoermap horen erbij.")
+            redirect.addFlashAttribute("info", "Je gekozen bestanden horen erbij.")
         } else redirect.addFlashAttribute("info", testRunService.clearLeftovers(move = action == "verplaats"))
         null
     }
