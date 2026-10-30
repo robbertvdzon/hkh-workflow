@@ -68,7 +68,8 @@
                 </div>
                 <div class="card pad">
                     <div class="fr" th:each="c : ${controls}">
-                        <label class="f" th:text="${c.label}" th:for="${c.name}">Label</label>
+                        <label class="f" th:for="${c.name}"><span th:text="${c.label}">Label</span>
+                            <span class="help" th:if="${!c.help.isEmpty()}" tabindex="0" role="note" th:attr="aria-label=${c.help}">?<span class="helptext" th:text="${c.help}"></span></span></label>
                         <div th:switch="${c.kind.name()}">
                             <input th:case="'TEXT'" type="text" th:id="${c.name}" th:name="${c.name}" th:value="${c.value}">
                             <textarea th:case="'TEXTAREA'" th:id="${c.name}" th:name="${c.name}" th:text="${c.value}"></textarea>

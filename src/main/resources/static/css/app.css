@@ -148,3 +148,8 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 
 /* Knop die het onthouden antwoord (alleen Enter) geeft. */
 .btn-suggested { border-color: var(--accent, #1f5068); box-shadow: 0 0 0 2px var(--accent, #1f5068); font-weight: 700; }
+
+/* Het vraagteken bij een veld met de helptekst van ZCBS, bij aanwijzen of met Tab. */
+.help{position:relative;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:6px;border-radius:50%;border:1px solid #b9b1a0;color:#6b6556;font-size:12px;font-weight:600;cursor:help;vertical-align:middle}
+.help .helptext{display:none;position:absolute;left:24px;top:-6px;z-index:5;width:380px;max-width:60vw;padding:10px 12px;background:#fffbe0;border:1px solid #cfc79c;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.15);color:var(--ink);font-size:13px;font-weight:400;line-height:1.45;white-space:pre-line;text-align:left}
+.help:hover .helptext,.help:focus .helptext{display:block}

@@ -30,6 +30,28 @@ class ZcbsFixturesTest {
     }
 
     @Test
+    fun `de helptekst van ZCBS komt bij het veld`() {
+        val html = """
+            <html><body><script>
+              info = new Array();
+              info[1] = "<strong>Verplicht veld!</strong><br>De volledige titel \"en\" ondertitel";
+              info[2] = "Geen help-informatie beschikbaar.";
+              info[3] = "";
+            </script>
+            <form name="zcbsform"><input type="hidden" name="ident" value="1"><input type="hidden" name="a0" value="1|x">
+              <table><tr><th>Titel</th><th><img onMouseOver="popLayer(1)" onMouseOut="hideLayer()"></th><td><input type="text" name="a5" value="t"></td></tr>
+              <tr><th>Datum</th><th><img onMouseOver="popLayer(2)"></th><td><input type="text" name="a8" value=""></td></tr>
+              <tr><th>Plaats</th><th><img onMouseOver="popLayer(3)"></th><td><input type="text" name="a9" value=""></td></tr>
+              <tr><th>Zonder</th><td><input type="text" name="a11" value=""></td></tr></table></form></body></html>
+        """.trimIndent()
+        val f = FormParser.parse(html)!!
+        assertEquals("Verplicht veld!\nDe volledige titel \"en\" ondertitel", f.control("a5")?.help)
+        assertEquals("", f.control("a8")?.help)
+        assertEquals("", f.control("a9")?.help)
+        assertEquals("", f.control("a11")?.help)
+    }
+
+    @Test
     fun `verborgen velden en a0 worden meegestuurd, bijlagevelden niet als zichtbaar veld`() {
         val f = Fixtures.form("edit-gevuld.html")
         listOf("ident", "upd_form", "write", "a0", "a32", "a33", "a34").forEach { assertTrue(f.posts.any { p -> p.name == it }, it) }
