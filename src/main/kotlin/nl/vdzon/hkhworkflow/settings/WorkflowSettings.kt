@@ -66,6 +66,10 @@ data class WorkflowSettings(
     /** Volledig pad op de ftp-server voor de pdf's. */
     fun remotePdfDir(): String = remoteDir(ftpPdfDir, "pdf")
 
+    /** Waar images.exe de afbeeldingen op de ftp-server zet: small en large in de collectiemap, de 100pct onder cgi-bin. */
+    fun remoteImagesDir(kind: String): String =
+        remoteDir(if (kind == "100pct") "cgi-bin/${collection.trim()}/100pct" else "", kind)
+
     private fun remoteDir(override: String, default: String): String {
         val relative = override.trim().ifEmpty { "${collection.trim()}/$default" }
         return if (relative.startsWith("/")) relative.trimEnd('/') else ftpBaseDir.trim().trimEnd('/') + "/" + relative.trim('/')

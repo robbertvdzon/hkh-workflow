@@ -119,6 +119,40 @@ class TestRunService(
         filesConfirmed = false
         started = false
         inputAcceptedFor = null
+        finishedShown = false
+    }
+
+    /** Is de klaar-pagina al eens getoond? De eerste keer is dat nee (en onthouden we het); daarna moet de pagina weer bij het begin beginnen. */
+    private var finishedShown = false
+
+    @Synchronized
+    fun finishedAlreadyShown(): Boolean {
+        val finished = run?.let { it.nextStep() == null } == true
+        if (!finished) return false
+        if (finishedShown) return true
+        finishedShown = true
+        return false
+    }
+
+    /** Alles wat deze doorloop heeft gemaakt en waar het staat: op de server (ftp) en in de back-up. */
+    @Synchronized
+    fun summary(): List<SummaryLine> {
+        val current = run ?: return emptyList()
+        val s = settingsService.get()
+        val files = current.files
+        if (files.isEmpty()) return emptyList()
+        fun range(ext: String) = files.first().number + "." + ext + (if (files.size > 1) " t/m " + files.last().number + "." + ext else "")
+        fun line(place: String, kind: String, ext: String, folder: String) = SummaryLine(place, kind, files.size, range(ext), folder)
+        val server = "Server (ftp ${s.ftpHost})"
+        return listOf(
+            line(server, "small", "jpg", s.remoteImagesDir("small")),
+            line(server, "large", "jpg", s.remoteImagesDir("large")),
+            line(server, "100pct", "jpg", s.remoteImagesDir("100pct")),
+            line(server, "tekst (ocr)", "txt", s.remoteOcrDir()),
+            line(server, "pdf", "pdf", s.remotePdfDir()),
+            line("Back-up", "100pct", "jpg", s.backup100pctFolder),
+            line("Back-up", "pdf", "pdf", s.backupPdfFolder),
+        )
     }
 
     /**

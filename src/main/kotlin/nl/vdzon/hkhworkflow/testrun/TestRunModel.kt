@@ -156,4 +156,7 @@ data class PhaseView(val nr: Int, val title: String, val state: String, val note
  * fase die aan de beurt is, of 7 als alles klaar is. [review] is gezet als de uitvoer van de huidige fase klaar is en Carla
  * hem moet controleren voordat ze verder kan.
  */
+/** Eén regel van het overzicht aan het eind: wat er gemaakt is en waar het nu staat. */
+data class SummaryLine(val place: String, val kind: String, val count: Int, val files: String, val folder: String)
+
 data class FlowView(val phases: List<PhaseView>, val current: Int, val finished: Boolean, val review: Boolean, val run: TestRunView?)

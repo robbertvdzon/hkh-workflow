@@ -202,9 +202,18 @@
             <p style="margin:0"><b th:text="${run.fileCount}">12</b> bestanden staan nu op het archief, met de recordnummers <b class="mono" th:text="${run.rows[0].number}">11935</b> t/m <b class="mono" th:text="${run.rows[run.rows.size() - 1].number}">11946</b>.
                 De 100pct en de pdf's hebben een back-up, de werkmappen zijn opgeruimd en de bestanden staan in het <a th:href="@{/verwerkt}">overzicht van wat al verwerkt is</a>.</p>
             <p class="muted" style="margin:0">De gegevens (titel enzovoort) vul je op een andere dag in via ZCBS records aanpassen.</p>
+            <div class="table" th:if="${summary != null}">
+                <div class="tr th" style="grid-template-columns:150px 110px minmax(0,1fr) minmax(0,2fr)"><span>Waar</span><span>Soort</span><span>Bestanden</span><span>Map</span></div>
+                <div class="tr" th:each="l : ${summary}" style="grid-template-columns:150px 110px minmax(0,1fr) minmax(0,2fr)">
+                    <span th:text="${l.place.startsWith('Server') ? 'Server' : l.place}">Server</span>
+                    <span th:text="${l.kind}">small</span>
+                    <span class="mono" th:text="${l.files}">11935.jpg t/m 11946.jpg</span>
+                    <span class="mono" style="overflow-wrap:anywhere" th:text="${l.folder}">/public_html/archief/small</span>
+                </div>
+            </div>
+            <p class="hint" style="margin:0">De originelen op K: zijn niet aangeraakt. Open je deze pagina opnieuw, dan begin je weer bij stap 1.</p>
             <div class="row-actions">
                 <form th:action="@{/nieuw/opnieuw}" method="post"><button class="btn btn-p" type="submit">Nieuwe bestanden verwerken</button></form>
-                <a class="btn btn-s" th:href="@{/records}">ZCBS records aanpassen</a>
             </div>
         </section>
 
