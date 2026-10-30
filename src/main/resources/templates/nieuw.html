@@ -181,6 +181,15 @@
                 </div>
             </section>
 
+            <!-- Upload en back-up: gewoon de lijst met bestanden, en daaronder de knop -->
+            <section class="table" th:if="${flow.current >= 6 and !flow.review}">
+                <div class="tr th" style="grid-template-columns:minmax(0,1fr) 140px"><span>Bestand</span><span>Nummer</span></div>
+                <div class="tr" th:each="row : ${run.rows}" style="grid-template-columns:minmax(0,1fr) 140px">
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${row.originalName}" th:title="${row.originalName}">scan.pdf</span>
+                    <span class="mono" th:text="${row.newName}">11935.pdf</span>
+                </div>
+            </section>
+
             <th:block th:unless="${flow.review}">
                 <section th:replace="~{test :: nextstep}"></section>
                 <section th:replace="~{test :: consolesection}"></section>
@@ -199,10 +208,6 @@
             </div>
         </section>
 
-        <!-- per bestand: wat is er klaar (pas bij de upload en de back-up, niet bij pdf2zcbs en images.exe) -->
-        <th:block th:if="${run != null and flow.current >= 6 and !flow.review}">
-            <section th:replace="~{test :: filetable}"></section>
-        </th:block>
     </main>
 </div>
 <script th:src="@{/js/console.js}"></script>
