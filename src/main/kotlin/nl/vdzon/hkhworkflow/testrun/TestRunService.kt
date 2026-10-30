@@ -15,8 +15,8 @@ import nl.vdzon.hkhworkflow.exerunner.RunMode
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
-import nl.vdzon.hkhworkflow.sftp.SftpService
-import nl.vdzon.hkhworkflow.sftp.UploadItem
+import nl.vdzon.hkhworkflow.ftp.FtpService
+import nl.vdzon.hkhworkflow.ftp.UploadItem
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service
  * 1. hernoemen (per bestand): kopie met het recordnummer in `werk`;
  * 2. pdf2zcbs.exe (één keer): maakt tekst, pdf, small en large; daarna controleert Carla de uitvoer;
  * 3. images.exe (één keer): krijgt de large-jpg's van pdf2zcbs en maakt small, large en 100pct; daarna controleert Carla weer;
- * 4. upload (één keer): tekst en pdf's met sftp naar de server;
+ * 4. upload (één keer): tekst en pdf's met ftp naar de server;
  * 5. back-up en opruimen (één keer): back-up van de 100pct en de pdf's, daarna de werkmappen leegmaken en het verwerkt-log bijwerken.
  *
  * Het invullen van de gegevens in ZCBS (titel enzovoort) hoort er niet bij: dat gebeurt op een andere dag, op de pagina ZCBS
@@ -41,7 +41,7 @@ import org.springframework.stereotype.Service
 class TestRunService(
     private val settingsService: SettingsService,
     private val exeRunner: ExeRunner,
-    private val sftpService: SftpService,
+    private val ftpService: FtpService,
     private val itemEditService: ItemEditService,
     private val sourceFiles: SourceFilesService,
     private val processed: ProcessedLog,
@@ -204,28 +204,32 @@ class TestRunService(
         val admin = "Dit stelt de beheerder in bij Instellingen."
         fun folder(path: String) = path.isNotBlank() && Files.isDirectory(Path.of(path))
         fun file(path: String) = path.isNotBlank() && Files.isRegularFile(Path.of(path))
+        fun unset(path: String) = path.ifBlank { "(niet ingesteld)" }
+        fun check(id: String, ok: Boolean, okLabel: String, failLabel: String, detail: String = "", okDetail: String = "") =
+            if (ok) EnvCheck(id, okLabel, true, okDetail) else EnvCheck(id, failLabel, false, detail)
         val roots = s.sourceRoots()
         val unreachable = roots.filter { !folder(it.path) }
-        val sftpReady = s.sftpHost.isNotBlank() && s.sftpUser.isNotBlank() && s.sftpPassword.isNotEmpty() && s.sftpHostKey.isNotBlank()
-        val leftovers = leftovers()
+        val backups = listOf(s.backup100pctFolder, s.backupPdfFolder).filter { !folder(it) }
+        val exes = listOf(s.pdf2zcbsExe, s.imagesExe).filter { !file(it) }
+        val ftpSettled = s.ftpHost.isNotBlank() && s.ftpUser.isNotBlank() && s.ftpPassword.isNotEmpty()
+        val ftp = if (ftpSettled) ftpService.testConnection(5_000) else null
+        val ftpMissingDirs = ftp?.dirs?.filter { !it.exists }.orEmpty()
         return listOf(
-            if (itemEditService.loggedIn()) EnvCheck("Ingelogd bij ZCBS als ${itemEditService.user}", true)
-            else EnvCheck("Ingelogd bij ZCBS", false, "Log eerst in via Start."),
-            if (itemEditService.freeNumbers() != null) EnvCheck("ZCBS geeft de vrije recordnummers", true)
-            else EnvCheck("ZCBS geeft de vrije recordnummers", false, "Is je sessie verlopen, of heb je geen recht om records aan te maken? Log opnieuw in via Start."),
+            check("login", itemEditService.loggedIn(), "Ingelogd bij ZCBS als ${itemEditService.user}", "Niet ingelogd bij ZCBS", "Log eerst in via Start."),
+            check("numbers", itemEditService.freeNumbers() != null, "ZCBS geeft de vrije recordnummers", "De vrije recordnummers uit ZCBS zijn niet op te halen",
+                "Is je sessie verlopen, of heb je geen recht om records aan te maken? Log opnieuw in via Start."),
+            check("scans", roots.isNotEmpty() && unreachable.isEmpty(), "De mappen met scans zijn bereikbaar", if (roots.isEmpty()) "Er zijn geen mappen met scans ingesteld" else "De mappen met scans zijn niet bereikbaar",
+                if (roots.isEmpty()) admin else "Niet bereikbaar: ${unreachable.joinToString { it.path }}. Is de schijf (K:) gekoppeld?", okDetail = roots.joinToString { it.name }),
+            check("exes", exes.isEmpty(), "pdf2zcbs.exe en images.exe zijn gevonden", "pdf2zcbs.exe of images.exe is niet gevonden", "Niet gevonden: ${exes.joinToString { unset(it) }}. $admin"),
+            check("backup", backups.isEmpty(), "De back-upmappen zijn bereikbaar", "De back-upmappen zijn niet bereikbaar",
+                "Niet bereikbaar: ${backups.joinToString { unset(it) }}. Is de schijf (K:) gekoppeld? Anders stelt de beheerder dit in bij Instellingen."),
             when {
-                roots.isEmpty() -> EnvCheck("De mappen met scans zijn bereikbaar", false, "Er zijn geen mappen met scans ingesteld. $admin")
-                unreachable.isNotEmpty() -> EnvCheck("De mappen met scans zijn bereikbaar", false, "Niet bereikbaar: ${unreachable.joinToString { it.path }}. Is de schijf (K:) gekoppeld?")
-                else -> EnvCheck("De mappen met scans zijn bereikbaar", true, roots.joinToString { it.name })
+                !ftpSettled -> EnvCheck("ftp", "De ftp-gegevens voor de upload zijn niet ingesteld", false, "Host, gebruiker of wachtwoord ontbreekt. $admin")
+                ftp != null && !ftp.ok -> EnvCheck("ftp", "De ftp-server is niet bereikbaar", false, ftp.message)
+                ftpMissingDirs.isNotEmpty() -> EnvCheck("ftp", "Op de ftp-server ontbreken mappen", false, "Niet gevonden: ${ftpMissingDirs.joinToString { it.path }}. $admin")
+                else -> EnvCheck("ftp", "De ftp-server is bereikbaar en de mappen voor tekst en pdf bestaan", true, s.ftpHost)
             },
-            if (file(s.pdf2zcbsExe) && file(s.imagesExe)) EnvCheck("pdf2zcbs.exe en images.exe zijn gevonden", true)
-            else EnvCheck("pdf2zcbs.exe en images.exe zijn gevonden", false, "Niet gevonden: ${listOf(s.pdf2zcbsExe, s.imagesExe).filter { !file(it) }.joinToString { it.ifBlank { "(niet ingesteld)" } }}. $admin"),
-            if (folder(s.backup100pctFolder) && folder(s.backupPdfFolder)) EnvCheck("De back-upmappen zijn bereikbaar", true)
-            else EnvCheck("De back-upmappen zijn bereikbaar", false, "Niet bereikbaar: ${listOf(s.backup100pctFolder, s.backupPdfFolder).filter { !folder(it) }.joinToString { it.ifBlank { "(niet ingesteld)" } }}. Is de schijf (K:) gekoppeld? Anders: $admin"),
-            if (sftpReady) EnvCheck("De upload naar de server is ingesteld", true)
-            else EnvCheck("De upload naar de server is ingesteld", false, "De sftp-gegevens of de vingerafdruk van de server ontbreken. $admin"),
-            if (leftovers.isEmpty()) EnvCheck("Er staat geen werk van een eerdere keer", true)
-            else EnvCheck("Er staat geen werk van een eerdere keer", false, "Zie hieronder: verplaats of verwijder het."),
+            check("leftovers", leftovers().isEmpty(), "Er staat geen werk van een eerdere keer", "Er staat nog werk van een eerdere keer", "Zie hieronder: verplaats of verwijder het."),
         )
     }
 
@@ -462,10 +466,9 @@ class TestRunService(
 
             StepType.UPLOAD -> buildList {
                 if (current.gated && StepType.IMAGES !in current.reviewed) add("Controleer eerst de bestanden van images.exe en bevestig dat ze goed zijn.")
-                if (s.sftpHost.isBlank()) add("Sftp-host is niet ingesteld (Instellingen).")
-                if (s.sftpUser.isBlank()) add("Sftp-gebruiker is niet ingesteld (Instellingen).")
-                if (s.sftpPassword.isEmpty()) add("Sftp-wachtwoord is niet ingesteld (Instellingen).")
-                if (s.sftpHostKey.isBlank()) add("De vingerafdruk van de server is nog niet vastgezet (Instellingen, Test verbinding).")
+                if (s.ftpHost.isBlank()) add("Ftp-host is niet ingesteld (Instellingen).")
+                if (s.ftpUser.isBlank()) add("Ftp-gebruiker is niet ingesteld (Instellingen).")
+                if (s.ftpPassword.isEmpty()) add("Ftp-wachtwoord is niet ingesteld (Instellingen).")
                 if (s.collection.isBlank()) add("Collectie is niet ingesteld (Instellingen).")
                 step.files.forEach {
                     if (!l.ocr(it).present(allowEmpty = true)) add("Tekstbestand ontbreekt: ${l.ocr(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")
@@ -641,8 +644,8 @@ class TestRunService(
         // Bij opnieuw proberen alleen wat nog niet is geüpload; wat er al staat blijft ongemoeid.
         val pending = items.filter { it.remotePath !in step.uploaded }
         step.status = StepStatus.RUNNING
-        step.message = "Bezig met uploaden van ${pending.size} bestanden naar ${s.sftpHost}..."
-        val results = sftpService.upload(pending)
+        step.message = "Bezig met uploaden van ${pending.size} bestanden naar ${s.ftpHost}..."
+        val results = ftpService.upload(pending)
         results.filter { it.ok }.forEach { step.uploaded += it.item.remotePath }
         val failed = results.firstOrNull { !it.ok }
         if (failed == null && step.files.all { f -> items.filter { it.local.nameWithoutExt() == f.number }.all { it.remotePath in step.uploaded } }) {
@@ -803,7 +806,7 @@ class TestRunService(
                 "Verwacht per bestand in ${l.img ?: unset}: small, large en 100pct.",
             )
             StepType.UPLOAD -> listOf(
-                "Verbindt met sftp://${s.sftpHost.ifBlank { unset }} als ${s.sftpUser.ifBlank { unset }}, alleen met de vastgezette vingerafdruk.",
+                "Verbindt met ftp://${s.ftpHost.ifBlank { unset }} als ${s.ftpUser.ifBlank { unset }}.",
                 "Tekst: $n bestand(en) naar ${s.remoteOcrDir()}",
                 "Pdf: $n bestand(en) naar ${s.remotePdfDir()}",
                 "Eerst een controle: de mappen bestaan en geen enkel bestand bestaat al. Er wordt niets overschreven, aangemaakt of verwijderd.",

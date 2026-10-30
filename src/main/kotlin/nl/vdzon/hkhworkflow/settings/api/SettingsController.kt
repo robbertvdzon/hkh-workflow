@@ -22,7 +22,7 @@ class SettingsController(private val settingsService: SettingsService) {
         model.addAttribute("active", "instellingen")
         model.addAttribute("settings", settings)
         model.addAttribute("problems", settingsService.check(settings) + settingsService.checkExtras(settings))
-        model.addAttribute("hasSftpPassword", settings.sftpPassword.isNotEmpty())
+        model.addAttribute("hasFtpPassword", settings.ftpPassword.isNotEmpty())
         model.addAttribute("settingsFile", settingsService.settingsFile().toString())
         model.addAttribute("saved", saved == true)
         model.addAttribute("pdf2zcbsRows", rows(settings.pdf2zcbsAnswers))
@@ -46,19 +46,18 @@ class SettingsController(private val settingsService: SettingsService) {
                 leftoversFolder = param("leftoversFolder"),
                 zcbsBaseUrl = param("zcbsBaseUrl"),
                 sourceFolders = param("sourceFolders"),
-                sftpHost = param("sftpHost"),
-                sftpPort = param("sftpPort").trim().toIntOrNull() ?: 22,
-                sftpUser = param("sftpUser"),
+                ftpHost = param("ftpHost"),
+                ftpPort = param("ftpPort").trim().toIntOrNull() ?: 21,
+                ftpUser = param("ftpUser"),
                 // Een leeg wachtwoordveld betekent: het opgeslagen wachtwoord houden (tenzij "wissen" is aangevinkt).
-                sftpPassword = when {
-                    request.getParameter("sftpPasswordClear") != null -> ""
-                    param("sftpPassword").isEmpty() -> current.sftpPassword
-                    else -> param("sftpPassword")
+                ftpPassword = when {
+                    request.getParameter("ftpPasswordClear") != null -> ""
+                    param("ftpPassword").isEmpty() -> current.ftpPassword
+                    else -> param("ftpPassword")
                 },
-                sftpHostKey = param("sftpHostKey"),
-                sftpBaseDir = param("sftpBaseDir"),
-                sftpOcrDir = param("sftpOcrDir"),
-                sftpPdfDir = param("sftpPdfDir"),
+                ftpBaseDir = param("ftpBaseDir"),
+                ftpOcrDir = param("ftpOcrDir"),
+                ftpPdfDir = param("ftpPdfDir"),
                 pdf2zcbsAnswers = readRules(request, "pdf2zcbs", current.pdf2zcbsAnswers),
                 imagesAnswers = readRules(request, "images", current.imagesAnswers),
             ),

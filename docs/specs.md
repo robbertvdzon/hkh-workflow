@@ -9,6 +9,7 @@ Laatst bijgewerkt: 30 oktober 2026.
 
 > **30 oktober 2026 — de eerste versie is simpeler gemaakt** na overleg met Jan (HKH): de flow volgt zijn stappenplan, zonder het invullen van gegevens,
 > en het bewerken van records is een aparte knop. De app begint nu met inloggen bij ZCBS en het kiezen van een collectie, en er is een beheerderslogin.
+> De app uploadt tekst en pdf's sinds 30 oktober met **ftp** (zoals images.exe), niet meer met sftp; waar hieronder "sftp" staat bij het huidige proces of de eerste testketen, is dat de handmatige werkwijze of de oude stand.
 > Alles daarover staat in [specs-nieuwe-bestanden.md](specs-nieuwe-bestanden.md). Waar dit document daar van afwijkt (de acht fasen met bewerken, de
 > archived-map, de demoschermen, het woord "batch"), geldt het nieuwe document. §5.3 t/m §5.5 zijn hieronder bijgewerkt.
 
@@ -210,10 +211,10 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 |---|---|---|
 | `settings` | – | `WorkflowSettings`, `AnswerRule`, `SourceRoot`, `SettingsService` (JSON lezen/schrijven, controles), `WorkflowProperties` (o.a. het beheerderswachtwoord); `api/SettingsController` |
 | `exerunner` | – | `ExeRunner`: start één extern programma tegelijk, leest uitvoer, stuurt invoer, automatische antwoorden, logbestand per run |
-| `sftp` | `settings` | `SftpService`: sftp-upload met vastgezette vingerafdruk, nooit overschrijven of verwijderen; `api/SftpController` (Test verbinding, vingerafdruk vastzetten) |
+| `ftp` | `settings` | `FtpService`: ftp-upload (Apache Commons Net) zoals images.exe, nooit overschrijven of verwijderen; `api/FtpController` (Test verbinding) |
 | `zcbs` | `settings` | De client voor ZCBS: `ZcbsClient` (inloggen, `LAST`, de vrije nummers, bestaat het record, formulier ophalen, opslaan; cookies in het geheugen), `FreeNumbers` (vrije reeksen en de controle of een reeks bestanden aaneengesloten past), `FormParser` (Jsoup), `ItemForm` (alle velden die een browser post plus de zichtbare velden), `RecordRebuilder` (de controle tegen `a0`), `ZcbsText` (tekens uit Word en woorden die ZCBS weigert), `ZcbsPages` (welke pagina is dit) |
 | `items` | `zcbs`, `settings` | `ItemEditService`: inloggen bij ZCBS (in het geheugen), de vrije nummers, en de records die Carla kiest bewerken (openen, voorbeeld, opslaan met opnieuw inloggen, conflictcontrole en teruglezen; later); `api/ItemsController` en de pagina's Records |
-| `testrun` | `settings`, `exerunner`, `sftp`, `items`, `zcbs` | `TestRunService` (de stappenketen met controles en de fasen van Carla), `SourceFilesService` (bladeren door de mappen met scans en kopiëren), `ProcessedLog` (wat al verwerkt is), model/views, `sequenceNumbers`; `api/NewFilesController` (pagina Nieuwe bestanden en Verwerkt) en `api/TestController` (technisch) |
+| `testrun` | `settings`, `exerunner`, `ftp`, `items`, `zcbs` | `TestRunService` (de stappenketen met controles en de fasen van Carla), `SourceFilesService` (bladeren door de mappen met scans en kopiëren), `ProcessedLog` (wat al verwerkt is), model/views, `sequenceNumbers`; `api/NewFilesController` (pagina Nieuwe bestanden en Verwerkt) en `api/TestController` (technisch) |
 | `ux` | `settings`, `items` | Het begin van de app: `api/ShellController` (inloggen, collectie, acties, beheerderslogin), `AdminAccess`, `WebConfig` (wie waar mag komen) |
 
 ### 5.3 Routes
@@ -233,7 +234,7 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 | GET/POST | `/instellingen` | Instellingen
 | GET | `/test` | Testpagina |
 | POST | `/test/start` (`startNumber`), `/test/reset` | Testrun starten / nieuwe test |
-| POST | `/instellingen/sftp-test`, `/instellingen/sftp-vingerafdruk` (`fingerprint`) | Verbinding testen (toont vingerafdruk, controleert de mappen, schrijft niets) / vingerafdruk vastzetten |
+| POST | `/instellingen/ftp-test` | Verbinding testen (logt in en controleert de mappen, schrijft niets) |
 | POST | `/test/steps/{id}/run` (`mode=IN_APP\|WINDOW`, `auto=true\|false`) | Stap uitvoeren; automatisch gebruikt de onthouden antwoorden |
 | POST | `/test/steps/{id}/skip`, `/done`, `/retry` | Overslaan / toch klaar / opnieuw |
 | GET | `/test/console` | htmx-fragment, elke seconde zolang er iets draait; stuurt `HX-Refresh` als het klaar is |
@@ -254,10 +255,10 @@ Opgeslagen in JSON; velden:
 - `perlioUnbuffered` (standaard **aan**) — start de programma's met `PERLIO=:unix` (zie §6).
 - `collection` (standaard `archief`) — antwoord op "Kies de ZCBS-toepassing" en basis voor de sftp-mappen.
 - `backup100pctFolder` en `backupPdfFolder` — back-up van de 100pct en van de pdf's met recordnummer vóór het opruimen (op K:).
-- `sftpHost`, `sftpPort` (22), `sftpUser`, `sftpPassword` (verborgen in de UI, zoals de andere wachtwoorden),
-  `sftpHostKey` (vastgezette vingerafdruk, `SHA256:…`; zonder deze wordt er niet geüpload), `sftpBaseDir`
-  (standaard `/domains/historischekringheemskerk.nl/public_html`), `sftpOcrDir` en `sftpPdfDir` (relatief aan de basismap;
-  leeg = `<collectie>/ocr` en `<collectie>/pdf`).
+- `ftpHost`, `ftpPort` (21), `ftpUser`, `ftpPassword` (verborgen in de UI, zoals de andere wachtwoorden), `ftpBaseDir`
+  (standaard `/public_html`, het pad bij de ftp-account van images.exe; voor het lokale Docker-account `/domains/historischekringheemskerk.nl/public_html`),
+  `ftpOcrDir` en `ftpPdfDir` (relatief aan de basismap; leeg = `<collectie>/ocr` en `<collectie>/pdf`). Gewone ftp is niet versleuteld.
+  Een oud bestand met `sftp…`-velden wordt overgenomen (zonder poort en vingerafdruk).
 - `pdf2zcbsAnswers`, `imagesAnswers` — lijsten `{pattern, answer, secret}`: de **onthouden antwoorden**. Handmatig uitvoeren past ze aan met wat Carla intypt
   (niet de wachtwoorden); automatisch uitvoeren gebruikt ze. Alleen de collectie, overschrijven en het verwijderen van de mappen van images.exe staan vast en gaan voor.
   Standaardregels zijn afgeleid uit de handleidingen (`WorkflowSettings.DEFAULT_*`), met veilige keuzes:
@@ -297,7 +298,7 @@ oude manier kan worden afgemaakt. Er wordt pas iets verwijderd of gearchiveerd a
 | Hernoemen | **Kopie** van het origineel naar `<testmap>\werk\<nummer>.pdf`. Origineel blijft staan. | doel bestaat al, origineel weg |
 | pdf2zcbs.exe | Kopieert alle `werk\<nummer>.pdf` naar de map van pdf2zcbs en start het programma één keer in die map, zonder argumenten. Verwacht per bestand tekst, pdf, small en large in `output\`. | er andere pdf's in de map staan; `output\` resultaten van een andere run bevat (het programma wist die map bij de start) |
 | images.exe | Kopieert de **large-jpg's** uit `pdf2zcbs\output\large` naar `<map van images.exe>\images` en start het programma één keer. Verwacht per bestand small, large en 100pct. Wist en overschrijft nooit. | large-jpg's ontbreken; er andere bestanden in `images\` staan; `small`, `large` of `100pct` oude resultaten bevatten (die zouden opnieuw worden geüpload) |
-| Upload (sftp) | Zet tekst en pdf's op de server in `<collectie>/ocr` en `<collectie>/pdf`. **Eerst een controle** van alles (mappen bestaan, geen bestand bestaat al), pas dan uploaden onder een tijdelijke naam, hernoemen, rechten 644 en de grootte controleren. Nooit overschrijven, nooit verwijderen, nooit mappen aanmaken. Bij opnieuw proberen worden al geüploade bestanden overgeslagen. | sftp niet volledig ingesteld, vingerafdruk niet vastgezet of anders, lokale bestanden ontbreken, doelmap ontbreekt, een doelbestand bestaat al |
+| Upload (ftp) | Zet tekst en pdf's op de server in `<collectie>/ocr` en `<collectie>/pdf`. **Eerst een controle** van alles (mappen bestaan, geen bestand bestaat al), pas dan uploaden onder een tijdelijke naam, hernoemen, rechten 644 en de grootte controleren. Nooit overschrijven, nooit verwijderen, nooit mappen aanmaken. Bij opnieuw proberen worden al geüploade bestanden overgeslagen. | ftp niet volledig ingesteld, lokale bestanden ontbreken, doelmap ontbreekt, een doelbestand bestaat al |
 | Back-up en opruimen | **Eerst** de 100pct en de pdf's (met recordnummer) kopiëren naar de back-upmappen en de grootte controleren, **dan** verwijderen: `pdf2zcbs\output`, `images\small`, `large`, `100pct`, de eigen bestanden in `images\images`, `log-*.txt` in de images-map, de pdf's in de map van pdf2zcbs en de kopieën in `werk` en in de invoermap. Alleen wat bij deze doorloop hoort. Daarna komen de bestanden in het verwerkt-log. De originelen op K: blijven staan. | back-upmappen ontbreken of bestaan niet, een 100pct of pdf ontbreekt. Waarschuwt als de upload is overgeslagen |
 
 **images.exe en de keuzes die in productie schrijven.** Bij Automatisch uitvoeren staan er twee vinkjes, standaard **uit**:
@@ -356,12 +357,12 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 - `SettingsServiceTest`, `NumberingTest`, `TestRunServiceTest` (hernoemen/archiveren met tijdelijke mappen, volgorde).
 - `ExeRunnerTest` (alleen Mac/Linux): shellscript met vragen, controleert automatische antwoorden en dat het
   wachtwoord niet in uitvoer of log komt; geschiedenis, stoppen, wissen van logs.
-- `SftpServiceTest`: tegen een in-process sftp-server (Apache MINA SSHD, testscope): uploaden, nooit overschrijven,
-  geen mappen aanmaken, vingerafdruk (ook vergeleken met de berekening van de serverbibliotheek), verkeerd wachtwoord.
+- `FtpServiceTest`: tegen een in-process ftp-server (Apache FtpServer, testscope): uploaden, nooit overschrijven,
+  geen mappen aanmaken, een tijdelijk bestand van een eerdere poging, verkeerd wachtwoord, een server die uit staat.
 - `TestRunServiceTest` (alleen Mac/Linux): de volledige keten met nep-programma's uit `src/test/resources/fake-exes` en
-  sftp-server; exitcode 0 zonder bestanden is mislukt; weigeringen bij oude resultaten, vreemde pdf's, ontbrekende back-upmap
+  ftp-server; exitcode 0 zonder bestanden is mislukt; weigeringen bij oude resultaten, vreemde pdf's, ontbrekende back-upmap
   en bestaande serverbestanden; de antwoorden die images.exe krijgt.
-- `TestSftpServerMain` (testbron): start een sftp-server om de app met de hand tegen te proberen (zie `tools/mock/README.md`).
+- `TestFtpServerMain` (testbron): start een ftp-server om de app met de hand tegen te proberen (zie `tools/mock/README.md`).
 
 ---
 
@@ -411,7 +412,7 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 | Eerste echte run | In het echte archief (geen testdatabase), elke stap apart goedkeuren en controleren; bij een fout op de oude manier afmaken | Robbert, 19 oktober |
 | Route van de test | Carla's stappenplan: large-jpg's naar images.exe, tekst en pdf's met sftp, back-up en opruimen | Het stappenplan van 19 oktober |
 | Succes van een stap | Aan de verwachte bestanden, niet aan de exitcode | Perl-programma's geven bijna altijd 0 |
-| Schrijven in productie | Upload en records standaard uit en per run te kiezen; sftp overschrijft en verwijdert nooit, controleert eerst alles, vingerafdruk vastgezet | Voorzichtigheid bij de eerste echte run |
+| Schrijven in productie | Upload en records standaard uit en per run te kiezen; ftp overschrijft en verwijdert nooit, controleert eerst alles | Voorzichtigheid bij de eerste echte run |
 | Opruimen | Pas na de upload en met back-up van de 100pct; originelen pas in de laatste stap archiveren | Zo blijft de oude werkwijze altijd mogelijk |
 
 ---
@@ -444,7 +445,7 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
    batch nog niet bestaan en erna dat ze bestaan; zie [specs-item-bekijken-bewerken.md](specs-item-bekijken-bewerken.md).
 4a. **Item bekijken en bewerken** met het ZCBS-formulier, voor de eerste run met Carla: [specs-item-bekijken-bewerken.md](specs-item-bekijken-bewerken.md).
 4b. **Overschrijven per run** (derde vinkje, standaard uit) voor het opnieuw uploaden van een batch.
-5. De vingerafdruk van de sftp-server vergelijken met wat Total Commander of de hostingprovider toont, voordat je hem vastzet.
+5. (vervallen: de upload gaat met ftp, dus er is geen vingerafdruk meer om vast te zetten.)
 6. Testcollectie: Gerard van Nes antwoordde dat je die zelf moet aanmaken (aparte map aan beide kanten van `/cgi-bin`, dan
    herkent images.exe hem als aparte beeldbank). Nog niet gedaan; tot dan is de eerste run in het echte archief.
 7. Echte "Te verwerken": `K:\scabslelly` (submap per scanner) elke minuut scannen + database (status per bestand).

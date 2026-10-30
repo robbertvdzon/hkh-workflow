@@ -16,8 +16,8 @@ import nl.vdzon.hkhworkflow.settings.AnswerRule
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
-import nl.vdzon.hkhworkflow.sftp.SftpService
-import nl.vdzon.hkhworkflow.sftp.TestSftpServer
+import nl.vdzon.hkhworkflow.ftp.FtpService
+import nl.vdzon.hkhworkflow.ftp.TestFtpServer
 import nl.vdzon.hkhworkflow.zcbs.FakeZcbs
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -28,7 +28,7 @@ import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
-/** De volledige stappenketen, met nep-programma's (shellscripts uit de testresources), een nep-ZCBS en een sftp-server in het geheugen. */
+/** De volledige stappenketen, met nep-programma's (shellscripts uit de testresources), een nep-ZCBS en een ftp-server in het geheugen. */
 @EnabledOnOs(OS.MAC, OS.LINUX)
 class TestRunServiceTest {
     @TempDir
@@ -40,7 +40,7 @@ class TestRunServiceTest {
     private lateinit var p2zDir: Path
     private lateinit var imgDir: Path
     private lateinit var serverRoot: Path
-    private lateinit var server: TestSftpServer
+    private lateinit var server: TestFtpServer
     private lateinit var settings: SettingsService
     private lateinit var service: TestRunService
     private lateinit var items: ItemEditService
@@ -76,7 +76,7 @@ class TestRunServiceTest {
         serverRoot = Files.createDirectories(dir.resolve("server"))
         Files.createDirectories(serverRoot.resolve("public_html/archief/ocr"))
         Files.createDirectories(serverRoot.resolve("public_html/archief/pdf"))
-        server = TestSftpServer(serverRoot, dir.resolve("hostkey.ser"))
+        server = TestFtpServer(serverRoot)
 
         val properties = WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString())
         settings = SettingsService(ObjectMapper(), properties)
@@ -85,7 +85,7 @@ class TestRunServiceTest {
         runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
         processed = ProcessedLog(settings, properties)
         input = InputFolder(settings, items)
-        service = TestRunService(settings, runner, SftpService(settings), items, SourceFilesService(settings, processed, input), processed, input)
+        service = TestRunService(settings, runner, FtpService(settings), items, SourceFilesService(settings, processed, input), processed, input)
     }
 
     @AfterEach
@@ -99,8 +99,8 @@ class TestRunServiceTest {
         testFolder = inbox.toString(), backupPdfFolder = backupPdf.toString(),
         imagesExe = imgDir.resolve("images.sh").toString(), pdf2zcbsExe = p2zDir.resolve("pdf2zcbs.sh").toString(),
         collection = "archief", backup100pctFolder = backup.toString(), sourceFolders = "Ria=${dir.resolve("k-scans")}",
-        sftpHost = "localhost", sftpPort = server.port, sftpUser = TestSftpServer.USER, sftpPassword = TestSftpServer.PASSWORD,
-        sftpHostKey = server.fingerprint, sftpBaseDir = "/public_html", zcbsBaseUrl = zcbs.baseUrl,
+        ftpHost = "localhost", ftpPort = server.port, ftpUser = TestFtpServer.USER, ftpPassword = TestFtpServer.PASSWORD,
+        ftpBaseDir = "/public_html", zcbsBaseUrl = zcbs.baseUrl,
     )
 
     private fun save(change: (WorkflowSettings) -> WorkflowSettings) {
@@ -154,7 +154,7 @@ class TestRunServiceTest {
         assertEquals(listOf("0100.pdf", "0101.pdf"), view.rows.map { it.newName })
         assertEquals(listOf("xx01.pdf", "xx02.pdf"), view.rows.map { it.originalName })
         assertEquals(6, view.totalCount, "2 x hernoemen, pdf2zcbs, images, upload, back-up en opruimen")
-        assertEquals(listOf("Hernoemen", "pdf2zcbs.exe", "images.exe", "Upload (sftp)", "Back-up en opruimen"), view.stepTypes)
+        assertEquals(listOf("Hernoemen", "pdf2zcbs.exe", "images.exe", "Upload (ftp)", "Back-up en opruimen"), view.stepTypes)
         assertEquals("Hernoem xx01.pdf naar 0100.pdf?", view.next!!.question)
     }
 
@@ -241,7 +241,7 @@ class TestRunServiceTest {
     @Test
     fun `de flow loopt in zeven fasen met een controle na pdf2zcbs en na images`() {
         assertEquals(1, service.flowView().current, "eerst de omgeving controleren")
-        assertTrue(service.startFlow()!!.contains("Ingelogd"), "niet ingelogd")
+        assertTrue(service.startFlow()!!.contains("Niet ingelogd"), "niet ingelogd")
         assertEquals(null, items.login("Test Beheerder", "Beheer1"))
         val mine = useUserFolder()
         service.acceptInput()
@@ -433,7 +433,7 @@ class TestRunServiceTest {
 
     // ---- fase 1: de omgeving controleren ----
 
-    private fun check(label: String) = service.environment().first { it.label.startsWith(label) }
+    private fun check(id: String) = service.environment().first { it.id == id }
 
     @Test
     fun `de omgeving is in orde als alles klaarstaat`() {
@@ -448,30 +448,51 @@ class TestRunServiceTest {
     fun `wat niet klopt krijgt een uitleg en houdt de flow tegen`() {
         service.acceptInput()
         // niet ingelogd
-        assertFalse(check("Ingelogd").ok)
-        assertFalse(check("ZCBS geeft").ok)
+        assertFalse(check("login").ok)
+        assertFalse(check("numbers").ok)
         assertNull(items.login("Test Beheerder", "Beheer1"))
         useUserFolder()
         service.acceptInput()
 
         save { it.copy(sourceFolders = "Ria=${dir.resolve("K-weg")}") }
-        assertTrue(check("De mappen met scans").detail.contains("K-weg"))
+        assertTrue(check("scans").detail.contains("K-weg"))
         assertTrue(service.startFlow()!!.contains("mappen met scans"))
         save { it.copy(sourceFolders = "") }
-        assertTrue(check("De mappen met scans").detail.contains("geen mappen met scans ingesteld"))
-        save { it.copy(sourceFolders = "Ria=${dir.resolve("k-scans")}", imagesExe = "/bestaat/niet.exe", backupPdfFolder = "", sftpHostKey = "") }
-        assertTrue(check("pdf2zcbs.exe en images.exe").detail.contains("/bestaat/niet.exe"))
-        assertTrue(check("De back-upmappen").detail.contains("(niet ingesteld)"))
-        assertFalse(check("De upload").ok)
+        assertEquals("Er zijn geen mappen met scans ingesteld", check("scans").label)
+        save { it.copy(sourceFolders = "Ria=${dir.resolve("k-scans")}", imagesExe = "/bestaat/niet.exe", backupPdfFolder = "", ftpPassword = "") }
+        assertTrue(check("exes").detail.contains("/bestaat/niet.exe"))
+        assertTrue(check("backup").detail.contains("(niet ingesteld)"))
+        assertFalse(check("ftp").ok)
+        assertEquals("De ftp-gegevens voor de upload zijn niet ingesteld", check("ftp").label)
         assertEquals(1, service.flowView().current)
+    }
+
+    @Test
+    fun `een fout noemt wat er niet klopt, niet wat zou moeten kloppen`() {
+        assertNull(items.login("Test Beheerder", "Beheer1"))
+        useUserFolder()
+        service.acceptInput()
+        save { it.copy(backup100pctFolder = dir.resolve("K-weg").toString(), imagesExe = "/bestaat/niet.exe") }
+        assertEquals("De back-upmappen zijn niet bereikbaar", check("backup").label)
+        assertEquals("pdf2zcbs.exe of images.exe is niet gevonden", check("exes").label)
+        assertEquals("Er staat geen werk van een eerdere keer", check("leftovers").label)
+        assertTrue(service.environment().filter { !it.ok }.none { it.label.contains("zijn bereikbaar") || it.label.contains("zijn gevonden") }, "een rood punt zegt nooit dat het wel klopt")
+
+        // de ftp-server: een map die ontbreekt, en een server die uit staat
+        save { it.copy(backup100pctFolder = backup.toString(), imagesExe = imgDir.resolve("images.sh").toString(), collection = "bestaatniet") }
+        assertEquals("Op de ftp-server ontbreken mappen", check("ftp").label)
+        save { it.copy(collection = "archief") }
+        assertTrue(check("ftp").ok)
+        server.close()
+        assertEquals("De ftp-server is niet bereikbaar", check("ftp").label)
     }
 
     @Test
     fun `werk van een eerdere keer houdt de flow in fase 1`() {
         assertNull(items.login("Test Beheerder", "Beheer1"))
         useUserFolder()
-        assertFalse(check("Er staat geen werk").ok, "de gekozen bestanden zijn niet in deze doorloop gekozen")
-        assertTrue(service.startFlow()!!.contains("geen werk"))
+        assertFalse(check("leftovers").ok, "de gekozen bestanden zijn niet in deze doorloop gekozen")
+        assertTrue(service.startFlow()!!.contains("nog werk"))
         service.acceptInput()
         assertNull(service.startFlow())
         assertEquals(2, service.flowView().current)
@@ -582,7 +603,7 @@ class TestRunServiceTest {
         assertFalse(Files.exists(imgDir.resolve("small")), "lege mappen verdwijnen")
         assertTrue(Files.isDirectory(imgDir.resolve("images")), "de invoermap van images.exe blijft")
         assertNull(service.confirmFiles())
-        assertTrue(service.environment().last().ok, "geen werk van een eerdere keer meer")
+        assertTrue(check("leftovers").ok, "geen werk van een eerdere keer meer")
     }
 
     @Test

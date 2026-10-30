@@ -31,12 +31,12 @@ Jans stappenplan, met erboven de stap die er nog niet in stond (de bestanden sta
 
 | Fase | Wat Carla ziet en doet | Jans stap |
 |---|---|---|
-| 1. Controleren | Een lijstje met vinkjes: ingelogd, ZCBS geeft de vrije nummers, de mappen met scans bereikbaar (is K: gekoppeld?), pdf2zcbs.exe en images.exe gevonden, de back-upmappen bereikbaar, de upload ingesteld, en **geen werk van een eerdere keer**. Staat er iets rood, dan staat erbij wat er mis is en wat te doen; staat alles groen, dan is er meteen een knop voor fase 2. | (nieuw: de omgeving klaarzetten) |
+| 1. Controleren | Een lijstje met vinkjes: ingelogd, ZCBS geeft de vrije nummers, de mappen met scans bereikbaar (is K: gekoppeld?), pdf2zcbs.exe en images.exe gevonden, de back-upmappen bereikbaar, de upload ingesteld, en **geen werk van een eerdere keer**. Staat er iets rood, dan zegt het punt zelf wat er niet klopt ("De back-upmappen zijn niet bereikbaar") met eronder wat te doen; staat alles groen, dan is er meteen een knop voor fase 2. | (nieuw: de omgeving klaarzetten) |
 | 2. Bestanden kiezen | Ziet meteen de eerste map met scans uit de instellingen (zet Ria bovenaan), kiest eventueel Jelly, bladert door de submappen en vinkt de pdf's aan (Shift-klik kiest alles tussen twee bestanden: "X t/m Y uit map Z"). Al verwerkte bestanden zijn gemarkeerd en niet aan te vinken. De gekozen bestanden staan eronder. | `copy K:\… c:\zcbs\invoer` |
 | 3. Nummers | Ziet het laatste record en alle vrije reeksen uit ZCBS, kiest een beginnummer. Passen alle bestanden niet aaneengesloten in een vrije reeks, dan geeft de app een foutmelding. De app geeft de bestanden het recordnummer als naam (op een kopie in `werk`). | het nummer geven in de bestandsnaam |
 | 4. pdf2zcbs | Alleen twee knoppen: handmatig of automatisch (wat er gebeurt staat ingeklapt). Is het programma klaar, dan staat onderaan een lijst van wat het maakte: per bestand de soort (tekst, pdf, small, large), de grootte, de afmeting van een afbeelding en een link om het te openen. Een lege tekst valt op, maar laat de stap niet mislukken. "Ja, goed" of "pdf2zcbs opnieuw". | `pdf2zcbs.exe` en het nakijken van `output\large\pdf\ocr` |
 | 5. images.exe | Idem: twee knoppen, daarna de lijst (small, large, 100pct) en de melding of de records in ZCBS staan. | `copy large\*.jpg images\images`, `images.exe`, `dir small large 100pct` |
-| 6. Upload | Tekst en pdf's met sftp naar `<collectie>/ocr` en `<collectie>/pdf`. Nooit overschrijven, eerst alles controleren. Per bestand de voortgang. | Total Commander |
+| 6. Upload | Tekst en pdf's met ftp (net als images.exe) naar `<collectie>/ocr` en `<collectie>/pdf`. Nooit overschrijven, eerst alles controleren. Per bestand de voortgang. | Total Commander |
 | 7. Back-up | Kopieert de **100pct** en de **pdf's** (met hun recordnummer) naar de back-upmappen op K:, ruimt dan de werkmappen op en zet de bestanden in het verwerkt-log. | `backup_100pct`, `backup_invoer_org`, `rmdir`, `del` |
 
 **Eerst opruimen** (onderdeel van fase 1). De app controleert of er nog werk van een eerdere keer staat: bestanden in je eigen invoermap die je niet in deze
@@ -54,6 +54,10 @@ uitvoer heeft gecontroleerd en bevestigd (fase 3 en 4). Elke stap toont vooraf w
 **Opruimen** verwijdert alleen wat bij deze doorloop hoort: de mappen `output`, `small`, `large`, `100pct` en de eigen bestanden in `images`,
 `log-*.txt`, de pdf's in de map van pdf2zcbs, de kopieën in `werk` en in de invoermap. Eerst komt de back-up, met een controle van de grootte.
 De originelen op K: blijven staan.
+
+**Ftp in plaats van sftp.** De upload gebruikt gewone ftp, zoals images.exe dat ook doet. Dat is niet versleuteld: het wachtwoord en de bestanden gaan leesbaar over het netwerk. De voorzichtigheid
+blijft: nooit overschrijven of verwijderen, eerst alles controleren (mappen bestaan, geen enkel bestand bestaat al), uploaden onder een tijdelijke naam, hernoemen en de grootte controleren.
+Fase 1 maakt zelf verbinding met de ftp-server en kijkt of de mappen voor tekst en pdf bestaan, zodat een fout niet pas bij de upload blijkt.
 
 ## 4. De vrije nummers
 
@@ -95,7 +99,7 @@ seconde langer. De beheerder (een sessie in de browser) heeft toegang tot **Inst
 ## 8. Instellingen (alleen beheerder)
 
 `testFolder` (de gemeenschappelijke invoermap, `c:\zcbs\invoer`; per gebruiker komt er een submap in), `leftoversFolder` (waar resten naartoe gaan; leeg = `resten` in de invoermap), `sourceFolders` (één regel per map met scans, `naam=pad`: `Jelly=K:\scans jelly`), `pdf2zcbsExe`, `imagesExe`,
-`backup100pctFolder` en `backupPdfFolder` (op K:), `collection`, `zcbsBaseUrl`, de sftp-instellingen en de lijsten met antwoorden. Vervallen: `archivedFolder`,
+`backup100pctFolder` en `backupPdfFolder` (op K:), `collection`, `zcbsBaseUrl`, de ftp-instellingen (host, poort 21, gebruiker, wachtwoord, basismap; bij de account van images.exe is dat `/public_html`) en de lijsten met antwoorden. Een instellingenbestand uit de tijd van sftp wordt overgenomen (zonder poort en vingerafdruk). Vervallen: de vingerafdruk van sftp, `archivedFolder`,
 `sourceFolder`, `imagesFileType`, `imagesResolution`, `imagesInstitution` (die zitten nu in de onthouden antwoorden).
 
 ## 9. Wat nog niet kan of niet getest is
@@ -104,7 +108,7 @@ seconde langer. De beheerder (een sessie in de browser) heeft toegang tot **Inst
   stand van de flow, de mappen van de programma's en de login zijn gedeeld: twee mensen tegelijk is dus niet bedoeld.
 - **De stand van een doorloop zit in het geheugen.** Na een herstart van de app staan de bestanden nog op schijf (invoermap, `werk`, map van de
   programma's), maar de app weet niet meer waar hij was; dan eerst met de hand opruimen of "Opnieuw beginnen".
-- Niets is getest tegen de echte HKH-server of op Windows met `K:\`-paden; alleen op de Mac met de nep-programma's, de lokale ZCBS in Docker en een sftp-server
+- Niets is getest tegen de echte HKH-server of op Windows met `K:\`-paden; alleen op de Mac met de nep-programma's, de lokale ZCBS in Docker en een ftp-server
   in Docker.
 - Het invoeren van gegevens (wie wat nog moet invullen) houden de vrijwilligers zelf bij; de app biedt alleen "kies een nummer of reeks".
   Robbert vraagt later na hoe ze dat doen.

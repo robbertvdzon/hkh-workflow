@@ -29,6 +29,8 @@ class SettingsService(
         val loaded = if (Files.isRegularFile(file)) {
             try {
                 val node = objectMapper.readTree(Files.readString(file))
+                fun text(name: String, oldName: String, default: String): String =
+                    node.path(name).takeIf { it.isString }?.asText() ?: node.path(oldName).takeIf { it.isString }?.asText() ?: default
                 fun rules(name: String, defaults: List<AnswerRule>): List<AnswerRule> {
                     val array = node.path(name)
                     if (!array.isArray) return defaults
@@ -53,14 +55,14 @@ class SettingsService(
                     leftoversFolder = node.path("leftoversFolder").asText(""),
                     zcbsBaseUrl = node.path("zcbsBaseUrl").asText(""),
                     sourceFolders = node.path("sourceFolders").asText(""),
-                    sftpHost = node.path("sftpHost").asText(""),
-                    sftpPort = node.path("sftpPort").asInt(22),
-                    sftpUser = node.path("sftpUser").asText(""),
-                    sftpPassword = node.path("sftpPassword").asText(""),
-                    sftpHostKey = node.path("sftpHostKey").asText(""),
-                    sftpBaseDir = node.path("sftpBaseDir").asText(WorkflowSettings.DEFAULT_SFTP_BASE_DIR),
-                    sftpOcrDir = node.path("sftpOcrDir").asText(""),
-                    sftpPdfDir = node.path("sftpPdfDir").asText(""),
+                    // Een instellingenbestand uit de tijd van sftp gebruikt dezelfde gegevens voor ftp (behalve de poort en de vingerafdruk).
+                    ftpHost = text("ftpHost", "sftpHost", ""),
+                    ftpPort = node.path("ftpPort").asInt(21),
+                    ftpUser = text("ftpUser", "sftpUser", ""),
+                    ftpPassword = text("ftpPassword", "sftpPassword", ""),
+                    ftpBaseDir = text("ftpBaseDir", "sftpBaseDir", WorkflowSettings.DEFAULT_FTP_BASE_DIR),
+                    ftpOcrDir = text("ftpOcrDir", "sftpOcrDir", ""),
+                    ftpPdfDir = text("ftpPdfDir", "sftpPdfDir", ""),
                 )
             } catch (e: Exception) {
                 log.warn("Kan instellingen niet lezen uit {}: {}", file, e.message)
@@ -85,12 +87,11 @@ class SettingsService(
             leftoversFolder = settings.leftoversFolder.trim(),
             zcbsBaseUrl = settings.zcbsBaseUrl.trim().trimEnd('/'),
             sourceFolders = settings.sourceFolders.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n"),
-            sftpHost = settings.sftpHost.trim(),
-            sftpUser = settings.sftpUser.trim(),
-            sftpHostKey = settings.sftpHostKey.trim(),
-            sftpBaseDir = settings.sftpBaseDir.trim(),
-            sftpOcrDir = settings.sftpOcrDir.trim(),
-            sftpPdfDir = settings.sftpPdfDir.trim(),
+            ftpHost = settings.ftpHost.trim(),
+            ftpUser = settings.ftpUser.trim(),
+            ftpBaseDir = settings.ftpBaseDir.trim(),
+            ftpOcrDir = settings.ftpOcrDir.trim(),
+            ftpPdfDir = settings.ftpPdfDir.trim(),
             pdf2zcbsAnswers = settings.pdf2zcbsAnswers.filter { it.pattern.isNotBlank() },
             imagesAnswers = settings.imagesAnswers.filter { it.pattern.isNotBlank() },
         )
@@ -130,10 +131,9 @@ class SettingsService(
         else if (!Files.isDirectory(Path.of(settings.backupPdfFolder))) problems["backupPdfFolder"] = "Map bestaat niet."
         if (settings.sourceRoots().isEmpty()) problems["sourceFolders"] = "Nog niet ingevuld: zonder deze mappen kan Carla geen scans kiezen."
         if (settings.zcbsBaseUrl.isBlank()) problems["zcbsBaseUrl"] = "Nog niet ingevuld."
-        if (settings.sftpHost.isBlank()) problems["sftpHost"] = "Nog niet ingevuld."
-        if (settings.sftpUser.isBlank()) problems["sftpUser"] = "Nog niet ingevuld."
-        if (settings.sftpPassword.isEmpty()) problems["sftpPassword"] = "Nog niet ingevuld."
-        if (settings.sftpHostKey.isBlank()) problems["sftpHostKey"] = "Nog niet vastgezet: gebruik Test verbinding."
+        if (settings.ftpHost.isBlank()) problems["ftpHost"] = "Nog niet ingevuld."
+        if (settings.ftpUser.isBlank()) problems["ftpUser"] = "Nog niet ingevuld."
+        if (settings.ftpPassword.isEmpty()) problems["ftpPassword"] = "Nog niet ingevuld."
         return problems
     }
 }

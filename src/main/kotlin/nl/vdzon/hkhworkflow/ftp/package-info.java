@@ -1,2 +1,2 @@
 @org.springframework.modulith.ApplicationModule(allowedDependencies = {"settings"})
-package nl.vdzon.hkhworkflow.sftp;
+package nl.vdzon.hkhworkflow.ftp;

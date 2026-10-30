@@ -26,22 +26,19 @@ De scripts schrijven in hun eigen map (`output/`, `images/`, `small/` …); die 
 - `images.pl` maakt van de jpg's in `images/` een small (100 of 250 volgens de gekozen resolutie), large (700) en 100pct
   (met `sips` op macOS; het schaalt niet op) en ruimt alleen op als je op de verwijdervragen J antwoordt.
 
-## Een sftp-server om de upload te proberen
+## Een ftp-server om de upload te proberen
 
-De upload van tekst en pdf's kun je thuis proberen tegen een sftp-server in het geheugen. Bouw eerst en haal het
-classpath op, en start dan de server:
+De upload van tekst en pdf's kun je thuis proberen tegen een ftp-server in het geheugen (of tegen de lokale ZCBS in Docker, `tools/docker/zcbs`, ftp op poort 2121).
+Bouw eerst en haal het classpath op, en start dan de server:
 
 ```bash
 mvn -q test-compile dependency:build-classpath -Dmdep.outputFile=/tmp/hkh-cp.txt -Dmdep.includeScope=test
-mkdir -p /tmp/hkh-sftp/public_html/archief/ocr /tmp/hkh-sftp/public_html/archief/pdf
-java -cp "target/test-classes:target/classes:$(cat /tmp/hkh-cp.txt)" nl.vdzon.hkhworkflow.sftp.TestSftpServerMainKt /tmp/hkh-sftp /tmp/hkh-hostkey.ser
+mkdir -p /tmp/hkh-ftp/public_html/archief/ocr /tmp/hkh-ftp/public_html/archief/pdf
+java -cp "target/test-classes:target/classes:$(cat /tmp/hkh-cp.txt)" nl.vdzon.hkhworkflow.ftp.TestFtpServerMainKt /tmp/hkh-ftp
 ```
 
-Het programma toont de poort, de vingerafdruk en het wachtwoord (gebruiker `robbert`, wachtwoord `geheim`). Geef als derde
-argument een poortnummer mee als je na een herstart dezelfde poort wilt houden; met hetzelfde hostsleutelbestand blijft ook
-de vingerafdruk gelijk. Zet bij Instellingen
-host `localhost`, die poort, basismap `/public_html` en klik Test verbinding; zet de vingerafdruk vast.
-
+Het programma toont de poort en het wachtwoord (gebruiker `robbert`, wachtwoord `geheim`). Geef als tweede argument een poortnummer mee als je na een herstart
+dezelfde poort wilt houden. Zet bij Instellingen host `localhost`, die poort, basismap `/public_html` en klik Test verbinding.
 
 ## images.pl met echte FTP-upload en records (tegen de lokale ZCBS)
 
@@ -62,4 +59,4 @@ Het programma doet dan, na J op de vragen:
   stempel `system`, 35 velden), zet het terug en meldt "Oude/Nieuwe update database ... bevat ... records". Het controleert niet of de records al bestaan, net als de echte (zie handleiding, stap D);
 - zet een regel in `cgi-bin/misc/images.log` op de server.
 
-Zet in de app bij Instellingen het automatische antwoord op "FTP wachtwoord" op `hkhtest`. De sftp-instellingen voor tekst en pdf's (poort 2222) staan in `tools/zcbs-local/README.md`.
+Zet in de app bij Instellingen het automatische antwoord op "FTP wachtwoord" op `hkhtest`. De ftp-instellingen voor tekst en pdf's (host `127.0.0.1`, poort 2121, gebruiker `hkhadmin`, basismap `/domains/historischekringheemskerk.nl/public_html`) staan in `tools/docker/zcbs/README.md`.

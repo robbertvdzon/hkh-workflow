@@ -42,12 +42,12 @@ De app begint met **inloggen bij ZCBS**, daarna kies je de **collectie** (nu all
   3. **Nummers**: de vrije nummers uit ZCBS (zoals bij een nieuw record) en het laatste record; een beginnummer kiezen. De bestanden moeten aaneengesloten in een vrije reeks passen.
   4. **pdf2zcbs.exe**: twee knoppen (handmatig of automatisch); daarna een lijst van wat het maakte, met grootte, afmeting en een link om het te openen, en jouw controle.
   5. **images.exe**: idem. Handmatig typen: de app onthoudt de antwoorden en stelt ze de volgende keer voor; automatisch gebruikt hij de onthouden antwoorden.
-  6. **Upload** van tekst en pdf met sftp (overschrijft en verwijdert nooit, vastgezette vingerafdruk).
+  6. **Upload** van tekst en pdf met ftp, net als images.exe (overschrijft en verwijdert nooit; gewone ftp is niet versleuteld).
   7. **Back-up** van de 100pct en de pdf's naar K:, opruimen en in het verwerkt-log zetten. De originelen op K: blijven staan.
 - **ZCBS records aanpassen** — kies een recordnummer of een reeks en vul de gegevens in via het formulier van ZCBS: voorbeeld van de wijziging, opslaan en teruglezen,
   "later" voor een record dat je overslaat. **Bij de echte site schrijft elke opslag in het echte archief en gaat er een e-mail naar de beheerder.**
 - **Verwerkt** — wat al op het archief is gezet: per doorloop de bestanden, hun recordnummer, wie het deed en uit welke map ze kwamen.
-- **Instellingen** en **Test (technisch)** (alleen beheerder) — mappen, paden naar `images.exe` en `pdf2zcbs.exe`, collectie, back-upmappen, sftp-server (met Test verbinding) en de
+- **Instellingen** en **Test (technisch)** (alleen beheerder) — mappen, paden naar `images.exe` en `pdf2zcbs.exe`, collectie, back-upmappen, ftp-server (met Test verbinding) en de
   onthouden antwoorden; en dezelfde stappen per bestand met alle knoppen en logs. Instellingen worden als JSON opgeslagen, die niet in git komt.
 
 De stappen werken zo: elke stap start je zelf, na een overzicht van wat hij gaat doen, en per bestand zie je met vinkjes of de bestanden er echt zijn. De programma's
@@ -85,7 +85,7 @@ images.exe en pdf2zcbs.exe als Perl-scripts; zie `tools/mock/README.md`.
 |---|---|
 | `settings` | Instellingen lezen/schrijven + pagina; het beheerderswachtwoord uit de configuratie |
 | `exerunner` | Externe programma's starten, uitvoer lezen, invoer doorsturen |
-| `sftp` | Uploaden naar de server met sftp, met vastgezette vingerafdruk |
+| `ftp` | Uploaden naar de server met ftp, zonder iets te overschrijven of te verwijderen |
 | `zcbs` | Client voor ZCBS: inloggen, de vrije nummers, formulier ophalen en posten, controles op wat ZCBS wel en niet accepteert |
 | `items` | Inloggen bij ZCBS en records bewerken via het ZCBS-formulier (voorbeeld, opslaan, conflictcontrole, teruglezen) + pagina's |
 | `testrun` | De flow Nieuwe bestanden (de stappenketen met controles, bladeren door K:, het verwerkt-log) + pagina's |

@@ -40,13 +40,13 @@ class SettingsServiceTest {
     }
 
     @Test
-    fun `saves and reloads the collection, backup and sftp settings`() {
+    fun `saves and reloads the collection, backup and ftp settings`() {
         val file = dir.resolve("settings.json")
         val service = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString()))
         val settings = WorkflowSettings(
             collection = " archieftest ", sourceFolders = " Jelly=K:\\scans jelly \n\nRia=K:\\scans ria\n",
-            backup100pctFolder = "K:\\backup_100pct", backupPdfFolder = "K:\\backup_invoer_org", sftpHost = "sftp.example.nl", sftpPort = 2222,
-            sftpUser = "hkh", sftpPassword = "geheim", sftpHostKey = "SHA256:abc", sftpBaseDir = "/domains/x/public_html",
+            backup100pctFolder = "K:\\backup_100pct", backupPdfFolder = "K:\\backup_invoer_org", ftpHost = "ftp.example.nl", ftpPort = 2121,
+            ftpUser = "hkh", ftpPassword = "geheim", ftpBaseDir = "/domains/x/public_html",
         )
         service.save(settings)
 
@@ -68,32 +68,55 @@ class SettingsServiceTest {
         assertEquals("archief", loaded.collection)
         assertEquals("C:\\test", loaded.testFolder)
         assertEquals("", loaded.sourceFolders)
-        assertEquals("", loaded.sftpHostKey)
-        assertEquals(22, loaded.sftpPort)
+        assertEquals(21, loaded.ftpPort)
+        assertEquals("/public_html", loaded.ftpBaseDir)
+    }
+
+    @Test
+    fun `een instellingenbestand uit de tijd van sftp gebruikt dezelfde gegevens voor ftp`() {
+        val file = dir.resolve("sftp.json")
+        Files.writeString(
+            file,
+            """{"sftpHost": "ftp.example.nl", "sftpPort": 22, "sftpUser": "hkh", "sftpPassword": "geheim", "sftpHostKey": "SHA256:abc",
+               "sftpBaseDir": "/domains/x/public_html", "sftpOcrDir": "o", "sftpPdfDir": "p"}""",
+        )
+        val loaded = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString())).get()
+        assertEquals("ftp.example.nl", loaded.ftpHost)
+        assertEquals(21, loaded.ftpPort, "de sftp-poort 22 hoort niet bij ftp")
+        assertEquals("hkh", loaded.ftpUser)
+        assertEquals("geheim", loaded.ftpPassword)
+        assertEquals("/domains/x/public_html", loaded.ftpBaseDir)
+        assertEquals("o", loaded.ftpOcrDir)
+        assertEquals("p", loaded.ftpPdfDir)
+
+        // een nieuw bestand gaat voor
+        val both = dir.resolve("beide.json")
+        Files.writeString(both, """{"ftpHost": "nieuw.example.nl", "sftpHost": "oud.example.nl"}""")
+        assertEquals("nieuw.example.nl", SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = both.toString())).get().ftpHost)
     }
 
     @Test
     fun `remote folders default to the collection under the base folder and can be overridden`() {
-        val s = WorkflowSettings(collection = "archief", sftpBaseDir = "/domains/historischekringheemskerk.nl/public_html/")
+        val s = WorkflowSettings(collection = "archief", ftpBaseDir = "/domains/historischekringheemskerk.nl/public_html/")
         assertEquals("/domains/historischekringheemskerk.nl/public_html/archief/ocr", s.remoteOcrDir())
         assertEquals("/domains/historischekringheemskerk.nl/public_html/archief/pdf", s.remotePdfDir())
 
-        val custom = s.copy(sftpOcrDir = "documenten/ocr", sftpPdfDir = "/andere/wortel/pdf/")
+        val custom = s.copy(ftpOcrDir = "documenten/ocr", ftpPdfDir = "/andere/wortel/pdf/")
         assertEquals("/domains/historischekringheemskerk.nl/public_html/documenten/ocr", custom.remoteOcrDir())
         assertEquals("/andere/wortel/pdf", custom.remotePdfDir())
     }
 
     @Test
     fun `the password never shows up in toString`() {
-        val text = WorkflowSettings(sftpPassword = "geheimwoord").toString()
+        val text = WorkflowSettings(ftpPassword = "geheimwoord").toString()
         assertFalse(text.contains("geheimwoord"), text)
         assertFalse(WorkflowProperties(adminPassword = "beheerwoord").toString().contains("beheerwoord"))
     }
 
     @Test
-    fun `extras warn about missing backup folder and sftp settings`() {
+    fun `extras warn about missing backup folder and ftp settings`() {
         val service = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("x.json").toString()))
         val problems = service.checkExtras(WorkflowSettings())
-        assertEquals(setOf("backup100pctFolder", "backupPdfFolder", "sourceFolders", "zcbsBaseUrl", "sftpHost", "sftpUser", "sftpPassword", "sftpHostKey"), problems.keys)
+        assertEquals(setOf("backup100pctFolder", "backupPdfFolder", "sourceFolders", "zcbsBaseUrl", "ftpHost", "ftpUser", "ftpPassword"), problems.keys)
     }
 }

@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.sftp
+package nl.vdzon.hkhworkflow.ftp
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -15,13 +15,13 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
-class SftpServiceTest {
+class FtpServiceTest {
     @TempDir
     lateinit var dir: Path
 
-    private lateinit var server: TestSftpServer
+    private lateinit var server: TestFtpServer
     private lateinit var settings: SettingsService
-    private lateinit var service: SftpService
+    private lateinit var service: FtpService
     private lateinit var serverRoot: Path
 
     @BeforeEach
@@ -29,18 +29,17 @@ class SftpServiceTest {
         serverRoot = Files.createDirectories(dir.resolve("server"))
         Files.createDirectories(serverRoot.resolve("public_html/archief/ocr"))
         Files.createDirectories(serverRoot.resolve("public_html/archief/pdf"))
-        server = TestSftpServer(serverRoot, dir.resolve("hostkey.ser"))
+        server = TestFtpServer(serverRoot)
         settings = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         settings.save(
             WorkflowSettings(
                 collection = "archief",
-                sftpHost = "localhost", sftpPort = server.port,
-                sftpUser = TestSftpServer.USER, sftpPassword = TestSftpServer.PASSWORD,
-                sftpHostKey = server.fingerprint,
-                sftpBaseDir = "/public_html",
+                ftpHost = "localhost", ftpPort = server.port,
+                ftpUser = TestFtpServer.USER, ftpPassword = TestFtpServer.PASSWORD,
+                ftpBaseDir = "/public_html",
             ),
         )
-        service = SftpService(settings)
+        service = FtpService(settings)
     }
 
     @AfterEach
@@ -53,7 +52,7 @@ class SftpServiceTest {
         UploadItem(local(name), "/public_html/archief/$sub", name)
 
     @Test
-    fun `uploads files, sets them readable and verifies the size`() {
+    fun `uploads files and verifies the size`() {
         val results = service.upload(listOf(item("90000000.txt"), item("90000000.pdf", "pdf")))
 
         assertTrue(results.all { it.ok }, results.toString())
@@ -77,6 +76,13 @@ class SftpServiceTest {
     }
 
     @Test
+    fun `refuses a leftover temporary file of an earlier attempt`() {
+        Files.writeString(serverRoot.resolve("public_html/archief/ocr/.1.txt.uploading"), "half")
+        val e = assertThrows<IllegalStateException> { service.upload(listOf(item("1.txt"))) }
+        assertTrue(e.message!!.contains("Tijdelijk bestand"), e.message)
+    }
+
+    @Test
     fun `refuses to create missing folders`() {
         val e = assertThrows<IllegalStateException> {
             service.upload(listOf(UploadItem(local("1.txt"), "/public_html/archieftest/ocr", "1.txt")))
@@ -86,49 +92,53 @@ class SftpServiceTest {
     }
 
     @Test
-    fun `refuses a server whose fingerprint differs from the pinned one`() {
-        settings.save(settings.get().copy(sftpHostKey = "SHA256:" + "A".repeat(43)))
-        assertThrows<Exception> { service.upload(listOf(item("1.txt"))) }
-        assertFalse(Files.exists(serverRoot.resolve("public_html/archief/ocr/1.txt")))
+    fun `refuses an empty local file and two files for the same place`() {
+        val empty = UploadItem(Files.createFile(dir.resolve("leeg.txt")), "/public_html/archief/ocr", "leeg.txt")
+        assertTrue(assertThrows<IllegalStateException> { service.upload(listOf(empty)) }.message!!.contains("ontbreekt of is leeg"))
+        val a = item("1.txt")
+        assertTrue(assertThrows<IllegalStateException> { service.upload(listOf(a, a)) }.message!!.contains("dezelfde plek"))
     }
 
     @Test
-    fun `refuses to upload without a pinned fingerprint`() {
-        settings.save(settings.get().copy(sftpHostKey = ""))
+    fun `refuses to upload without the connection details`() {
+        settings.save(settings.get().copy(ftpHost = ""))
         val e = assertThrows<IllegalStateException> { service.upload(listOf(item("1.txt"))) }
-        assertTrue(e.message!!.contains("vingerafdruk"), e.message)
+        assertTrue(e.message!!.contains("Ftp-host"), e.message)
     }
 
     @Test
     fun `wrong password fails without uploading`() {
-        settings.save(settings.get().copy(sftpPassword = "fout"))
-        assertThrows<Exception> { service.upload(listOf(item("1.txt"))) }
+        settings.save(settings.get().copy(ftpPassword = "fout"))
+        val e = assertThrows<Exception> { service.upload(listOf(item("1.txt"))) }
+        assertTrue(e.message!!.contains("inloggen is mislukt"), e.message)
+        assertFalse(Files.exists(serverRoot.resolve("public_html/archief/ocr/1.txt")))
     }
 
     @Test
-    fun `test connection shows our fingerprint, which matches the server's own calculation`() {
+    fun `test connection logs in and checks the folders`() {
         val result = service.testConnection()
         assertTrue(result.ok, result.message)
-        assertEquals(server.fingerprint, result.fingerprint)
-        assertEquals("MATCH", result.pinned)
         assertEquals(listOf("/public_html/archief/ocr", "/public_html/archief/pdf"), result.dirs.map { it.path })
         assertTrue(result.dirs.all { it.exists })
     }
 
     @Test
-    fun `test connection reports missing folders and a mismatching pinned fingerprint`() {
-        settings.save(settings.get().copy(collection = "bestaatniet", sftpHostKey = "SHA256:" + "B".repeat(43)))
+    fun `test connection reports missing folders`() {
+        settings.save(settings.get().copy(collection = "bestaatniet"))
         val result = service.testConnection()
         assertTrue(result.ok)
-        assertEquals("MISMATCH", result.pinned)
         assertTrue(result.dirs.none { it.exists })
     }
 
     @Test
-    fun `test connection reports a failing login`() {
-        settings.save(settings.get().copy(sftpPassword = "fout"))
-        val result = service.testConnection()
-        assertFalse(result.ok)
-        assertTrue(result.message.startsWith("Verbinden mislukt"), result.message)
+    fun `test connection reports a failing login and an unreachable server`() {
+        settings.save(settings.get().copy(ftpPassword = "fout"))
+        val login = service.testConnection()
+        assertFalse(login.ok)
+        assertTrue(login.message.startsWith("Verbinden mislukt"), login.message)
+
+        server.close()
+        settings.save(settings.get().copy(ftpPassword = TestFtpServer.PASSWORD))
+        assertFalse(service.testConnection(2_000).ok)
     }
 }

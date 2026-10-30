@@ -30,7 +30,7 @@ data class WorkflowSettings(
     val pdf2zcbsAnswers: List<AnswerRule> = DEFAULT_PDF2ZCBS_ANSWERS,
     /** Automatische antwoorden voor images.exe (aangevuld met de vaste antwoorden hieronder). */
     val imagesAnswers: List<AnswerRule> = DEFAULT_IMAGES_ANSWERS,
-    /** Naam van de ZCBS-collectie: antwoord op "Kies de ZCBS-toepassing" en basis voor de sftp-mappen. */
+    /** Naam van de ZCBS-collectie: antwoord op "Kies de ZCBS-toepassing" en basis voor de ftp-mappen. */
     val collection: String = "archief",
     /** Map waar de 100pct-afbeeldingen een back-up krijgen voordat er wordt opgeruimd (`backup_100pct`). */
     val backup100pctFolder: String = "",
@@ -42,18 +42,17 @@ data class WorkflowSettings(
     val zcbsBaseUrl: String = "",
     /** De mappen met scans waar Carla uit kiest: één per regel, `naam=pad`, bijvoorbeeld `Ria=K:\scans ria`. */
     val sourceFolders: String = "",
-    val sftpHost: String = "",
-    val sftpPort: Int = 22,
-    val sftpUser: String = "",
-    val sftpPassword: String = "",
-    /** Vastgezette vingerafdruk van de server, bijv. "SHA256:abc...". Zonder deze wordt er niet geüpload. */
-    val sftpHostKey: String = "",
-    /** Basismap op de sftp-server waar de collectiemappen onder staan. */
-    val sftpBaseDir: String = DEFAULT_SFTP_BASE_DIR,
+    /** De ftp-server voor tekst en pdf's, zoals images.exe die ook gebruikt (gewone ftp, niet versleuteld). */
+    val ftpHost: String = "",
+    val ftpPort: Int = 21,
+    val ftpUser: String = "",
+    val ftpPassword: String = "",
+    /** Basismap op de ftp-server waar de collectiemappen onder staan; bij de account van images.exe is dat `/public_html`. */
+    val ftpBaseDir: String = DEFAULT_FTP_BASE_DIR,
     /** Map voor de tekstbestanden, relatief aan de basismap. Leeg = "<collectie>/ocr". */
-    val sftpOcrDir: String = "",
+    val ftpOcrDir: String = "",
     /** Map voor de pdf's, relatief aan de basismap. Leeg = "<collectie>/pdf". */
-    val sftpPdfDir: String = "",
+    val ftpPdfDir: String = "",
 ) {
     /** Het pad van het ZCBS-script van de collectie, bijvoorbeeld /cgi-bin/archief.pl. */
     fun zcbsScriptPath(): String = "/cgi-bin/${collection.trim()}.pl"
@@ -61,15 +60,15 @@ data class WorkflowSettings(
     /** Draait ZCBS op deze computer (een testkopie)? Anders schrijft de app in het echte archief. */
     fun zcbsIsLocal(): Boolean = zcbsBaseUrl.trim().let { it.contains("//localhost") || it.contains("//127.0.0.1") }
 
-    /** Volledig pad op de sftp-server voor de tekstbestanden. */
-    fun remoteOcrDir(): String = remoteDir(sftpOcrDir, "ocr")
+    /** Volledig pad op de ftp-server voor de tekstbestanden. */
+    fun remoteOcrDir(): String = remoteDir(ftpOcrDir, "ocr")
 
-    /** Volledig pad op de sftp-server voor de pdf's. */
-    fun remotePdfDir(): String = remoteDir(sftpPdfDir, "pdf")
+    /** Volledig pad op de ftp-server voor de pdf's. */
+    fun remotePdfDir(): String = remoteDir(ftpPdfDir, "pdf")
 
     private fun remoteDir(override: String, default: String): String {
         val relative = override.trim().ifEmpty { "${collection.trim()}/$default" }
-        return if (relative.startsWith("/")) relative.trimEnd('/') else sftpBaseDir.trim().trimEnd('/') + "/" + relative.trim('/')
+        return if (relative.startsWith("/")) relative.trimEnd('/') else ftpBaseDir.trim().trimEnd('/') + "/" + relative.trim('/')
     }
 
     /** De mappen met scans, uit [sourceFolders]. Regels zonder `=` of met een leeg pad tellen niet mee. */
@@ -82,10 +81,10 @@ data class WorkflowSettings(
     /** Zonder wachtwoorden, zodat ze nooit per ongeluk in een log belanden. */
     override fun toString(): String =
         "WorkflowSettings(testFolder=$testFolder, imagesExe=$imagesExe, pdf2zcbsExe=$pdf2zcbsExe, " +
-            "collection=$collection, sftpHost=$sftpHost, sftpUser=$sftpUser, sftpPassword=${if (sftpPassword.isEmpty()) "(leeg)" else "***"})"
+            "collection=$collection, ftpHost=$ftpHost, ftpUser=$ftpUser, ftpPassword=${if (ftpPassword.isEmpty()) "(leeg)" else "***"})"
 
     companion object {
-        const val DEFAULT_SFTP_BASE_DIR = "/domains/historischekringheemskerk.nl/public_html"
+        const val DEFAULT_FTP_BASE_DIR = "/public_html"
 
         /** Gebaseerd op de vragen in de handleiding van pdf2zcbs (docs/050.pdf, hoofdstuk 3). */
         val DEFAULT_PDF2ZCBS_ANSWERS = listOf(

@@ -2,7 +2,7 @@
 
 > **Bijgewerkt 30 oktober 2026:** de flow is vereenvoudigd (zie [specs-nieuwe-bestanden.md](specs-nieuwe-bestanden.md)): de bestanden kies je op de pagina *Nieuwe bestanden*
 > door te bladeren in `K:\scans jelly` en `K:\scans ria`; de nummers komen uit de vrije nummers van ZCBS; er is geen stap Records bewerken en geen archived-map meer
-> (de 100pct en de pdf's krijgen een back-up op K:, de originelen blijven staan); de instellingen vragen het beheerderswachtwoord. De stappen hieronder zijn daar nog
+> (de 100pct en de pdf's krijgen een back-up op K:, de originelen blijven staan); de instellingen vragen het beheerderswachtwoord; de upload gaat met ftp (niet sftp, dus ook geen vingerafdruk meer). De stappen hieronder zijn daar nog
 > niet op nagelopen.
 
 Dit is de eerste run met de echte `pdf2zcbs.exe` en `images.exe` via de app, **in het echte archief** omdat er geen
