@@ -769,7 +769,7 @@ class TestRunServiceTest {
         answerManually(
             mapOf(
                 "Type ENTER/RETURN indien OK" to "a", "Kies 1,2,3" to "7", "UPLOADEN aangemaakte images" to "j",
-                "Nummer, naam of plaats instelling" to "4", "FTP wachtwoord" to "ander-wachtwoord", "Kies de ZCBS-toepassing" to "archief",
+                "Nummer, naam of plaats instelling" to "4", "Kies de ZCBS-toepassing" to "archief",
                 "AANMAKEN en UPLOADEN van de bijbehorende" to "j",
             ),
             seen,
@@ -782,8 +782,10 @@ class TestRunServiceTest {
         assertTrue(runner.typedAnswers().keys.none { it.startsWith("VERWIJDEREN") || it == "OVERSCHRIJVEN" }, "die onthoudt de app niet als getypt")
         assertTrue(seen.contains("Kies 1,2,3 => 6"), seen.toString())
         assertTrue(seen.contains("UPLOADEN aangemaakte images => n"), "het voorstel is het onthouden antwoord: $seen")
-        assertTrue(seen.contains("FTP wachtwoord => null"), "een wachtwoord wordt nooit voorgesteld: $seen")
-        assertEquals("ander-wachtwoord", answers()["wachtwoord"])
+        assertTrue(seen.none { it.startsWith("FTP wachtwoord") }, "het onthouden wachtwoord geeft de app zelf, Carla hoeft niets te typen: $seen")
+        assertEquals("geheimpje", answers()["wachtwoord"], "het onthouden wachtwoord is gebruikt")
+        assertFalse(runner.snapshot()!!.output.contains("geheimpje"), "een wachtwoord staat nooit leesbaar in de console")
+        assertFalse(runner.logText()!!.contains("geheimpje"), "en niet in het log")
 
         // onthouden: wat ze typte, behalve het wachtwoord
         assertEquals("7", rememberedAnswer("Kies 1,2,3"))
@@ -805,6 +807,44 @@ class TestRunServiceTest {
         assertEquals("n", given["overschrijven"], "nooit overschrijven")
         assertEquals("n", given["verwijdermappen"])
         assertEquals("n", given["verwijderbron"])
+    }
+
+    @Test
+    fun `een wachtwoord dat Carla typt wordt onthouden, nooit getoond en de volgende keer vanzelf gegeven`() {
+        useQuestionsImages()
+        service.start("10")
+        runUntil("PDF2ZCBS")
+        assertEquals("DONE", runNext().status)
+        val images = next()
+        assertEquals("", settings.get().imagesAnswers.first { it.pattern == "FTP wachtwoord" }.answer, "nog geen wachtwoord onthouden")
+
+        service.execute(images.id, RunMode.IN_APP, auto = false)
+        answerManually(
+            mapOf(
+                "Type ENTER/RETURN indien OK" to "a", "Kies 1,2,3" to "6", "UPLOADEN aangemaakte images" to "j", "Nummer, naam of plaats instelling" to "4",
+                "FTP wachtwoord" to "getypt-pw", "Kies de ZCBS-toepassing" to "archief", "AANMAKEN en UPLOADEN van de bijbehorende" to "n",
+            ),
+        )
+        assertEquals("DONE", waitFor(images).status)
+        assertEquals("getypt-pw", answers()["wachtwoord"])
+        assertFalse(runner.snapshot()!!.output.contains("getypt-pw"), "niet in de console")
+        assertFalse(runner.logText()!!.contains("getypt-pw"), "niet in het log")
+        assertEquals("getypt-pw", settings.get().imagesAnswers.first { it.pattern == "FTP wachtwoord" }.answer, "onthouden voor de volgende keer")
+
+        // volgende keer, weer handmatig: het wachtwoord gaat vanzelf en Carla hoeft het niet te typen
+        service.retry(images.id)
+        service.execute(images.id, RunMode.IN_APP, auto = false)
+        val seen = mutableListOf<String>()
+        answerManually(
+            mapOf(
+                "Type ENTER/RETURN indien OK" to "a", "Kies 1,2,3" to "6", "UPLOADEN aangemaakte images" to "j", "Nummer, naam of plaats instelling" to "4",
+                "Kies de ZCBS-toepassing" to "archief", "AANMAKEN en UPLOADEN van de bijbehorende" to "n",
+            ),
+            seen,
+        )
+        assertEquals("DONE", waitFor(images).status)
+        assertTrue(seen.none { it.startsWith("FTP wachtwoord") }, seen.toString())
+        assertEquals("getypt-pw", answers()["wachtwoord"])
     }
 
     @Test

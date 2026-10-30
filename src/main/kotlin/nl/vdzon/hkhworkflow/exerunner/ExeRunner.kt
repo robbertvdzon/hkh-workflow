@@ -27,7 +27,7 @@ enum class RunMode(val label: String) {
 }
 
 /** Automatisch antwoord: bevat de uitvoer [pattern] (hoofdletterongevoelig), dan wordt [answer] + Enter gestuurd. */
-data class AutoAnswer(val pattern: String, val answer: String, val secret: Boolean = false)
+data class AutoAnswer(val pattern: String, val answer: String, val secret: Boolean = false, val once: Boolean = false)
 
 /** Momentopname van de laatste (of lopende) run, voor de UI. */
 data class RunSnapshot(
@@ -137,6 +137,12 @@ class ExeRunner(
         /** Alleen wat de gebruiker zelf heeft ingetypt op een bekende vraag (zonder wachtwoorden). */
         val typed = java.util.concurrent.ConcurrentHashMap<String, String>()
 
+        /** Wat de gebruiker zelf heeft ingetypt op een vraag waarvan het antwoord geheim is (een wachtwoord). */
+        val typedSecret = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+        /** Vragen met een antwoord dat maar één keer per run wordt gegeven ([AutoAnswer.once]) en dat al is gegeven. */
+        val onceDone: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
         @Volatile var exitCode: Int? = null
         @Volatile var finishedAt: Instant? = null
         @Volatile var charsReceived = 0L
@@ -203,6 +209,9 @@ class ExeRunner(
 
     /** De antwoorden die in de laatste run op bekende vragen zijn gegeven, per vraag. */
     fun givenAnswers(): Map<String, String> = current?.given?.toMap().orEmpty()
+
+    /** Wachtwoorden en andere geheime antwoorden die de gebruiker zelf heeft ingetypt in de laatste run, per vraag; alleen om te onthouden, nooit om te tonen. */
+    fun typedSecretAnswers(): Map<String, String> = current?.typedSecret?.toMap().orEmpty()
 
     /** De antwoorden die de gebruiker zelf heeft ingetypt in de laatste run, per vraag; die onthoudt de app voor de volgende keer. */
     fun typedAnswers(): Map<String, String> = current?.typed?.toMap().orEmpty()
@@ -406,10 +415,14 @@ class ExeRunner(
         val run = current ?: error("Er draait geen programma.")
         check(run.running) { "Het programma is al gestopt." }
         val question = currentQuestion(run)
-        send(run, line, secret = false, auto = false)
-        if (question != null && !question.secret) {
-            run.given[question.pattern] = line
-            run.typed[question.pattern] = line
+        // Een wachtwoord dat iemand intypt, komt niet leesbaar in de console of het log.
+        send(run, line, secret = question?.secret == true, auto = false)
+        if (question != null) {
+            if (question.secret) run.typedSecret[question.pattern] = line
+            else {
+                run.given[question.pattern] = line
+                run.typed[question.pattern] = line
+            }
         }
     }
 
@@ -499,6 +512,8 @@ class ExeRunner(
             }
             val rule = best ?: return
             run.autoBuffer.delete(0, bestIndex + squeeze(rule.pattern).length)
+            // Een antwoord dat maar één keer wordt gegeven (een onthouden wachtwoord): vraagt het programma het opnieuw, dan klopte het niet en typt de gebruiker het zelf.
+            if (rule.once && !run.onceDone.add(rule.pattern)) continue
             if (run.autoAnswered >= MAX_AUTO_ANSWERS) {
                 run.autoEnabled = false
                 run.logLine("AUTO  uitgezet: al $MAX_AUTO_ANSWERS antwoorden gegeven (loopt het programma in een kringetje?)")

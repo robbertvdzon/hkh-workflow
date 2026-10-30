@@ -215,4 +215,40 @@ class ExeRunnerTest {
         assertTrue(runner.snapshot()!!.output.contains("res=7"), runner.snapshot()!!.output)
         assertEquals("7", runner.givenAnswers()["Kies 1,2,3"])
     }
+
+    @Test
+    fun `a remembered password is given once, and a typed one is masked and kept apart`() {
+        val exe = script(
+            """
+            printf 'FTP wachtwoord? '; read p1; echo "eerste=${'$'}{#p1}"
+            printf 'FTP wachtwoord? '; read p2; echo "tweede=${'$'}{#p2}"
+            printf 'Type return to exit'; read x; echo klaar
+            """.trimIndent(),
+        )
+        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val done = CountDownLatch(1)
+        runner.start(
+            exe, dir, "wachtwoord", RunMode.IN_APP,
+            knownQuestions = listOf(AutoAnswer("FTP wachtwoord", "oud-pw", secret = true), AutoAnswer("return to exit", "")),
+            forcedAnswers = listOf(AutoAnswer("FTP wachtwoord", "oud-pw", secret = true, once = true)),
+        ) { done.countDown() }
+
+        // de eerste keer geeft de app het onthouden wachtwoord, de tweede keer (het klopte niet) wacht hij op de gebruiker
+        val deadline = System.currentTimeMillis() + 10_000
+        while (runner.snapshot()?.output?.contains("eerste=6") != true && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        while (runner.snapshot()?.question != "FTP wachtwoord" && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        assertEquals("FTP wachtwoord", runner.snapshot()!!.question)
+        assertEquals(null, runner.snapshot()!!.suggestion, "een wachtwoord wordt nooit voorgesteld")
+        runner.sendInput("nieuw-pw!")
+        while (runner.snapshot()?.question != "return to exit" && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        runner.sendInput("")
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+
+        val output = runner.snapshot()!!.output
+        assertTrue(output.contains("tweede=9"), output)
+        assertFalse(output.contains("oud-pw") || output.contains("nieuw-pw"), "geen wachtwoord in de uitvoer: $output")
+        assertFalse(runner.logText()!!.contains("oud-pw") || runner.logText()!!.contains("nieuw-pw"), "geen wachtwoord in het log")
+        assertEquals(mapOf("FTP wachtwoord" to "nieuw-pw!"), runner.typedSecretAnswers())
+        assertEquals(mapOf("return to exit" to ""), runner.typedAnswers(), "een wachtwoord zit niet bij de gewone antwoorden")
+    }
 }

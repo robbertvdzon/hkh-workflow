@@ -77,7 +77,9 @@ geen vergrendeling; het werkt voor een gebruiker die records mag aanmaken). Geco
 ## 5. De antwoorden van images.exe
 
 - **Handmatig uitvoeren**: Carla typt de antwoorden in de console. De app herkent de vraag waar het programma op wacht, **vult het onthouden
-  antwoord alvast in** en onthoudt wat ze intypt (alleen als het programma goed eindigt). Wachtwoorden worden nooit voorgesteld of onthouden.
+  antwoord alvast in** en onthoudt wat ze intypt (alleen als het programma goed eindigt). Een wachtwoord (het FTP-wachtwoord van images.exe) wordt niet voorgesteld maar **onthouden**: typ je het één keer in, dan geeft de app het de volgende keer zelf, één keer per run (vraagt
+  het programma er daarna nog eens om, dan klopte het niet en typ je het opnieuw). Het staat leesbaar in het instellingenbestand, dat niet in git komt; in de console en het log staat het nooit leesbaar,
+  ook niet als je het intypt. De vraag om een submap ("Geef een ENTER/RETURN of ... de naam van deze submap") krijgt standaard Enter: de images komen in de root van de collectie, zoals de bestaande.
 - **Automatisch uitvoeren**: de app geeft de onthouden antwoorden. Alleen de collectie (uit de instellingen), het overschrijven en het verwijderen van de
   mappen van images.exe staan vast en gaan voor: altijd `n`, want de app ruimt zelf op, ná de back-up.
 - **Die vragen over overschrijven en verwijderen beantwoordt de app ook bij handmatig uitvoeren zelf met nee.** Zonder dat wist images.exe, net als het echte programma, de

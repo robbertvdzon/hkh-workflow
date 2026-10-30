@@ -40,7 +40,8 @@ class SettingsService(
                         val item = array.get(i)
                         result.add(AnswerRule(item.path("pattern").asText(""), item.path("answer").asText(""), item.path("secret").asBoolean(false)))
                     }
-                    return result
+                    // Een oude lijst mist nieuwe standaardvragen: die komen er (alleen in het geheugen, tot er opgeslagen wordt) bij, zodat ze meteen herkend worden.
+                    return if (name == "imagesAnswers") result + defaults.filter { d -> result.none { it.pattern == d.pattern } } else result
                 }
                 WorkflowSettings(
                     testFolder = node.path("testFolder").asText(""),

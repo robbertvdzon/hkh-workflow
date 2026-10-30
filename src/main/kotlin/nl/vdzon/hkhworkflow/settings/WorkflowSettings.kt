@@ -113,6 +113,8 @@ data class WorkflowSettings(
             AnswerRule("VERWIJDEREN (tijdelijk) aangemaakte mappen", "n"),
             AnswerRule("VERWIJDEREN (tijdelijk) PC-bestand", "j"),
             AnswerRule("VERWIJDEREN inhoud van de map [images]", "n"),
+            // "Geef een ENTER/RETURN of ... de naam van deze submap": Enter = de images in de root van de collectie, zoals de bestaande.
+            AnswerRule("Geef een ENTER/RETURN", ""),
             AnswerRule("om dit DOS-window te verlaten", ""),
         )
     }

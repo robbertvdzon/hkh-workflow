@@ -531,7 +531,7 @@ class TestRunService(
         val known = s.imagesAnswers.map { AutoAnswer(it.pattern, it.answer, it.secret) }
         // De vragen over verwijderen en overschrijven beantwoordt de app ook bij handmatig uitvoeren zelf met nee: images.exe wist anders de
         // afbeeldingen die de app nog nodig heeft voor de controle en de back-up (het opruimen doet de app daarna zelf).
-        runExe(current, step, s, Path.of(s.imagesExe), dir, copies, expected, mode, if (auto) imagesRules(s) + known else null, known, if (auto) emptyList() else safetyRules())
+        runExe(current, step, s, Path.of(s.imagesExe), dir, copies, expected, mode, if (auto) imagesRules(s) + known else null, known, if (auto) emptyList() else safetyRules() + rememberedSecrets(s))
     }
 
     /**
@@ -553,11 +553,19 @@ class TestRunService(
 
     private fun yes(answer: String?): Boolean = answer?.trim()?.lowercase() in setOf("j", "ja", "y", "yes")
 
+    /** Wachtwoorden die de app van de vorige keer onthield (zoals het FTP-wachtwoord van images.exe): ze worden één keer per run automatisch gegeven, ook bij handmatig uitvoeren. */
+    private fun rememberedSecrets(s: WorkflowSettings): List<AutoAnswer> =
+        s.imagesAnswers.filter { it.secret && it.answer.isNotEmpty() }.map { AutoAnswer(it.pattern, it.answer, secret = true, once = true) }
+
     /** Onthoudt wat Carla zelf heeft ingetypt, zodat het de volgende keer wordt voorgesteld en automatisch kan worden gegeven. */
-    private fun learn(type: StepType, typed: Map<String, String>) {
-        if (typed.isEmpty()) return
+    private fun learn(type: StepType, typed: Map<String, String>, typedSecrets: Map<String, String>) {
+        if (typed.isEmpty() && typedSecrets.isEmpty()) return
         val s = settingsService.get()
-        fun update(rules: List<nl.vdzon.hkhworkflow.settings.AnswerRule>) = rules.map { r -> typed[r.pattern]?.takeIf { !r.secret }?.let { r.copy(answer = it) } ?: r }
+        // De submap is een keuze per keer en een naam leren we niet: die vraag blijft een Enter.
+        fun update(rules: List<nl.vdzon.hkhworkflow.settings.AnswerRule>) = rules.map { r ->
+            val value = if (r.secret) typedSecrets[r.pattern]?.takeIf { it.isNotEmpty() } else typed[r.pattern]?.takeIf { !r.pattern.startsWith(NOT_LEARNED) }
+            value?.let { r.copy(answer = it) } ?: r
+        }
         val updated = when (type) {
             StepType.PDF2ZCBS -> s.copy(pdf2zcbsAnswers = update(s.pdf2zcbsAnswers))
             StepType.IMAGES -> s.copy(imagesAnswers = update(s.imagesAnswers))
@@ -565,7 +573,7 @@ class TestRunService(
         }
         if (updated != s) {
             settingsService.save(updated)
-            log.info("Antwoorden van {} onthouden: {}", type.label, typed.keys)
+            log.info("Antwoorden van {} onthouden: {}", type.label, typed.keys + typedSecrets.keys)
         }
     }
 
@@ -600,7 +608,7 @@ class TestRunService(
             val missing = if (code == 0) expected.filter { !it.second.present(allowEmpty = it.first == "tekst") } else emptyList()
             // Buiten het slot: dit leest een paar pagina's van ZCBS.
             val note = if (code == 0 && missing.isEmpty() && step.type == StepType.IMAGES) imagesNote(step) else ""
-            if (code == 0 && missing.isEmpty() && autoAnswers == null) learn(step.type, exeRunner.typedAnswers())
+            if (code == 0 && missing.isEmpty() && autoAnswers == null) learn(step.type, exeRunner.typedAnswers(), exeRunner.typedSecretAnswers())
             synchronized(this) {
                 if (code != 0) {
                     step.status = StepStatus.FAILED
@@ -951,6 +959,7 @@ class TestRunService(
 
     private companion object {
         const val LEFTOVERS_MESSAGE = "Er staan nog bestanden van een eerdere run in je invoermap of in de mappen van pdf2zcbs.exe of images.exe. Verplaats of verwijder ze eerst (of kies bij je invoermap voor \"horen erbij\")."
+        const val NOT_LEARNED = "Geef een ENTER/RETURN"
         const val UPLOAD_QUESTION = "UPLOADEN aangemaakte images"
         const val RECORDS_QUESTION = "AANMAKEN en UPLOADEN van de bijbehorende"
     }

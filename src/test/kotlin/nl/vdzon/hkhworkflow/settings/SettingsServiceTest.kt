@@ -96,6 +96,16 @@ class SettingsServiceTest {
     }
 
     @Test
+    fun `een oude lijst met antwoorden voor images krijgt de nieuwe standaardvragen erbij`() {
+        val file = dir.resolve("oud-antwoorden.json")
+        Files.writeString(file, """{"imagesAnswers": [{"pattern": "Kies 1,2,3", "answer": "7", "secret": false}]}""")
+        val rules = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString())).get().imagesAnswers
+        assertEquals("7", rules.first { it.pattern == "Kies 1,2,3" }.answer, "wat er stond blijft zoals het was")
+        assertEquals("", rules.first { it.pattern == "Geef een ENTER/RETURN" }.answer, "de vraag om een submap is er nieuw bij")
+        assertEquals(1, rules.count { it.pattern == "Kies 1,2,3" })
+    }
+
+    @Test
     fun `remote folders default to the collection under the base folder and can be overridden`() {
         val s = WorkflowSettings(collection = "archief", ftpBaseDir = "/domains/historischekringheemskerk.nl/public_html/")
         assertEquals("/domains/historischekringheemskerk.nl/public_html/archief/ocr", s.remoteOcrDir())
