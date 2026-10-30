@@ -8,7 +8,7 @@
         <div class="head">
             <div>
                 <h1>Test</h1>
-                <p class="sub">Haal de bestanden van de server op en verwerk ze stap voor stap: hernoemen → pdf2zcbs.exe → images.exe → upload → records bewerken → opruimen → archiveren.</p>
+                <p class="sub">Technische weergave voor de beheerder: verwerk de pdf's in de invoermap stap voor stap (hernoemen → pdf2zcbs.exe → images.exe → upload → back-up en opruimen), met alle knoppen en logs. Carla gebruikt hiervoor de pagina Nieuwe bestanden.</p>
             </div>
             <form th:if="${run != null}" method="post" th:action="@{/test/reset}">
                 <button class="btn btn-s" type="submit" title="Stopt een nog lopend programma en maakt de console leeg">Nieuwe test</button>
@@ -24,30 +24,12 @@
             — <a th:href="@{/instellingen}">naar Instellingen</a>.
         </div>
 
-        <!-- Eerste stap: de bestanden die Ria heeft aangegeven van de server ophalen -->
-        <section th:if="${run == null and sourceConfigured}" class="card pad" style="display:flex;flex-direction:column;gap:14px;max-width:980px">
-            <h2>Bestanden ophalen van de server</h2>
-            <p class="hint" style="margin:0">Ria geeft aan welke bestanden verwerkt moeten worden. Ze staan in <span class="mono" th:text="${settings.sourceFolder}"></span>, in een map per persoon. Vink aan wat je wilt verwerken: de app kopieert het naar de testmap. De bestanden op de server blijven staan en er wordt niets overschreven.</p>
-            <div th:if="${sourceGroups.isEmpty()}" class="warn">Geen pdf's gevonden in de bronmap (bestaat de map?).</div>
-            <form th:unless="${sourceGroups.isEmpty()}" method="post" th:action="@{/test/bronbestanden}" style="display:flex;flex-direction:column;gap:12px">
-                <div class="table" th:each="g : ${sourceGroups}">
-                    <div class="tr grouphead" style="grid-template-columns:minmax(0,1fr)"><span><b th:text="${g.value[0].by != ''} ? ${g.value[0].by} : '(zonder persoon)'">Ria</b> <span class="mono muted" th:text="${g.key}"></span></span></div>
-                    <label class="tr" th:each="f : ${g.value}" style="grid-template-columns:28px minmax(0,1fr) 90px 150px;cursor:pointer">
-                        <input type="checkbox" name="files" th:value="${f.relPath}">
-                        <span class="mono" th:text="${f.name}">scan.pdf</span>
-                        <span class="muted" th:text="${f.sizeKb} + ' kB'">12 kB</span><span class="muted" th:text="${f.modified}">gescand</span>
-                    </label>
-                </div>
-                <div><button class="btn btn-p" type="submit">Kopieer de aangevinkte bestanden naar de testmap</button></div>
-            </form>
-        </section>
-
         <!-- Nog geen testrun: volgnummer vragen -->
         <section th:if="${run == null}" class="card pad" style="display:flex;flex-direction:column;gap:18px;max-width:820px">
             <h2>Nieuwe test starten</h2>
             <div>
-                <div class="hint">Testmap: <span class="mono" th:text="${settings.testFolder != '' ? settings.testFolder : '(niet ingesteld)'}"></span></div>
-                <div th:if="${pdfs.isEmpty()}" class="warn" style="margin-top:6px">Er staan geen pdf's in de testmap.</div>
+                <div class="hint">Invoermap: <span class="mono" th:text="${settings.testFolder != '' ? settings.testFolder : '(niet ingesteld)'}"></span></div>
+                <div th:if="${pdfs.isEmpty()}" class="warn" style="margin-top:6px">Er staan geen pdf's in de invoermap.</div>
                 <ul th:unless="${pdfs.isEmpty()}" style="margin:10px 0 0;padding-left:20px">
                     <li th:each="p : ${pdfs}"><span th:text="${p.name}"></span><span class="hint" th:if="${p.by != ''}" th:text="' · gescand door ' + ${p.by}"></span></li>
                 </ul>
@@ -59,14 +41,14 @@
                 </div>
                 <button type="submit" class="btn btn-p" th:disabled="${pdfs.isEmpty()}">Start</button>
             </form>
-            <p class="hint" style="margin:0">Elk bestand krijgt een volgnummer (steeds één hoger, voorloopnullen blijven staan). Het origineel blijft staan; "hernoemen" maakt een kopie met het nieuwe nummer in de submap <span class="mono">werk</span>.</p>
+            <p class="hint" style="margin:0">Elk bestand krijgt een volgnummer (steeds één hoger, voorloopnullen blijven staan). Het origineel blijft staan; "hernoemen" maakt een kopie met het nieuwe nummer in de submap <span class="mono">werk</span>. Deze pagina controleert niet of de nummers vrij zijn in ZCBS; dat doet de pagina Nieuwe bestanden.</p>
         </section>
 
         <th:block th:if="${run != null}">
             <!-- Volgende stap -->
             <section class="next" th:fragment="nextstep" th:if="${run.next != null}">
                 <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:0">
-                    <span class="hint" th:unless="${returnTo == '/batch'}" th:text="'Stap ' + (${run.doneCount} + 1) + ' van ' + ${run.totalCount}"></span>
+                    <span class="hint" th:unless="${returnTo == '/nieuw'}" th:text="'Stap ' + (${run.doneCount} + 1) + ' van ' + ${run.totalCount}"></span>
                     <span class="q" th:text="${run.next.question}"></span>
                     <ul class="plan" th:if="${run.next.status == 'PENDING' and !run.next.plan.isEmpty()}">
                         <li th:each="line : ${run.next.plan}" th:text="${line}"></li>
@@ -77,46 +59,24 @@
                     <div class="alert alert-info" style="margin:4px 0 0" th:each="w : ${run.next.warnings}" th:text="${w}"></div>
                     <span class="hint" th:if="${run.next.status == 'FAILED'}" style="color:var(--err);white-space:pre-line" th:text="${run.next.message}"></span>
                     <span class="hint" th:if="${run.next.status == 'RUNNING' and run.next.usesExe}">Bezig… beantwoord de vragen hieronder.</span>
-                    <span class="hint" th:if="${run.next.status == 'RUNNING' and !run.next.usesExe and run.next.type != 'EDIT'}">Bezig… even geduld, de pagina laadt opnieuw als het klaar is.</span>
-                    <div th:if="${run.next.type == 'EDIT' and run.next.status != 'DONE'}" style="display:flex;flex-direction:column;gap:8px;max-width:520px">
-                        <span class="hint" th:if="${zcbsLoggedIn}">Ingelogd bij ZCBS als <b th:text="${zcbsUser}"></b> · <span class="mono" th:text="${settings.zcbsBaseUrl}"></span>
-                            <span th:unless="${zcbsLocal}" style="color:var(--err);font-weight:600"> (het echte archief)</span></span>
-                        <form th:unless="${zcbsLoggedIn}" method="post" th:action="@{/zcbs/login}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end" autocomplete="off">
-                            <input type="hidden" name="terug" th:value="${returnTo}">
-                            <div class="field" style="width:200px"><label class="f" for="zcbsNaam">ZCBS-naam</label><input type="text" id="zcbsNaam" name="naam" autocomplete="off"></div>
-                            <div class="field" style="width:180px"><label class="f" for="zcbsWachtwoord">Wachtwoord</label><input type="password" id="zcbsWachtwoord" name="wachtwoord" autocomplete="new-password" style="height:44px;padding:0 12px;border:1px solid #b9b09c;border-radius:8px;font:14px var(--sans)"></div>
-                            <button class="btn btn-p" type="submit">Inloggen bij ZCBS</button>
-                        </form>
-                        <form th:if="${zcbsLoggedIn}" method="post" th:action="@{/zcbs/logout}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s btn-sm" type="submit">Uitloggen bij ZCBS</button></form>
-                    </div>
+                    <span class="hint" th:if="${run.next.status == 'RUNNING' and !run.next.usesExe}">Bezig… even geduld, de pagina laadt opnieuw als het klaar is.</span>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'PENDING'}" style="align-items:flex-end;flex-direction:column;gap:10px">
                     <form th:unless="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}">
                         <button class="btn btn-p" type="submit" name="mode" value="IN_APP" th:disabled="${!run.next.problems.isEmpty()}">Uitvoeren</button>
                     </form>
                     <form th:if="${run.next.usesExe}" method="post" th:action="@{/test/steps/{id}/run(id=${run.next.id})}" style="display:flex;flex-direction:column;gap:10px;align-items:flex-end"><input type="hidden" name="terug" th:value="${returnTo}">
-                        <div th:if="${run.next.type == 'IMAGES'}" style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fffaf0;max-width:380px">
-                            <b style="font-size:13px">Alleen bij Automatisch uitvoeren. Dit schrijft in de echte collectie:</b>
-                            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" name="upload" value="true" id="opt-upload" style="margin-top:2px" th:checked="${returnTo == '/batch'}"> Afbeeldingen uploaden naar de server (FTP)</label>
-                            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" name="records" value="true" id="opt-records" style="margin-top:2px" th:checked="${returnTo == '/batch'}"> Lege records aanmaken in ZCBS</label>
-                            <span class="hint" th:if="${returnTo != '/batch'}">Beide staan standaard uit. Bij Handmatig uitvoeren antwoord je zelf.</span>
-                            <span class="hint" th:if="${returnTo == '/batch'}"><b>Zonder deze twee vinkjes werken de volgende fasen niet:</b> de afbeeldingen staan dan niet op de server en er zijn geen records om te bewerken. Bij Handmatig uitvoeren antwoord je zelf.</span>
-                        </div>
                         <div style="display:flex;gap:8px;align-items:center">
-                            <button class="btn btn-s" type="submit" name="mode" value="WINDOW" th:disabled="${!run.next.problems.isEmpty()}" title="Opent het programma in een cmd-venster op de computer waar de jar draait (alleen Windows)">In cmd-venster op de server</button>
-                            <button class="btn btn-s" type="submit" name="mode" value="IN_APP" th:disabled="${!run.next.problems.isEmpty()}" title="Jij beantwoordt de vragen hieronder">Handmatig uitvoeren</button>
-                            <button class="btn btn-p" type="submit" name="auto" value="true" th:disabled="${!run.next.problems.isEmpty()}" title="De app geeft zelf de antwoorden uit Instellingen">Automatisch uitvoeren</button>
+                            <button class="btn btn-s" th:unless="${returnTo == '/nieuw'}" type="submit" name="mode" value="WINDOW" th:disabled="${!run.next.problems.isEmpty()}" title="Opent het programma in een cmd-venster op de computer waar de jar draait (alleen Windows)">In cmd-venster op de server</button>
+                            <button class="btn btn-s" type="submit" name="mode" value="IN_APP" th:disabled="${!run.next.problems.isEmpty()}" title="Jij beantwoordt de vragen hieronder; de app onthoudt je antwoorden voor de volgende keer">Handmatig uitvoeren</button>
+                            <button class="btn btn-p" type="submit" name="auto" value="true" th:disabled="${!run.next.problems.isEmpty()}" title="De app geeft zelf de antwoorden die hij van de laatste handmatige keer onthield">Automatisch uitvoeren</button>
                         </div>
                     </form>
-                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit" title="Sla deze stap over, bijvoorbeeld omdat je hem zelf met de hand doet">Overslaan</button></form>
-                </div>
-                <div class="row-actions" th:if="${run.next.type == 'EDIT' and run.next.status == 'RUNNING'}" style="align-items:flex-end;flex-direction:column;gap:10px">
-                    <a class="btn btn-p" th:href="@{/records}">Naar de records</a>
-                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit" title="Sla de rest van deze stap over">Overslaan</button></form>
+                    <form th:unless="${returnTo == '/nieuw'}" method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit" title="Sla deze stap over, bijvoorbeeld omdat je hem zelf met de hand doet">Overslaan</button></form>
                 </div>
                 <div class="row-actions" th:if="${run.next.status == 'FAILED'}">
-                    <form method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit">Overslaan</button></form>
-                    <form method="post" th:action="@{/test/steps/{id}/done(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit" title="Alleen als je zelf hebt gecontroleerd dat het goed is gegaan">Toch klaar</button></form>
+                    <form th:unless="${returnTo == '/nieuw'}" method="post" th:action="@{/test/steps/{id}/skip(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit">Overslaan</button></form>
+                    <form th:unless="${returnTo == '/nieuw'}" method="post" th:action="@{/test/steps/{id}/done(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-s" type="submit" title="Alleen als je zelf hebt gecontroleerd dat het goed is gegaan">Toch klaar</button></form>
                     <form method="post" th:action="@{/test/steps/{id}/retry(id=${run.next.id})}"><input type="hidden" name="terug" th:value="${returnTo}"><button class="btn btn-p" type="submit">Opnieuw</button></form>
                 </div>
             </section>
@@ -150,6 +110,11 @@
                             <span th:if="${console.label.contains('pdf2zcbs')}"><b>Bij pdf2zcbs.exe is dat normaal</b> als pdf2zcbs.ini de vragen al beantwoordt: het programma toont dan niets en klaar is klaar. </span>Er komt geen uitvoer (meer) terwijl het programma draait. Wacht het op een antwoord op een vraag die je niet ziet?
                             Dan houdt het zijn uitvoer waarschijnlijk vast (buffering). Probeer blind een antwoord te sturen, of stop en start opnieuw met PERLIO=:unix.
                         </div>
+                        <div th:if="${console.running and console.mode.name() == 'IN_APP' and !console.auto and console.suggestion != null}" id="suggest"
+                             th:attr="data-key=${console.question + '#' + console.inputsSent},data-answer=${console.suggestion}" class="alert alert-info" style="margin-bottom:8px">
+                            Onthouden antwoord op deze vraag: <b th:text="${console.suggestion.isEmpty()} ? '(alleen Enter)' : ${console.suggestion}"></b>.
+                            Het staat al in het invoerveld; druk op Enter of Verstuur om het te gebruiken, of typ iets anders.
+                        </div>
                         <pre class="console" id="console-out" th:text="${console.output.isEmpty() ? (console.mode.name() == 'WINDOW' ? 'Het programma draait in een eigen venster. Beantwoord de vragen daar; sluit het venster als het klaar is.' : '(nog geen uitvoer)') : console.output}"></pre>
                         <div class="hint" style="margin-top:6px">Commando: <span class="mono" th:text="${console.command}"></span> · log: <span class="mono" th:text="${console.logFile}"></span></div>
                     </th:block>
@@ -169,12 +134,12 @@
 
             <!-- Overzicht: per bestand de stappen, met daaronder de controle of de bestanden er echt zijn -->
             <section class="table" th:fragment="filetable">
-                <div class="tr th" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(7,minmax(0,1fr))">
+                <div class="tr th" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(5,minmax(0,1fr))">
                     <span>Origineel</span><span>Nummer</span>
                     <span th:each="t : ${run.stepTypes}" th:text="${t}"></span>
                 </div>
                 <th:block th:each="row : ${run.rows}">
-                    <div class="tr" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(7,minmax(0,1fr));border-bottom:0">
+                    <div class="tr" style="grid-template-columns:minmax(0,1.2fr) 118px repeat(5,minmax(0,1fr));border-bottom:0">
                         <span style="min-width:0"><span th:text="${row.originalName}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><span class="hint" th:if="${row.by != ''}" th:text="'gescand door ' + ${row.by}"></span></span>
                         <span class="mono" th:text="${row.newName}"></span>
                         <span th:each="c : ${row.cells}" th:title="${c.message}">
@@ -243,18 +208,6 @@
         </section>
     </main>
 </div>
-<script>
-    // Lege records aanmaken kan alleen samen met uploaden.
-    document.addEventListener('change', function (e) {
-        var up = document.getElementById('opt-upload'), rec = document.getElementById('opt-records');
-        if (!up || !rec) return;
-        if (e.target === rec && rec.checked) up.checked = true;
-        if (e.target === up && !up.checked) rec.checked = false;
-    });
-    // Console automatisch naar beneden scrollen.
-    function scrollConsole() { var el = document.getElementById('console-out'); if (el) el.scrollTop = el.scrollHeight; }
-    document.addEventListener('DOMContentLoaded', scrollConsole);
-    document.addEventListener('htmx:afterSwap', scrollConsole);
-</script>
+<script th:src="@{/js/console.js}"></script>
 </body>
 </html>

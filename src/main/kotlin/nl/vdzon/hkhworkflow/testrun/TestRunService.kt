@@ -3,6 +3,8 @@ package nl.vdzon.hkhworkflow.testrun
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.io.path.extension
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
@@ -10,8 +12,6 @@ import kotlin.io.path.name
 import nl.vdzon.hkhworkflow.exerunner.AutoAnswer
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
-import nl.vdzon.hkhworkflow.items.BatchRecord
-import nl.vdzon.hkhworkflow.items.EditStatus
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
@@ -21,22 +21,21 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 /**
- * De testworkflow, die Carla's handwerk volgt maar elke stap pas laat draaien nadat de gebruiker hem heeft
- * goedgekeurd:
+ * De flow van Carla, waarin elke stap pas draait nadat de gebruiker hem heeft goedgekeurd:
  *
- * 1. hernoemen (per bestand): kopie met het nieuwe nummer in `werk`;
- * 2. pdf2zcbs.exe (één keer): maakt tekst, pdf, small en large;
- * 3. images.exe (één keer): krijgt de large-jpg's van pdf2zcbs en maakt small, large en 100pct;
+ * 1. hernoemen (per bestand): kopie met het recordnummer in `werk`;
+ * 2. pdf2zcbs.exe (één keer): maakt tekst, pdf, small en large; daarna controleert Carla de uitvoer;
+ * 3. images.exe (één keer): krijgt de large-jpg's van pdf2zcbs en maakt small, large en 100pct; daarna controleert Carla weer;
  * 4. upload (één keer): tekst en pdf's met sftp naar de server;
- * 5. records bewerken (één keer): de records van de batch één voor één invullen via het ZCBS-formulier (pagina Records);
- * 6. opruimen (één keer): back-up van de 100pct, daarna de mappen van de programma's leegmaken;
- * 7. archiveren (per bestand): het origineel naar de archived-map.
+ * 5. back-up en opruimen (één keer): back-up van de 100pct en de pdf's, daarna de werkmappen leegmaken en het verwerkt-log bijwerken.
  *
- * Vóór de run haalt [SourceFilesService] de bestanden die Ria heeft aangegeven op van de server.
+ * Het invullen van de gegevens in ZCBS (titel enzovoort) hoort er niet bij: dat gebeurt op een andere dag, op de pagina ZCBS
+ * records aanpassen. De originelen op K: blijven staan.
  *
- * Zo lang er niets wordt opgeruimd of gearchiveerd, staat alles op schijf zoals het bij de handmatige werkwijze
- * ook zou staan, zodat een stap die misgaat op de oude manier kan worden afgemaakt. Een stap is pas "klaar" als
- * de verwachte bestanden er echt zijn; de exitcode alleen is niet genoeg.
+ * Vóór de run kiest Carla de bestanden uit de scanmappen ([SourceFilesService]) en een beginnummer uit de vrije nummers van ZCBS.
+ * Zo lang er niets is opgeruimd, staat alles op schijf zoals het bij de handmatige werkwijze ook zou staan, zodat een stap die
+ * misgaat op de oude manier kan worden afgemaakt. Een stap is pas "klaar" als de verwachte bestanden er echt zijn; de exitcode
+ * alleen is niet genoeg.
  */
 @Service
 class TestRunService(
@@ -45,13 +44,14 @@ class TestRunService(
     private val sftpService: SftpService,
     private val itemEditService: ItemEditService,
     private val sourceFiles: SourceFilesService,
+    private val processed: ProcessedLog,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Volatile
     private var run: TestRun? = null
 
-    /** Heeft de gebruiker de lijst met pdf's in de invoermap bevestigd (fase Bestanden ophalen)? */
+    /** Heeft de gebruiker de lijst met pdf's in de invoermap bevestigd (fase Bestanden kiezen)? */
     @Volatile
     private var filesConfirmed: Boolean = false
 
@@ -103,18 +103,21 @@ class TestRunService(
     }
 
     /**
-     * Fase Voorbereiden: controleert dat de nummers nog niet in ZCBS bestaan, start de run en maakt van elk bestand een
-     * kopie met het nummer in `werk` (het origineel blijft staan).
+     * Fase Nummers: controleert dat alle nummers aaneengesloten vrij zijn in ZCBS, start de run en maakt van elk bestand een kopie
+     * met het recordnummer in `werk` (het origineel blijft staan).
      * @return een melding als het niet kan, anders null.
      */
     @Synchronized
     fun prepare(startNumber: String): String? {
         val pdfs = pdfsInTestFolder()
-        if (pdfs.isEmpty()) return "Er staan geen pdf's in de testmap."
-        val numbers = try { sequenceNumbers(startNumber, pdfs.size) } catch (e: Exception) { return "Geef een beginnummer van alleen cijfers op." }
-        itemEditService.checkNumbersFree(numbers)?.let { return it }
+        if (pdfs.isEmpty()) return "Er staan geen pdf's in de invoermap."
+        val start = startNumber.trim().toLongOrNull() ?: return "Geef een beginnummer van alleen cijfers op."
+        val free = itemEditService.freeNumbers()
+            ?: return "ZCBS gaf de lijst met vrije nummers niet. Is je sessie verlopen, heb je geen recht om records aan te maken, of is ZCBS niet bereikbaar? Log opnieuw in."
+        free.check(start, pdfs.size)?.let { return it }
         return try {
-            start(startNumber)
+            start(free.format(start))
+            run!!.gated = true
             while (true) {
                 val next = run!!.nextStep() ?: break
                 if (next.type != StepType.RENAME) break
@@ -127,43 +130,44 @@ class TestRunService(
         }
     }
 
-    /** Fase Afsluiten: opruimen en archiveren, na één goedkeuring. Stopt bij de eerste stap die niet lukt. @return een melding of null. */
+    /** Carla heeft de uitvoer van deze stap gecontroleerd; de volgende stap mag nu. @return een melding of null. */
     @Synchronized
-    fun finish(): String? {
-        val current = run ?: return "Er is geen batch gestart."
-        while (true) {
-            val next = current.nextStep() ?: return null
-            if (next.type != StepType.CLEANUP && next.type != StepType.ARCHIVE) return "Er is nog een stap voor het afsluiten: ${next.type.label}."
-            execute(next.id, RunMode.IN_APP)
-            if (next.status != StepStatus.DONE) return next.message ?: "${next.type.label} is mislukt."
-        }
+    fun confirmReview(type: StepType): String? {
+        val current = run ?: return "Er is nog niets gestart."
+        val step = current.steps.firstOrNull { it.type == type } ?: return "Onbekende stap."
+        if (!step.finished) return "${type.label} is nog niet klaar."
+        current.reviewed += type
+        return null
     }
 
-    /** De batch in acht fasen, zoals de gebruiker hem ziet. */
+    /** De flow in zes fasen, zoals de gebruiker hem ziet. */
     @Synchronized
-    fun batchView(): BatchView {
+    fun flowView(): FlowView {
         val v = view()
-        val loggedIn = itemEditService.loggedIn()
-        val nextType = v?.next?.type
-        val current = when {
-            !loggedIn -> 1
-            v == null && !filesConfirmed -> 2
-            v == null -> 3
-            nextType == null -> 9
-            nextType == "RENAME" -> 3
-            nextType == "PDF2ZCBS" -> 4
-            nextType == "IMAGES" -> 5
-            nextType == "UPLOAD" -> 6
-            nextType == "EDIT" -> 7
-            else -> 8
+        val current = run
+        val nextType = current?.nextStep()?.type
+        val gated = current?.gated == true
+        var review = false
+        val phase = when {
+            v == null && !filesConfirmed -> 1
+            v == null -> 2
+            nextType == null -> 7
+            nextType == StepType.RENAME -> 2
+            nextType == StepType.PDF2ZCBS -> 3
+            nextType == StepType.IMAGES -> if (gated && StepType.PDF2ZCBS !in current!!.reviewed) { review = true; 3 } else 4
+            nextType == StepType.UPLOAD -> if (gated && StepType.IMAGES !in current!!.reviewed) { review = true; 4 } else 5
+            else -> 6
         }
-        val titles = listOf("Inloggen", "Bestanden ophalen", "Voorbereiden", "pdf2zcbs", "images.exe", "Upload ocr en pdf", "Bewerken", "Afsluiten")
+        val titles = listOf("Bestanden kiezen", "Nummers", "pdf2zcbs", "images.exe", "Upload ocr en pdf", "Back-up")
+        val notes = mapOf(
+            1 to pdfsInTestFolder().size.takeIf { it > 0 }?.let { "$it in de invoermap" },
+            2 to current?.files?.let { it.first().number + (if (it.size > 1) " t/m " + it.last().number else "") },
+        )
         val phases = titles.mapIndexed { i, title ->
             val nr = i + 1
-            val note = if (nr == 7 && itemEditService.records().isNotEmpty()) "${itemEditService.handledCount()}/${itemEditService.records().size}" + (itemEditService.laterCount().takeIf { it > 0 }?.let { " · $it later" } ?: "") else null
-            PhaseView(nr, title, when { nr < current -> "done"; nr == current -> "now"; else -> "todo" }, note)
+            PhaseView(nr, title, when { nr < phase -> "done"; nr == phase -> "now"; else -> "todo" }, notes[nr])
         }
-        return BatchView(phases, current, current == 9, v)
+        return FlowView(phases, phase, phase == 7, review, v)
     }
 
     /** Een nieuwe test begint schoon: een nog lopend programma wordt gestopt en de console leeggemaakt. */
@@ -174,9 +178,8 @@ class TestRunService(
     }
 
     @Synchronized
-    fun execute(stepId: Int, mode: RunMode, auto: Boolean = false, options: StepOptions = StepOptions()) {
+    fun execute(stepId: Int, mode: RunMode, auto: Boolean = false) {
         val current = run ?: error("Er is geen testrun gestart.")
-        syncEdit(current)
         val step = current.steps.firstOrNull { it.id == stepId } ?: error("Onbekende stap $stepId.")
         check(current.nextStep()?.id == step.id) { "Deze stap is nog niet aan de beurt." }
         check(step.status != StepStatus.RUNNING) { "Deze stap is al bezig." }
@@ -189,11 +192,9 @@ class TestRunService(
             when (step.type) {
                 StepType.RENAME -> rename(current, step)
                 StepType.PDF2ZCBS -> runPdf2zcbs(current, step, settings, mode, auto)
-                StepType.IMAGES -> runImages(step, settings, mode, auto, options)
+                StepType.IMAGES -> runImages(current, step, settings, mode, auto)
                 StepType.UPLOAD -> upload(step, settings)
-                StepType.EDIT -> edit(current, step)
-                StepType.CLEANUP -> cleanup(step, settings)
-                StepType.ARCHIVE -> archive(step, settings)
+                StepType.CLEANUP -> cleanup(current, step, settings)
             }
         } catch (e: Exception) {
             step.status = StepStatus.FAILED
@@ -213,18 +214,8 @@ class TestRunService(
 
     private fun update(stepId: Int, change: (Step) -> Unit) {
         val step = run?.steps?.firstOrNull { it.id == stepId } ?: error("Onbekende stap $stepId.")
-        // Het bewerken van de records is geen programma: de gebruiker mag het zelf afsluiten.
-        check(step.status != StepStatus.RUNNING || step.type == StepType.EDIT) { "Deze stap is nog bezig." }
+        check(step.status != StepStatus.RUNNING) { "Deze stap is nog bezig." }
         change(step)
-    }
-
-    /** De stap Records bewerken is klaar zodra elk record is opgeslagen of op "later" staat. */
-    private fun syncEdit(current: TestRun) {
-        val step = current.steps.firstOrNull { it.type == StepType.EDIT } ?: return
-        if (step.status == StepStatus.RUNNING && itemEditService.allHandled()) {
-            step.status = StepStatus.DONE
-            step.message = "${itemEditService.handledCount()} records opgeslagen" + (itemEditService.laterCount().takeIf { it > 0 }?.let { ", $it op later" } ?: "") + "."
-        }
     }
 
     // ---- Locaties van alle bestanden die de stappen aanmaken of nodig hebben ----
@@ -233,6 +224,7 @@ class TestRunService(
         val p2z: Path? = s.pdf2zcbsExe.trim().takeIf { it.isNotEmpty() }?.let { Path.of(it).toAbsolutePath().parent }
         val img: Path? = s.imagesExe.trim().takeIf { it.isNotEmpty() }?.let { Path.of(it).toAbsolutePath().parent }
         val backup: Path? = s.backup100pctFolder.trim().takeIf { it.isNotEmpty() }?.let { Path.of(it) }
+        val backupPdf: Path? = s.backupPdfFolder.trim().takeIf { it.isNotEmpty() }?.let { Path.of(it) }
 
         fun p2zOutput(): Path? = p2z?.resolve("output")
         fun ocr(f: TestFile): Path? = p2zOutput()?.resolve("ocr")?.resolve("${f.number}.txt")
@@ -244,6 +236,8 @@ class TestRunService(
         fun imgLarge(f: TestFile): Path? = img?.resolve("large")?.resolve("${f.number}.jpg")
         fun img100(f: TestFile): Path? = img?.resolve("100pct")?.resolve("${f.number}.jpg")
         fun backupOf(f: TestFile): Path? = backup?.resolve("${f.number}.jpg")
+        fun backupPdfOf(f: TestFile): Path? = backupPdf?.resolve("${f.number}.pdf")
+        fun p2zInput(f: TestFile): Path? = p2z?.resolve("${f.number}.pdf")
     }
 
     private fun Path?.present(): Boolean = this != null && Files.isRegularFile(this) && runCatching { Files.size(this) > 0 }.getOrDefault(false)
@@ -284,6 +278,7 @@ class TestRunService(
             }
 
             StepType.IMAGES -> buildList {
+                if (current.gated && StepType.PDF2ZCBS !in current.reviewed) add("Controleer eerst de bestanden van pdf2zcbs.exe en bevestig dat ze goed zijn.")
                 exeProblem("images.exe", s.imagesExe)?.let { add(it) }
                 step.files.forEach { if (!l.p2zLarge(it).present()) add("Large-jpg van pdf2zcbs ontbreekt: ${l.p2zLarge(it) ?: "(pdf2zcbs.exe niet ingesteld)"} (is de pdf2zcbs-stap gedaan?)") }
                 val dir = l.img ?: return@buildList
@@ -303,6 +298,7 @@ class TestRunService(
             }
 
             StepType.UPLOAD -> buildList {
+                if (current.gated && StepType.IMAGES !in current.reviewed) add("Controleer eerst de bestanden van images.exe en bevestig dat ze goed zijn.")
                 if (s.sftpHost.isBlank()) add("Sftp-host is niet ingesteld (Instellingen).")
                 if (s.sftpUser.isBlank()) add("Sftp-gebruiker is niet ingesteld (Instellingen).")
                 if (s.sftpPassword.isEmpty()) add("Sftp-wachtwoord is niet ingesteld (Instellingen).")
@@ -314,28 +310,16 @@ class TestRunService(
                 }
             }
 
-            StepType.EDIT -> buildList {
-                if (s.zcbsBaseUrl.isBlank()) add("Het adres van ZCBS is niet ingesteld (Instellingen).")
-                if (s.collection.isBlank()) add("Collectie is niet ingesteld (Instellingen).")
-                if (!itemEditService.loggedIn()) add("Log eerst in bij ZCBS met je eigen naam en wachtwoord.")
-                else {
-                    val missing = itemEditService.missingInZcbs(step.files.map { it.number })
-                    if (missing.isNotEmpty()) {
-                        add("Deze records bestaan nog niet in ZCBS: ${names(missing)}. Ze worden door images.exe aangemaakt, met het vinkje \"Lege records aanmaken\" bij die stap.")
-                    }
-                }
-            }
-
             StepType.CLEANUP -> buildList {
                 if (l.p2z == null || l.img == null) add("Stel eerst de paden van pdf2zcbs.exe en images.exe in.")
                 if (s.backup100pctFolder.isBlank()) add("Stel eerst de back-upmap voor de 100pct in (Instellingen).")
-                else if (!Files.isDirectory(Path.of(s.backup100pctFolder))) add("Back-upmap bestaat niet: ${s.backup100pctFolder}")
-                step.files.forEach { if (!l.img100(it).present()) add("100pct ontbreekt, dus geen back-up mogelijk: ${l.img100(it) ?: "(images.exe niet ingesteld)"}") }
-            }
-
-            StepType.ARCHIVE -> buildList {
-                if (s.archivedFolder.isBlank()) add("Stel eerst de archived-map in bij Instellingen.")
-                if (!Files.exists(step.file.original)) add("Origineel niet gevonden: ${step.file.original}")
+                else if (!Files.isDirectory(Path.of(s.backup100pctFolder))) add("Back-upmap voor de 100pct bestaat niet: ${s.backup100pctFolder}")
+                if (s.backupPdfFolder.isBlank()) add("Stel eerst de back-upmap voor de pdf's in (Instellingen).")
+                else if (!Files.isDirectory(Path.of(s.backupPdfFolder))) add("Back-upmap voor de pdf's bestaat niet: ${s.backupPdfFolder}")
+                step.files.forEach {
+                    if (!l.img100(it).present()) add("100pct ontbreekt, dus geen back-up mogelijk: ${l.img100(it) ?: "(images.exe niet ingesteld)"}")
+                    if (!current.workDir.resolve(it.newName).present()) add("De pdf met recordnummer ontbreekt, dus geen back-up mogelijk: ${current.workDir.resolve(it.newName)}")
+                }
             }
         }
     }
@@ -365,14 +349,12 @@ class TestRunService(
         val expected = step.files.flatMap {
             listOf("tekst" to l.ocr(it)!!, "pdf" to l.pdf(it)!!, "small" to l.p2zSmall(it)!!, "large" to l.p2zLarge(it)!!)
         }
-        val answers = if (auto) s.pdf2zcbsAnswers.map { AutoAnswer(it.pattern, it.answer, it.secret) } else null
-        runExe(step, s, Path.of(s.pdf2zcbsExe), dir, copies, expected, mode, answers)
+        val known = s.pdf2zcbsAnswers.map { AutoAnswer(it.pattern, it.answer, it.secret) }
+        runExe(current, step, s, Path.of(s.pdf2zcbsExe), dir, copies, expected, mode, if (auto) known else null, known)
     }
 
-    private fun runImages(step: Step, s: WorkflowSettings, mode: RunMode, auto: Boolean, options: StepOptions) {
-        check(!options.records || options.upload) { "Lege records aanmaken kan alleen samen met uploaden." }
-        step.options = options
-        if (auto && options.upload) {
+    private fun runImages(current: TestRun, step: Step, s: WorkflowSettings, mode: RunMode, auto: Boolean) {
+        if (auto && yes(remembered(s, UPLOAD_QUESTION))) {
             check(s.imagesAnswers.any { it.pattern.contains("FTP wachtwoord", ignoreCase = true) && it.answer.isNotEmpty() }) {
                 "Voor uploaden met automatisch uitvoeren moet bij Instellingen het FTP-wachtwoord staan (regel 'FTP wachtwoord'). Gebruik anders Handmatig uitvoeren."
             }
@@ -381,27 +363,45 @@ class TestRunService(
         val dir = l.img!!
         val copies = step.files.map { l.p2zLarge(it)!! to l.imgIn(it)!! }
         val expected = step.files.flatMap { listOf("small" to l.imgSmall(it)!!, "large" to l.imgLarge(it)!!, "100pct" to l.img100(it)!!) }
-        val answers = if (auto) imagesRules(s, options) + s.imagesAnswers.map { AutoAnswer(it.pattern, it.answer, it.secret) } else null
-        runExe(step, s, Path.of(s.imagesExe), dir, copies, expected, mode, answers)
+        val known = s.imagesAnswers.map { AutoAnswer(it.pattern, it.answer, it.secret) }
+        runExe(current, step, s, Path.of(s.imagesExe), dir, copies, expected, mode, if (auto) imagesRules(s) + known else null, known)
     }
 
     /**
-     * Antwoorden die per run of per collectie verschillen. Ze staan vóór de algemene antwoorden uit Instellingen en
-     * gaan dus voor. Overschrijven en het verwijderen van de mappen is altijd nee.
+     * Antwoorden die altijd gelden en dus voor de onthouden antwoorden gaan: de collectie komt uit de instellingen, en er wordt nooit
+     * overschreven of verwijderd (de app ruimt zelf op, ná de back-up). De rest (bestandstype, resolutie, instelling, uploaden, records
+     * aanmaken) zijn de onthouden antwoorden uit Instellingen, die de app van de laatste handmatige run overneemt.
      */
-    private fun imagesRules(s: WorkflowSettings, options: StepOptions): List<AutoAnswer> = listOf(
-        AutoAnswer("Type ENTER/RETURN indien OK", s.imagesFileType),
-        AutoAnswer("Kies 1,2,3", s.imagesResolution),
-        AutoAnswer("UPLOADEN aangemaakte images", if (options.upload) "j" else "n"),
-        AutoAnswer("Nummer, naam of plaats instelling", s.imagesInstitution),
+    private fun imagesRules(s: WorkflowSettings): List<AutoAnswer> = listOf(
         AutoAnswer("Kies de ZCBS-toepassing", s.collection),
         AutoAnswer("OVERSCHRIJVEN", "n"),
-        AutoAnswer("AANMAKEN en UPLOADEN van de bijbehorende", if (options.records) "j" else "n"),
         AutoAnswer("VERWIJDEREN (tijdelijk) aangemaakte mappen", "n"),
         AutoAnswer("VERWIJDEREN inhoud van de map [images]", "n"),
     )
 
+    private fun remembered(s: WorkflowSettings, question: String): String? =
+        s.imagesAnswers.firstOrNull { it.pattern.contains(question, ignoreCase = true) }?.answer
+
+    private fun yes(answer: String?): Boolean = answer?.trim()?.lowercase() in setOf("j", "ja", "y", "yes")
+
+    /** Onthoudt wat Carla zelf heeft ingetypt, zodat het de volgende keer wordt voorgesteld en automatisch kan worden gegeven. */
+    private fun learn(type: StepType, typed: Map<String, String>) {
+        if (typed.isEmpty()) return
+        val s = settingsService.get()
+        fun update(rules: List<nl.vdzon.hkhworkflow.settings.AnswerRule>) = rules.map { r -> typed[r.pattern]?.takeIf { !r.secret }?.let { r.copy(answer = it) } ?: r }
+        val updated = when (type) {
+            StepType.PDF2ZCBS -> s.copy(pdf2zcbsAnswers = update(s.pdf2zcbsAnswers))
+            StepType.IMAGES -> s.copy(imagesAnswers = update(s.imagesAnswers))
+            else -> return
+        }
+        if (updated != s) {
+            settingsService.save(updated)
+            log.info("Antwoorden van {} onthouden: {}", type.label, typed.keys)
+        }
+    }
+
     private fun runExe(
+        current: TestRun,
         step: Step,
         s: WorkflowSettings,
         exe: Path,
@@ -410,6 +410,7 @@ class TestRunService(
         expected: List<Pair<String, Path>>,
         mode: RunMode,
         autoAnswers: List<AutoAnswer>?,
+        knownQuestions: List<AutoAnswer>,
     ) {
         val notes = mutableListOf<String>()
         var replaced = 0
@@ -425,32 +426,44 @@ class TestRunService(
         step.message = "${copies.size} bestanden klaargezet" + (if (replaced > 0) " ($replaced overschreven)" else "")
         val env = if (s.perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
         val label = "${step.type.label} – ${step.files.size} ${if (step.files.size == 1) "bestand" else "bestanden"} (${step.fileNames})"
-        exeRunner.start(exe, exeDir, label, mode, env, notes, autoAnswers) { code ->
+        exeRunner.start(exe, exeDir, label, mode, env, notes, autoAnswers, knownQuestions) { code ->
+            val missing = if (code == 0) expected.filter { !it.second.present() } else emptyList()
+            // Buiten het slot: dit leest een paar pagina's van ZCBS.
+            val note = if (code == 0 && missing.isEmpty() && step.type == StepType.IMAGES) imagesNote(step) else ""
+            if (code == 0 && missing.isEmpty() && autoAnswers == null) learn(step.type, exeRunner.typedAnswers())
             synchronized(this) {
                 if (code != 0) {
                     step.status = StepStatus.FAILED
                     step.message = "Gestopt met exitcode ${code ?: "onbekend"}. Controleer de uitvoer; zet de stap handmatig op klaar als het toch goed ging."
+                } else if (missing.isEmpty()) {
+                    step.status = StepStatus.DONE
+                    step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt.$note"
                 } else {
-                    val missing = expected.filter { !it.second.present() }
-                    if (missing.isEmpty()) {
-                        step.status = StepStatus.DONE
-                        step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt." + imagesNote(step)
-                    } else {
-                        step.status = StepStatus.FAILED
-                        step.message = "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: " +
-                            names(missing.map { "${it.first} ${it.second}" }, 6) + ". Bekijk het log; zet de stap handmatig op klaar als het toch goed ging."
-                    }
+                    step.status = StepStatus.FAILED
+                    step.message = "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: " +
+                        names(missing.map { "${it.first} ${it.second}" }, 6) + ". Bekijk het log; zet de stap handmatig op klaar als het toch goed ging."
                 }
             }
         }
     }
 
-    /** Wat images.exe niet heeft gedaan, omdat de gebruiker het niet had aangevinkt. De volgende fasen hebben dat wel nodig. */
+    /** Wat images.exe heeft gedaan met uploaden en records aanmaken, en of die records nu in ZCBS staan. */
     private fun imagesNote(step: Step): String {
-        val o = step.options ?: return ""
+        val given = exeRunner.givenAnswers()
+        fun answer(question: String) = given.entries.firstOrNull { it.key.contains(question, ignoreCase = true) }?.value
+        val uploaded = yes(answer(UPLOAD_QUESTION))
+        val records = yes(answer(RECORDS_QUESTION))
         return buildList {
-            if (!o.upload) add(" Let op: de afbeeldingen zijn niet naar de server geüpload.")
-            if (!o.records) add(" Let op: er zijn geen records aangemaakt, dus de stap Records bewerken kan nog niet.")
+            if (!uploaded) add(" Let op: de afbeeldingen zijn niet naar de server geüpload.")
+            if (!records) add(" Let op: er zijn geen records aangemaakt in ZCBS.")
+            else if (itemEditService.loggedIn()) {
+                val missing = runCatching { itemEditService.missingInZcbs(step.files.map { it.number }) }.getOrNull()
+                when {
+                    missing == null -> add(" De records in ZCBS konden niet worden gecontroleerd.")
+                    missing.isEmpty() -> add(" De ${step.files.size} records staan in ZCBS.")
+                    else -> add(" Let op: deze records staan nog niet in ZCBS: ${names(missing)}.")
+                }
+            }
         }.joinToString("")
     }
 
@@ -479,47 +492,47 @@ class TestRunService(
         }
     }
 
-    private fun edit(current: TestRun, step: Step) {
-        val missing = itemEditService.missingInZcbs(step.files.map { it.number })
-        check(missing.isEmpty()) {
-            "Deze records bestaan nog niet in ZCBS: ${names(missing)}. Zijn ze aangemaakt (images.exe met \"lege records aanmaken\")? Zo niet, dan is er niets te bewerken."
-        }
-        itemEditService.startBatch(step.files.map { BatchRecord(it.number, it.originalName, it.by, it.folder) })
-        step.status = StepStatus.RUNNING
-        step.message = "Bewerk de records op de pagina Records. De stap is klaar als elk record is opgeslagen of op later staat."
-    }
-
     /**
-     * Eerst de back-up van de 100pct en pas daarna het verwijderen, en alleen in de mappen van de programma's zelf.
-     * Het origineel (en de kopie in `werk`) blijft staan; die gaan in de archiveerstap weg.
+     * Eerst de back-up van de 100pct en de pdf's (met hun recordnummer) en pas daarna het verwijderen, en alleen wat bij deze
+     * flow hoort: de mappen van de programma's en de kopieën in de invoermap. De originelen op K: blijven staan. Als laatste komt
+     * er in het verwerkt-log te staan wat er klaar is.
      */
-    private fun cleanup(step: Step, s: WorkflowSettings) {
+    private fun cleanup(current: TestRun, step: Step, s: WorkflowSettings) {
         val l = Layout(s)
-        val backupDir = l.backup!!
         step.status = StepStatus.RUNNING
         var copied = 0
         step.files.forEach { f ->
-            val source = l.img100(f)!!
-            val wanted = backupDir.resolve(source.name)
-            val target = when {
-                !Files.exists(wanted) -> wanted
-                Files.mismatch(source, wanted) == -1L -> null // zelfde bestand staat er al, bijv. na opnieuw proberen
-                else -> uniqueTarget(backupDir, source.name)
-            }
-            if (target != null) {
-                Files.copy(source, target)
-                check(Files.size(target) == Files.size(source)) { "Back-up van ${source.name} is niet even groot als het origineel; er is niets verwijderd." }
-                copied++
-            }
-            check(l.backupOf(f).present() || target != null) { "Back-up van ${source.name} niet gevonden; er is niets verwijderd." }
+            copied += backupCopy(l.img100(f)!!, l.backup!!)
+            copied += backupCopy(current.workDir.resolve(f.newName), l.backupPdf!!)
         }
         var removed = 0
         removed += deleteTree(l.p2zOutput()!!, l.p2z!!)
         listOf("small", "large", "100pct").forEach { removed += deleteTree(l.img!!.resolve(it), l.img) }
-        step.files.forEach { if (Files.deleteIfExists(l.imgIn(it)!!)) removed++ }
+        step.files.forEach { f ->
+            listOf(l.imgIn(f)!!, l.p2zInput(f)!!, current.workDir.resolve(f.newName), f.original).forEach { if (Files.deleteIfExists(it)) removed++ }
+        }
         l.img!!.listDirectoryEntries("log-*.txt").filter { it.isRegularFile() }.forEach { Files.delete(it); removed++ }
+        runCatching { Files.deleteIfExists(current.workDir) } // alleen als de map leeg is
+        sourceFiles.forget(step.files.map { it.originalName })
+        val now = LocalDateTime.now()
+        val runId = now.format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
+        processed.add(step.files.map { ProcessedFile(runId, now, itemEditService.user.orEmpty(), s.collection, it.number, it.by, it.folder, it.originalName) })
         step.status = StepStatus.DONE
-        step.message = "Back-up gemaakt in $backupDir ($copied nieuw), daarna $removed bestanden en mappen opgeruimd in ${l.p2z} en ${l.img}."
+        step.message = "Back-up gemaakt in ${l.backup} en ${l.backupPdf} ($copied nieuw), daarna $removed bestanden en mappen opgeruimd. " +
+            "De ${step.files.size} bestanden staan in het verwerkt-log."
+    }
+
+    /** Kopieert [source] naar [dir] en controleert de grootte. Staat hetzelfde bestand er al (opnieuw proberen), dan gebeurt er niets. @return 1 als er gekopieerd is. */
+    private fun backupCopy(source: Path, dir: Path): Int {
+        val wanted = dir.resolve(source.name)
+        val target = when {
+            !Files.exists(wanted) -> wanted
+            Files.mismatch(source, wanted) == -1L -> return 0
+            else -> uniqueTarget(dir, source.name)
+        }
+        Files.copy(source, target)
+        check(Files.size(target) == Files.size(source)) { "Back-up van ${source.name} is niet even groot als het origineel; er is niets verwijderd." }
+        return 1
     }
 
     /** Verwijdert [target] en alles eronder, maar alleen als het binnen [root] ligt. @return aantal verwijderde items. */
@@ -533,15 +546,6 @@ class TestRunService(
             walk.sorted(Comparator.reverseOrder()).forEach { Files.delete(it); count++ }
         }
         return count
-    }
-
-    private fun archive(step: Step, s: WorkflowSettings) {
-        val archived = Path.of(s.archivedFolder)
-        Files.createDirectories(archived)
-        val target = uniqueTarget(archived, step.file.originalName)
-        Files.move(step.file.original, target)
-        step.status = StepStatus.DONE
-        step.message = "Verplaatst naar $target"
     }
 
     private fun uniqueTarget(dir: Path, name: String): Path {
@@ -561,7 +565,6 @@ class TestRunService(
     @Synchronized
     fun view(): TestRunView? {
         val current = run ?: return null
-        syncEdit(current)
         val s = settingsService.get()
         val next = current.nextStep()
 
@@ -588,6 +591,7 @@ class TestRunService(
             FileRowView(
                 originalName = file.originalName,
                 newName = file.newName,
+                number = file.number,
                 by = file.by,
                 cells = StepType.entries.map { type -> toView(current.steps.first { it.type == type && it.files.contains(file) }) },
                 checks = checkGroups(current, file, s),
@@ -607,11 +611,12 @@ class TestRunService(
     }
 
     private fun warnings(current: TestRun, step: Step): List<String> = buildList {
+        val s = settingsService.get()
         if (step.type == StepType.CLEANUP && current.steps.first { it.type == StepType.UPLOAD }.status == StepStatus.SKIPPED) {
             add("De upload is overgeslagen. Na het opruimen zijn de tekst en pdf's weg, tenzij je ze zelf op de server hebt gezet.")
         }
-        if (step.type == StepType.EDIT && !settingsService.get().zcbsIsLocal()) {
-            add("Dit schrijft in het echte archief (${settingsService.get().zcbsBaseUrl}). Elke opslag stuurt een e-mail naar de beheerder.")
+        if (step.type == StepType.IMAGES && (!yes(remembered(s, UPLOAD_QUESTION)) || !yes(remembered(s, RECORDS_QUESTION)))) {
+            add("Bij Automatisch uitvoeren zou images.exe nu niet uploaden en geen records aanmaken: dat zijn de onthouden antwoorden. Voer het één keer handmatig uit en antwoord ja; de app onthoudt dat voor de volgende keer.")
         }
     }
 
@@ -619,6 +624,7 @@ class TestRunService(
         val l = Layout(s)
         val n = step.files.size
         val unset = "(niet ingesteld)"
+        fun yn(answer: String?) = if (yes(answer)) "ja" else "nee"
         return when (step.type) {
             StepType.RENAME -> listOf("Maakt een kopie van ${step.file.originalName} als ${current.workDir.resolve(step.file.newName)}.", "Het origineel blijft staan.")
             StepType.PDF2ZCBS -> listOf(
@@ -628,7 +634,8 @@ class TestRunService(
             )
             StepType.IMAGES -> listOf(
                 "Zet de $n large-jpg's uit ${l.p2zOutput()?.resolve("large") ?: unset} in ${l.img?.resolve("images") ?: unset}.",
-                "Start ${s.imagesExe.ifBlank { unset }} één keer. Bij automatisch uitvoeren geeft de app deze antwoorden: bestandstype ${s.imagesFileType}, resolutie ${s.imagesResolution}, instelling ${s.imagesInstitution}, collectie ${s.collection}.",
+                "Start ${s.imagesExe.ifBlank { unset }} één keer. Handmatig typ je zelf de antwoorden; de app onthoudt ze en stelt ze de volgende keer voor.",
+                "Automatisch geeft de app de onthouden antwoorden: uploaden naar de server ${yn(remembered(s, UPLOAD_QUESTION))}, records aanmaken ${yn(remembered(s, RECORDS_QUESTION))}, collectie ${s.collection}.",
                 "Er wordt nooit overschreven en niets verwijderd: de mappen small, large, 100pct en images blijven staan.",
                 "Verwacht per bestand in ${l.img ?: unset}: small, large en 100pct.",
             )
@@ -638,17 +645,13 @@ class TestRunService(
                 "Pdf: $n bestand(en) naar ${s.remotePdfDir()}",
                 "Eerst een controle: de mappen bestaan en geen enkel bestand bestaat al. Er wordt niets overschreven, aangemaakt of verwijderd.",
             )
-            StepType.EDIT -> listOf(
-                "Controleert dat de $n records bestaan in ZCBS (${s.zcbsBaseUrl.ifBlank { unset }}).",
-                "Je bewerkt ze één voor één op de pagina Records. Elk record dat je opent is 10 minuten voor anderen vergrendeld.",
-                "Elke opslag gaat via het formulier van ZCBS, met een voorbeeld vooraf en teruglezen achteraf. Zie je een melding, dan kun je het record altijd in ZCBS zelf bewerken.",
-            )
             StepType.CLEANUP -> listOf(
                 "Kopieert de $n 100pct-afbeeldingen naar ${s.backup100pctFolder.ifBlank { unset }}.",
-                "Verwijdert daarna ${l.p2zOutput() ?: unset}, ${l.img?.resolve("small") ?: unset}, large en 100pct, de $n bronbestanden in ${l.img?.resolve("images") ?: unset} en log-*.txt in ${l.img ?: unset}.",
-                "De tekst en pdf's in output zijn dan weg: die moeten op de server staan (stap Upload).",
+                "Kopieert de $n pdf's met hun recordnummer naar ${s.backupPdfFolder.ifBlank { unset }}.",
+                "Verwijdert daarna ${l.p2zOutput() ?: unset}, ${l.img?.resolve("small") ?: unset}, large en 100pct, de bronbestanden in ${l.img?.resolve("images") ?: unset}, log-*.txt in ${l.img ?: unset} en de $n kopieën in de invoermap.",
+                "De bestanden op K: blijven staan. De tekst en pdf's in output zijn dan weg: die moeten op de server staan (stap Upload).",
+                "Zet de bestanden in het verwerkt-log, zodat je later kunt zien wat al op het archief staat.",
             )
-            StepType.ARCHIVE -> listOf("Verplaatst ${step.file.original} naar ${s.archivedFolder.ifBlank { unset }}.")
         }
     }
 
@@ -696,24 +699,51 @@ class TestRunService(
                 remote("tekst", s.remoteOcrDir() + "/" + file.number + ".txt"),
                 remote("pdf", s.remotePdfDir() + "/" + file.number + ".pdf"),
             )))
-            add(CheckGroupView("ZCBS", listOf(
-                run {
-                    val st = itemEditService.statusOf(file.number)
-                    val state = when (st) {
-                        EditStatus.OPGESLAGEN -> "OK"
-                        EditStatus.ONVEILIG, EditStatus.FOUT, EditStatus.GEBLOKKEERD -> "MISSING"
-                        else -> "PENDING"
-                    }
-                    CheckView("record bewerkt" + (st?.takeIf { it == EditStatus.LATER }?.let { " (later)" } ?: ""), state, itemEditService.recordUrl(file.number).orEmpty())
-                },
-            )))
             add(CheckGroupView("back-up", listOf(
                 run {
                     val st = stepOf(StepType.CLEANUP).status
                     val path = l.backupOf(file)
                     CheckView("100pct", when { path.present() -> "OK"; st == StepStatus.PENDING -> "PENDING"; else -> "MISSING" }, path?.toString().orEmpty())
                 },
+                run {
+                    val st = stepOf(StepType.CLEANUP).status
+                    val path = l.backupPdfOf(file)
+                    CheckView("pdf", when { path.present() -> "OK"; st == StepStatus.PENDING -> "PENDING"; else -> "MISSING" }, path?.toString().orEmpty())
+                },
             )))
         }
+    }
+
+    /** Een bestand van de uitvoer van pdf2zcbs of images.exe om te bekijken: alleen voor de nummers van de huidige flow en alleen als het bestaat. */
+    @Synchronized
+    fun resultFile(kind: String, number: String): Path? {
+        val current = run ?: return null
+        val file = current.files.firstOrNull { it.number == number } ?: return null
+        val l = Layout(settingsService.get())
+        val path = when (kind) {
+            "pdf" -> l.pdf(file)
+            "tekst" -> l.ocr(file)
+            "p2z-small" -> l.p2zSmall(file)
+            "p2z-large" -> l.p2zLarge(file)
+            "small" -> l.imgSmall(file)
+            "large" -> l.imgLarge(file)
+            "100pct" -> l.img100(file)
+            else -> null
+        }
+        return path?.takeIf { it.present() }
+    }
+
+    /** De eerste tekens van de tekst die pdf2zcbs uit de pdf haalde, om te zien of er iets zinnigs in staat. */
+    fun ocrExcerpt(number: String, max: Int = 200): String? {
+        val path = resultFile("tekst", number) ?: return null
+        return runCatching {
+            val bytes = Files.newInputStream(path).use { it.readNBytes(max * 4) }
+            String(bytes, Charsets.UTF_8).replace(Regex("\\s+"), " ").trim().take(max)
+        }.getOrNull()
+    }
+
+    private companion object {
+        const val UPLOAD_QUESTION = "UPLOADEN aangemaakte images"
+        const val RECORDS_QUESTION = "AANMAKEN en UPLOADEN van de bijbehorende"
     }
 }

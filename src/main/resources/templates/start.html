@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Inloggen')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div>
+            <h1>Welkom bij ZcbsServer</h1>
+            <p class="sub">Log in met je eigen naam en wachtwoord van ZCBS. Daarna kies je wat je wilt doen.</p>
+        </div>
+        <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
+        <div class="alert alert-info" th:if="${needsLogin}">Log eerst in bij ZCBS.</div>
+        <section class="card pad stack" style="max-width:520px">
+            <h2 style="margin:0">Inloggen bij ZCBS</h2>
+            <p class="muted" style="margin:0">Dit zijn dezelfde gegevens als op de ZCBS-website. De app bewaart ze alleen zolang hij draait en schrijft ze nergens op.</p>
+            <div class="alert alert-info" th:unless="${zcbsConfigured}">Het adres van ZCBS is nog niet ingesteld. Dat doet de beheerder bij <a th:href="@{/instellingen}">Instellingen</a>.</div>
+            <form method="post" th:action="@{/zcbs/login}" class="stack" autocomplete="off">
+                <input type="hidden" name="terug" value="/">
+                <div class="field"><label class="f" for="naam">Naam</label><input type="text" id="naam" name="naam" autocomplete="off" autofocus><span class="hint">Typ je naam precies zoals in ZCBS.</span></div>
+                <div class="field"><label class="f" for="wachtwoord">Wachtwoord</label><input type="password" id="wachtwoord" name="wachtwoord" autocomplete="new-password"></div>
+                <div><button class="btn btn-p" type="submit">Inloggen</button></div>
+            </form>
+        </section>
+    </main>
+</div>
+</body>
+</html>

@@ -40,7 +40,8 @@ h2{font-family:var(--serif);font-size:20px;font-weight:600;margin:0}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 .linkbtn{background:none;border:0;padding:6px 2px;font:14px var(--sans);color:var(--accent);text-decoration:underline;cursor:pointer}
 label.f{font-size:14px;font-weight:600;display:block;margin-bottom:6px}
-input[type=text],input[type=search],select{height:44px;padding:0 12px;border:1px solid #b9b09c;border-radius:8px;font:14px var(--sans);background:#fff;color:var(--ink);width:100%}
+input[type=text],input[type=search],input[type=password],select{height:44px;padding:0 12px;border:1px solid #b9b09c;border-radius:8px;font:14px var(--sans);background:#fff;color:var(--ink);width:100%}
+textarea{width:100%;padding:10px 12px;border:1px solid #b9b09c;border-radius:8px;font:14px var(--sans);background:#fff;color:var(--ink)}
 input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;cursor:pointer}
 .field{display:flex;flex-direction:column;gap:6px}
 .hint{font-size:13px;color:var(--muted)}
@@ -105,3 +106,27 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 .next{flex-wrap:wrap}
 .next>div:first-child{flex:1 1 380px !important}
 .next>.row-actions{flex:0 1 auto}
+
+/* Nieuwe bestanden: bladeren, nummers kiezen en de uitvoer controleren */
+.roots{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.crumbs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px} .crumbs .sep{color:var(--muted)}
+.dirs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.dir{display:flex;gap:8px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;text-decoration:none;color:var(--ink);font-size:14px}
+.dir:hover{border-color:var(--accent)} .dir .ico{font-size:16px}
+.pickrow{cursor:pointer} .pickrow.done{opacity:.6;cursor:default}
+.tr.dim{opacity:.55}
+.tr.review{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:16px;align-items:start;padding:12px 16px}
+.review .thumb{display:block;border:1px solid var(--line);border-radius:6px;background:#fbfaf6;overflow:hidden;min-height:60px}
+.review .thumb img{display:block;width:130px;height:auto}
+.review .excerpt{margin:6px 0;font-size:13px;color:var(--ink);max-width:640px;overflow-wrap:anywhere}
+.review .links{display:flex;gap:14px;font-size:13px}
+.review .checks{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+
+/* Start: collectie en acties kiezen */
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;max-width:820px}
+.choice{display:flex;flex-direction:column;gap:8px;padding:22px 24px;border:1px solid var(--line);border-radius:12px;background:#fff;text-decoration:none;color:var(--ink);font-size:16px}
+.choice:hover{border-color:var(--accent);box-shadow:0 1px 6px rgba(0,0,0,.08)}
+.choice b{font-family:var(--serif);font-size:20px}
+.runhead{display:flex;flex-direction:column;gap:2px}
+.head > .btn,.head > .row-actions{flex-shrink:0;white-space:nowrap}
+.tr.th > span{min-width:0;overflow-wrap:anywhere}

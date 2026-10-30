@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Wat wil je doen?')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <a class="back" th:href="@{/collectie}">← Andere collectie</a>
+        <div>
+            <h1>Collectie <span th:text="${collection}">archief</span></h1>
+            <p class="sub">Wat wil je doen?</p>
+        </div>
+        <div class="choices">
+            <a class="choice" th:href="@{/nieuw}">
+                <b>Nieuwe bestanden in ZCBS zetten</b>
+                <span class="hint">Scans van K: kiezen, ze een recordnummer geven, pdf2zcbs.exe en images.exe draaien, uploaden en een back-up maken. De gegevens vul je later in.</span>
+            </a>
+            <a class="choice" th:href="@{/records}">
+                <b>ZCBS records aanpassen</b>
+                <span class="hint">Kies een record of een reeks records en vul de titel en andere gegevens in, via het formulier van ZCBS.</span>
+            </a>
+        </div>
+        <p class="hint" style="margin:0"><a th:href="@{/verwerkt}">Bekijk wat al verwerkt is</a></p>
+    </main>
+</div>
+</body>
+</html>

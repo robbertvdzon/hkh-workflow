@@ -9,9 +9,7 @@
         <div class="head">
             <div>
                 <h1>Record <span class="mono" th:text="${r.number}">11934</span></h1>
-                <p class="sub"><span class="mono" th:text="${r.fileName}">scan.pdf</span>
-                    <span th:if="${r.by != ''}"> · gescand door <b th:text="${r.by}">Ria</b> (<span class="mono" th:text="${r.folder}">K:\</span>)</span>
-                    · record <span th:text="${position}">1</span> van <span th:text="${total}">12</span>
+                <p class="sub"><span th:if="${r.fileName != ''}"><span class="mono" th:text="${r.fileName}">scan.pdf</span> · </span>record <span th:text="${position}">1</span> van <span th:text="${total}">12</span>
                     <span th:if="${openedAt != null}"> · geopend om <span th:text="${openedAt}">14:32</span>, voor anderen vergrendeld tot <span th:text="${openedUntil}">14:42</span></span></p>
             </div>
             <a class="btn btn-s btn-sm" th:if="${zcbsUrl}" th:href="${zcbsUrl}" target="_blank">Open in ZCBS</a>

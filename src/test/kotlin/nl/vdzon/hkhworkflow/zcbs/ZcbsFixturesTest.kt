@@ -148,4 +148,47 @@ class ZcbsFixturesTest {
         listOf("select", "from", "null", "manuscript", "scriptie", "style", "curl", "Selecteren", "Heemskerk").forEach { assertNull(ZcbsText.refusedWord(it), it) }
         assertNotNull(ZcbsText.refusedWord("zie permit.lst"))
     }
+
+    // ---- de vrije nummers (pagina voor een nieuw record) ----
+
+    @Test
+    fun `de vrije nummers worden gelezen en aansluitende nummers vormen een reeks`() {
+        val free = ZcbsPages.freeNumbers(Fixtures.page("vrije-nummers.html"), last = 11933)!!
+        assertEquals(5, free.width)
+        assertEquals(NumberRange(1, 9999), free.ranges.first())
+        assertEquals(NumberRange(10001, 10002), free.ranges[1], "10001 en 10002 sluiten aan")
+        assertEquals(NumberRange(10006, 10006), free.ranges[2])
+        assertEquals(NumberRange(11935, 99000), free.ranges[free.ranges.size - 2])
+        assertEquals(NumberRange(99003, 99999, open = true), free.ranges.last())
+        assertEquals("00001 t/m 09999", free.format(free.ranges.first()))
+        assertEquals("99003 en hoger", free.format(free.ranges.last()))
+        assertEquals("10006", free.format(free.ranges[2]))
+    }
+
+    @Test
+    fun `een reeks scans moet aaneengesloten in een vrije reeks passen`() {
+        val free = ZcbsPages.freeNumbers(Fixtures.page("vrije-nummers.html"), last = 11933)!!
+        assertNull(free.check(10001, 2))
+        assertNull(free.check(11935, 12))
+        assertNull(free.check(99003, 500))
+        val tooMany = free.check(10001, 3)!!
+        assertTrue(tooMany.contains("maar 2 aaneengesloten"), tooMany)
+        assertTrue(tooMany.contains("10002"), tooMany)
+        assertTrue(free.check(11934, 1)!!.contains("niet vrij"), "11934 bestaat al")
+        assertTrue(free.check(10005, 1)!!.contains("niet vrij"))
+        assertTrue(free.check(99990, 20)!!.contains("passen niet"), "voorbij het hoogste nummer van de collectie")
+    }
+
+    @Test
+    fun `het voorstel is het nummer na het laatste record, of anders de eerste reeks met ruimte`() {
+        val free = ZcbsPages.freeNumbers(Fixtures.page("vrije-nummers.html"), last = 11934)!!
+        assertEquals(11935L, free.suggest(12))
+        assertEquals(1L, ZcbsPages.freeNumbers(Fixtures.page("vrije-nummers.html"), last = 99999)!!.suggest(12), "na het laatste record is geen ruimte meer")
+        assertEquals(listOf(NumberRange(1, 9999), NumberRange(11935, 99000), NumberRange(99003, 99999, open = true)), free.withRoom(3))
+    }
+
+    @Test
+    fun `een pagina zonder de lijst met vrije nummers geeft null`() {
+        assertNull(ZcbsPages.freeNumbers(Fixtures.page("login-ok.html")))
+    }
 }

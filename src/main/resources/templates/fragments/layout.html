@@ -12,31 +12,37 @@
 <body>
 <nav th:fragment="side" class="side" aria-label="Hoofdmenu">
     <div class="brand"><b>ZcbsServer</b><span>Historische Kring Heemskerk</span></div>
-    <a class="nav" th:classappend="${active == 'batch'} ? 'on'" th:href="@{/batch}">
+    <a class="nav" th:classappend="${active == 'start'} ? 'on'" th:href="@{/}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+        Start</a>
+    <a class="nav" th:if="${zcbsUser != null}" th:classappend="${active == 'nieuw'} ? 'on'" th:href="@{/nieuw}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.5 6H12a3 3 0 0 1 3 3v.5M8.5 18H12a3 3 0 0 0 3-3v-.5"/></svg>
-        Batch</a>
-    <a class="nav" th:classappend="${active == 'records'} ? 'on'" th:href="@{/records}">
+        Nieuwe bestanden</a>
+    <a class="nav" th:if="${zcbsUser != null}" th:classappend="${active == 'records'} ? 'on'" th:href="@{/records}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-        Records bewerken</a>
-    <div class="sep">Demo's</div>
-    <a class="nav" th:classappend="${active == 'verwerken'} ? 'on'" th:href="@{/}">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-        Te verwerken (demo)</a>
-    <a class="nav" th:classappend="${active == 'batches'} ? 'on'" th:href="@{/batches}">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7l10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
-        Batches (demo)</a>
-    <a class="nav" th:classappend="${active == 'demoflow'} ? 'on'" th:href="@{/demo-flow}">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.5 6H12a3 3 0 0 1 3 3v.5M8.5 18H12a3 3 0 0 0 3-3v-.5"/></svg>
-        Hele flow (demo)</a>
+        Records aanpassen</a>
+    <a class="nav" th:if="${zcbsUser != null}" th:classappend="${active == 'verwerkt'} ? 'on'" th:href="@{/verwerkt}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>
+        Verwerkt</a>
     <div class="sep">Beheer</div>
-    <a class="nav" th:classappend="${active == 'test'} ? 'on'" th:href="@{/test}">
+    <a class="nav" th:if="${isAdmin}" th:classappend="${active == 'test'} ? 'on'" th:href="@{/test}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6L4.5 18.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9V3"/><path d="M7 15h10"/></svg>
         Test (technisch)</a>
-    <a class="nav" th:classappend="${active == 'instellingen'} ? 'on'" th:href="@{/instellingen}">
+    <a class="nav" th:if="${isAdmin}" th:classappend="${active == 'instellingen'} ? 'on'" th:href="@{/instellingen}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
         Instellingen</a>
+    <a class="nav" th:unless="${isAdmin}" th:classappend="${active == 'beheer'} ? 'on'" th:href="@{/beheer}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        Beheerder inloggen</a>
+    <form th:if="${isAdmin}" method="post" th:action="@{/beheer/uitloggen}" style="padding:0 12px"><button class="linkbtn" type="submit">Uitloggen als beheerder</button></form>
     <div style="flex-grow:1"></div>
-    <div class="hint" style="padding:16px 12px 0;border-top:1px solid #e0d8c6">Nog geen login.</div>
+    <div class="hint" style="padding:16px 12px 0;border-top:1px solid #e0d8c6" th:if="${zcbsUser != null}">
+        Ingelogd bij ZCBS als <b th:text="${zcbsUser}">Carla</b><br>
+        <span class="mono" style="font-size:11px" th:text="${zcbsAddress}"></span>
+        <span th:if="${zcbsRealArchive}" style="color:var(--err);font-weight:600"><br>het echte archief</span>
+        <form method="post" th:action="@{/zcbs/logout}"><input type="hidden" name="terug" value="/"><button class="linkbtn" type="submit">Uitloggen</button></form>
+    </div>
+    <div class="hint" style="padding:16px 12px 0;border-top:1px solid #e0d8c6" th:if="${zcbsUser == null}">Niet ingelogd bij ZCBS.</div>
 </nav>
 </body>
 </html>

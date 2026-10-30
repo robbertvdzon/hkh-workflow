@@ -59,6 +59,10 @@ data class RunSnapshot(
     val autoAnswered: Int,
     /** Automatisch: er staat een vraag die door geen enkele regel herkend wordt. */
     val autoStuck: Boolean,
+    /** De bekende vraag waar het programma nu op wacht (de tekst waarmee hij herkend is), of null. */
+    val question: String? = null,
+    /** Het onthouden antwoord op [question], om vooraf in te vullen. Nooit een wachtwoord. */
+    val suggestion: String? = null,
 )
 
 /** Eén eerdere of lopende run, afgeleid van het logbestand in de logmap. Blijft dus ook na een herstart zichtbaar. */
@@ -117,8 +121,19 @@ class ExeRunner(
         val startNanos: Long,
         val newline: String,
         val auto: List<AutoAnswer>?,
+        /** De vragen die we kennen, met het onthouden antwoord: voor een voorstel in de handmatige stand en om antwoorden te onthouden. */
+        val known: List<AutoAnswer>,
     ) {
         val output = StringBuilder()
+
+        /** De uitvoer sinds het laatste antwoord: daarin staat de vraag waar het programma nu op wacht. */
+        val sinceInput = StringBuilder()
+
+        /** Alle antwoorden die op een bekende vraag zijn gegeven, handmatig en automatisch. */
+        val given = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+        /** Alleen wat de gebruiker zelf heeft ingetypt op een bekende vraag (zonder wachtwoorden). */
+        val typed = java.util.concurrent.ConcurrentHashMap<String, String>()
 
         @Volatile var exitCode: Int? = null
         @Volatile var finishedAt: Instant? = null
@@ -170,8 +185,25 @@ class ExeRunner(
             auto = run.auto != null,
             autoAnswered = run.autoAnswered,
             autoStuck = isAutoStuck(run),
+            question = currentQuestion(run)?.pattern,
+            suggestion = currentQuestion(run)?.takeIf { !it.secret && run.running }?.answer,
         )
     }
+
+    /** Op welke bekende vraag wacht het programma? De laatst getoonde vraag sinds het laatste antwoord. */
+    private fun currentQuestion(run: Run): AutoAnswer? {
+        val text = synchronized(run.output) { run.sinceInput.toString() }
+        return run.known.filter { it.pattern.isNotBlank() }
+            .map { it to text.lastIndexOf(it.pattern, ignoreCase = true) }
+            .filter { it.second >= 0 }
+            .maxByOrNull { it.second }?.first
+    }
+
+    /** De antwoorden die in de laatste run op bekende vragen zijn gegeven, per vraag. */
+    fun givenAnswers(): Map<String, String> = current?.given?.toMap().orEmpty()
+
+    /** De antwoorden die de gebruiker zelf heeft ingetypt in de laatste run, per vraag; die onthoudt de app voor de volgende keer. */
+    fun typedAnswers(): Map<String, String> = current?.typed?.toMap().orEmpty()
 
     /** Inhoud van het logbestand van de laatste run. */
     fun logText(): String? = current?.let { run ->
@@ -274,6 +306,7 @@ class ExeRunner(
         extraEnv: Map<String, String> = emptyMap(),
         notes: List<String> = emptyList(),
         autoAnswers: List<AutoAnswer>? = null,
+        knownQuestions: List<AutoAnswer> = emptyList(),
         onExit: (Int?) -> Unit,
     ): RunSnapshot {
         check(!isRunning()) { "Er draait al een programma: ${current?.label}" }
@@ -305,7 +338,7 @@ class ExeRunner(
         // Met PERLIO=:unix valt Perl's CRLF-vertaling weg; stuur dan alleen LF, anders komt er een \r in het antwoord.
         val newline = if (isWindows() && extraEnv["PERLIO"] == null) "\r\n" else "\n"
         val run = Run(id, label, mode, command.joinToString(" "), process, writer, logWriter, logFile, Instant.now(), startNanos, newline,
-            autoAnswers?.takeIf { mode == RunMode.IN_APP })
+            autoAnswers?.takeIf { mode == RunMode.IN_APP }, (autoAnswers.orEmpty() + knownQuestions).distinctBy { it.pattern })
         current = run
 
         run.logLine("START $label")
@@ -368,13 +401,21 @@ class ExeRunner(
     fun sendInput(line: String) {
         val run = current ?: error("Er draait geen programma.")
         check(run.running) { "Het programma is al gestopt." }
+        val question = currentQuestion(run)
         send(run, line, secret = false, auto = false)
+        if (question != null && !question.secret) {
+            run.given[question.pattern] = line
+            run.typed[question.pattern] = line
+        }
     }
 
     private fun send(run: Run, line: String, secret: Boolean, auto: Boolean) {
         val writer = run.writer ?: error("Dit programma draait in een eigen venster; typ daar je antwoord.")
         val shown = if (secret) "*".repeat(8) else line
-        synchronized(run.output) { run.output.append(if (auto) "⟶ (auto) " else "⟶ ").append(shown).append("\n") }
+        synchronized(run.output) {
+            run.output.append(if (auto) "⟶ (auto) " else "⟶ ").append(shown).append("\n")
+            run.sinceInput.setLength(0)
+        }
         run.inputsSent++
         run.lastInputNanos = System.nanoTime()
         val logged = if (secret) "(wachtwoord, ${line.length} tekens) + ${quote(run.newline)}" else quote(line + run.newline)
@@ -410,6 +451,8 @@ class ExeRunner(
                     run.logLine("OUT   $n tekens: ${quote(chunk)}")
                     synchronized(run.output) {
                         run.output.append(chunk)
+                        run.sinceInput.append(chunk)
+                        if (run.sinceInput.length > MAX_OUTPUT) run.sinceInput.delete(0, run.sinceInput.length - MAX_OUTPUT)
                         if (run.output.length > MAX_OUTPUT) run.output.delete(0, run.output.length - MAX_OUTPUT)
                     }
                     if (run.autoEnabled) autoRespond(run, chunk)
@@ -445,6 +488,7 @@ class ExeRunner(
                 return
             }
             run.autoAnswered++
+            if (!rule.secret) run.given[rule.pattern] = rule.answer
             run.logLine("AUTO  vraag herkend: ${quote(rule.pattern)}")
             try {
                 send(run, rule.answer, rule.secret, auto = true)

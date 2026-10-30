@@ -111,4 +111,52 @@ class ExeRunnerTest {
         assertEquals(null, runner.snapshot(), "console van een gewist log is weg")
         assertTrue(runner.history().isEmpty())
     }
+
+    @Test
+    fun `knows which question the program waits on, suggests the remembered answer and remembers what is typed`() {
+        val exe = script(
+            """
+            printf 'Splitsen? [J/N] '; read a; echo "splitsen=${'$'}a"
+            printf 'FTP wachtwoord? '; read p
+            printf 'Type return to exit'; read x; echo klaar
+            """.trimIndent(),
+        )
+        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val done = CountDownLatch(1)
+        runner.start(
+            exe, dir, "test", RunMode.IN_APP,
+            knownQuestions = listOf(AutoAnswer("splitsen?", "n"), AutoAnswer("FTP wachtwoord", "oud-wachtwoord", secret = true), AutoAnswer("return to exit", "")),
+        ) { done.countDown() }
+
+        fun waitForQuestion(pattern: String) {
+            val deadline = System.currentTimeMillis() + 10_000
+            while (runner.snapshot()?.question != pattern && System.currentTimeMillis() < deadline) Thread.sleep(20)
+            assertEquals(pattern, runner.snapshot()?.question)
+        }
+
+        waitForQuestion("splitsen?")
+        assertEquals("n", runner.snapshot()!!.suggestion, "het onthouden antwoord wordt voorgesteld")
+        runner.sendInput("j")
+        waitForQuestion("FTP wachtwoord")
+        assertEquals(null, runner.snapshot()!!.suggestion, "een wachtwoord wordt nooit voorgesteld")
+        runner.sendInput("mijn-wachtwoord")
+        waitForQuestion("return to exit")
+        runner.sendInput("")
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+
+        assertEquals(mapOf("splitsen?" to "j", "return to exit" to ""), runner.typedAnswers(), "het wachtwoord wordt niet onthouden")
+        assertEquals(runner.typedAnswers(), runner.givenAnswers())
+        assertEquals(null, runner.snapshot()!!.suggestion, "klaar: geen voorstel meer")
+    }
+
+    @Test
+    fun `automatische antwoorden tellen mee in de gegeven antwoorden maar niet als ingetypt`() {
+        val exe = script("printf 'Splitsen? [J/N] '; read a; echo \"splitsen=\${'$'}a\"")
+        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val done = CountDownLatch(1)
+        runner.start(exe, dir, "auto", RunMode.IN_APP, autoAnswers = listOf(AutoAnswer("splitsen?", "n"))) { done.countDown() }
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+        assertEquals(mapOf("splitsen?" to "n"), runner.givenAnswers())
+        assertEquals(emptyMap(), runner.typedAnswers())
+    }
 }

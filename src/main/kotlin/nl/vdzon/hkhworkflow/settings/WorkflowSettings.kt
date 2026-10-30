@@ -11,14 +11,15 @@ data class AnswerRule(
     val secret: Boolean = false,
 )
 
+/** Een map met scans waar Carla de te verwerken bestanden uit kiest, bijvoorbeeld "Ria" voor `K:\scans ria`. */
+data class SourceRoot(val name: String, val path: String)
+
 /**
  * Instellingen van de workflow. Alle paden zijn absolute paden op de machine waar de jar draait.
  */
 data class WorkflowSettings(
-    /** Map waar de te verwerken pdf's staan (voor de testpagina). */
+    /** De invoermap (`c:\zcbs\invoer`): hier komen de gekozen pdf's te staan voordat ze verwerkt worden. */
     val testFolder: String = "",
-    /** Map waar de originele bestanden na verwerking naartoe worden verplaatst. */
-    val archivedFolder: String = "",
     /** Volledig pad naar images.exe. */
     val imagesExe: String = "",
     /** Volledig pad naar pdf2zcbs.exe. */
@@ -31,18 +32,14 @@ data class WorkflowSettings(
     val imagesAnswers: List<AnswerRule> = DEFAULT_IMAGES_ANSWERS,
     /** Naam van de ZCBS-collectie: antwoord op "Kies de ZCBS-toepassing" en basis voor de sftp-mappen. */
     val collection: String = "archief",
-    /** Antwoord op de vraag naar het bestandstype van images.exe; "a" forceert type A (recordnummer als naam). */
-    val imagesFileType: String = "a",
-    /** Resolutiekeuze van images.exe: 1 t/m 3 = small 100x100 (documenten), 6 t/m 8 = small 250x250 (foto's). */
-    val imagesResolution: String = "6",
-    /** Nummer van de ZCBS-instelling (HKH = 4) voor de uploadvraag van images.exe. */
-    val imagesInstitution: String = "4",
-    /** Map waar de 100pct-afbeeldingen een back-up krijgen voordat er wordt opgeruimd. */
+    /** Map waar de 100pct-afbeeldingen een back-up krijgen voordat er wordt opgeruimd (`backup_100pct`). */
     val backup100pctFolder: String = "",
+    /** Map waar de verwerkte pdf's met hun recordnummer een back-up krijgen (`backup_invoer_org`). */
+    val backupPdfFolder: String = "",
     /** Adres van ZCBS, bijvoorbeeld http://localhost:8081 (lokale kopie om tegen te testen) of https://www.historischekringheemskerk.nl. */
     val zcbsBaseUrl: String = "",
-    /** Map met de pdf's die Ria klaarzet, per persoon een submap (K:\scabslelly). Hier haalt de testpagina de te verwerken bestanden op. */
-    val sourceFolder: String = "",
+    /** De mappen met scans waar Carla uit kiest: één per regel, `naam=pad`, bijvoorbeeld `Ria=K:\scans ria`. */
+    val sourceFolders: String = "",
     val sftpHost: String = "",
     val sftpPort: Int = 22,
     val sftpUser: String = "",
@@ -73,9 +70,16 @@ data class WorkflowSettings(
         return if (relative.startsWith("/")) relative.trimEnd('/') else sftpBaseDir.trim().trimEnd('/') + "/" + relative.trim('/')
     }
 
+    /** De mappen met scans, uit [sourceFolders]. Regels zonder `=` of met een leeg pad tellen niet mee. */
+    fun sourceRoots(): List<SourceRoot> = sourceFolders.lines().mapNotNull { line ->
+        val name = line.substringBefore('=', "").trim()
+        val path = line.substringAfter('=', "").trim()
+        if (name.isEmpty() || path.isEmpty()) null else SourceRoot(name, path)
+    }
+
     /** Zonder wachtwoorden, zodat ze nooit per ongeluk in een log belanden. */
     override fun toString(): String =
-        "WorkflowSettings(testFolder=$testFolder, archivedFolder=$archivedFolder, imagesExe=$imagesExe, pdf2zcbsExe=$pdf2zcbsExe, " +
+        "WorkflowSettings(testFolder=$testFolder, imagesExe=$imagesExe, pdf2zcbsExe=$pdf2zcbsExe, " +
             "collection=$collection, sftpHost=$sftpHost, sftpUser=$sftpUser, sftpPassword=${if (sftpPassword.isEmpty()) "(leeg)" else "***"})"
 
     companion object {
@@ -90,9 +94,10 @@ data class WorkflowSettings(
         )
 
         /**
-         * Gebaseerd op de vragen in de handleiding van images.exe (docs/042.pdf, hoofdstuk 5). De testpagina zet
-         * bestandstype, resolutie, instelling, collectie, uploaden, records en het verwijderen van mappen er
-         * bovenop (die gaan voor); hier staat de rest, met veilige antwoorden.
+         * Gebaseerd op de vragen in de handleiding van images.exe (docs/042.pdf, hoofdstuk 5). Bij handmatig uitvoeren onthoudt de
+         * app wat er wordt ingetypt en past deze antwoorden aan; bij automatisch uitvoeren gebruikt hij ze. Alleen de collectie, het
+         * overschrijven en het verwijderen van mappen staan vast en gaan voor. Tot er een keer handmatig is geantwoord, schrijft
+         * het programma niets naar de server (uploaden en records aanmaken staan op nee).
          */
         val DEFAULT_IMAGES_ANSWERS = listOf(
             AnswerRule("Type ENTER/RETURN indien OK", "a"),

@@ -83,6 +83,12 @@ class ZcbsClient(
     /** Het hoogste recordnummer, ook van lege records. Alleen ingelogd; zonder inlog ontbreken de lege records. */
     fun lastNumber(): Int? = ZcbsPages.lastNumber(get("search=LAST"))
 
+    /**
+     * De vrije recordnummers, zoals ZCBS ze toont bij een nieuw record (alleen lezen: de pagina maakt niets aan en zet geen
+     * vergrendeling). Null als ZCBS de lijst niet geeft, bijvoorbeeld zonder inlog of zonder recht om records aan te maken.
+     */
+    fun freeNumbers(): FreeNumbers? = ZcbsPages.freeNumbers(get("ident=0&upd_form=new"), lastNumber()?.toLong())
+
     /** Bestaat het record? Gewone weergave: zet geen vergrendeling. */
     fun exists(number: String): Boolean? = when (val page = ZcbsPages.classify(get("ident=$number"))) {
         is Page.NotAvailable -> false

@@ -26,6 +26,9 @@ class FakeZcbs : AutoCloseable {
     var ignoreFields = emptySet<String>()
     var expireSessions = false
 
+    /** Het aantal cijfers van een recordnummer, zoals bij ZCBS ($MAX_OBJECT_LENGTH). */
+    var numberWidth = 5
+
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also {
         it.createContext("/cgi-bin/archief.pl") { ex -> handle(ex) }
         it.start()
@@ -130,6 +133,8 @@ class FakeZcbs : AutoCloseable {
                 lockedBy[number]?.let { it != loggedInAs } == true -> Fixtures.page("vergrendeld.html")
                 else -> render(rec.form, loggedInAs)
             }
+        } else if (query["upd_form"] == "new") {
+            html = if (loggedInAs == null || expireSessions) Fixtures.page("sessie-verlopen.html") else freeNumbersPage()
         } else if (query["search"] == "LAST") {
             html = Fixtures.page("last.html").replace("11933", (records.keys.maxOfOrNull { it.toInt() } ?: 11933).toString())
         } else if (query["ident"] != null) {
@@ -140,6 +145,24 @@ class FakeZcbs : AutoCloseable {
         ex.responseHeaders.add("Content-Type", "text/html; charset=iso-8859-1")
         ex.sendResponseHeaders(200, bytes.size.toLong())
         ex.responseBody.use { it.write(bytes) }
+    }
+
+    /** De pagina voor een nieuw record, met de vrije nummers zoals ZCBS ze toont: reeksen vanaf drie nummers, anders losse nummers, en een open einde. */
+    private fun freeNumbersPage(): String {
+        val limit = "9".repeat(numberWidth).toLong()
+        fun f(n: Long) = n.toString().padStart(numberWidth, '0')
+        val cells = mutableListOf<String>()
+        var next = 1L
+        for (n in records.keys.map { it.toLong() }.sorted()) {
+            if (n > next) {
+                val size = n - next
+                if (size >= 3) cells += "${f(next)}-${f(n - 1)}" else (next until n).forEach { cells += f(it) }
+            }
+            next = n + 1
+        }
+        if (next <= limit) cells += "${f(next)}-"
+        val td = cells.joinToString("") { "<td>&nbsp;$it&nbsp;</td>" }
+        return "<html><head></head><body><strong>Niet gebruikte (dus vrije) record/databasenummers:</strong><br><table><tr>$td</tr></table></body></html>"
     }
 
     private fun render(form: ItemForm, user: String): String {

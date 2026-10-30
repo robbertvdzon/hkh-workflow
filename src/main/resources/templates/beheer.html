@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Beheerder')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <div>
+            <h1>Beheerder</h1>
+            <p class="sub">De instellingen en de technische pagina's zijn alleen voor de beheerder.</p>
+        </div>
+        <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
+        <section class="card pad stack" style="max-width:520px" th:if="${loggedIn}">
+            <h2 style="margin:0">Je bent ingelogd als beheerder</h2>
+            <div class="row-actions">
+                <a class="btn btn-p" th:href="@{/instellingen}">Instellingen</a>
+                <a class="btn btn-s" th:href="@{/test}">Test (technisch)</a>
+                <form method="post" th:action="@{/beheer/uitloggen}"><button class="btn btn-s" type="submit">Uitloggen als beheerder</button></form>
+            </div>
+        </section>
+        <section class="card pad stack" style="max-width:520px" th:unless="${loggedIn}">
+            <h2 style="margin:0">Inloggen als beheerder</h2>
+            <div class="alert alert-info" th:unless="${configured}">Er is geen beheerderswachtwoord ingesteld. Zet <span class="mono">hkh.workflow.admin-password</span> in het bestand application.properties naast de jar en start de app opnieuw.</div>
+            <form method="post" th:action="@{/beheer/inloggen}" class="stack" autocomplete="off">
+                <input type="hidden" name="terug" th:value="${back}">
+                <div class="field"><label class="f" for="wachtwoord">Beheerderswachtwoord</label><input type="password" id="wachtwoord" name="wachtwoord" autocomplete="new-password" autofocus></div>
+                <div><button class="btn btn-p" type="submit" th:disabled="${!configured}">Inloggen</button></div>
+            </form>
+        </section>
+    </main>
+</div>
+</body>
+</html>

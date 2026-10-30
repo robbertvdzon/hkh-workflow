@@ -3,6 +3,7 @@ package nl.vdzon.hkhworkflow.items
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import nl.vdzon.hkhworkflow.settings.SettingsService
+import nl.vdzon.hkhworkflow.zcbs.FreeNumbers
 import nl.vdzon.hkhworkflow.zcbs.ItemForm
 import nl.vdzon.hkhworkflow.zcbs.LoginOutcome
 import nl.vdzon.hkhworkflow.zcbs.Page
@@ -24,8 +25,11 @@ enum class EditStatus(val label: String, val kind: String) {
     FOUT("fout", "err"),
 }
 
-/** Een record van de batch dat bewerkt moet worden, met waar het bestand vandaan kwam. */
-data class BatchRecord(val number: String, val fileName: String, val by: String = "", val folder: String = "")
+/** Een record dat bewerkt moet worden. */
+data class BatchRecord(val number: String, val fileName: String = "", val by: String = "", val folder: String = "")
+
+/** Wat er van een gekozen nummer of reeks is gekomen: hoeveel records klaarstaan en welke niet bestaan. [error] is gezet als er niets klaarstaat. */
+data class ChooseResult(val count: Int, val missing: List<String>, val error: String?)
 
 class EditRecord(val number: String, val fileName: String, val by: String, val folder: String) {
     @Volatile var status: EditStatus = EditStatus.OPEN
@@ -68,7 +72,7 @@ sealed interface SaveOutcome {
 }
 
 /**
- * Het bewerken van de records van een batch via het ZCBS-formulier. De ZCBS-naam en het wachtwoord staan alleen in het
+ * Het bewerken van records via het ZCBS-formulier. De ZCBS-naam en het wachtwoord staan alleen in het
  * geheugen. Elke opslag volgt dezelfde stappen: opnieuw inloggen, het formulier opnieuw ophalen (dat zet de vergrendeling),
  * controleren of iemand anders het record intussen heeft gewijzigd, posten en teruglezen.
  */
@@ -135,9 +139,16 @@ class ItemEditService(private val settingsService: SettingsService) {
 
     fun ocrText(number: String): String? = client?.fetchText("${settingsService.get().collection.trim()}/ocr/$number.txt")
 
-    /** Het volgende recordnummer na het hoogste in ZCBS, of null als dat niet te vinden is. */
+    /**
+     * De vrije recordnummers uit ZCBS (zoals bij een nieuw record), met het hoogste bestaande nummer. Null als ZCBS de lijst
+     * niet geeft: niet ingelogd, geen recht om records aan te maken, of ZCBS is niet bereikbaar.
+     */
     @Synchronized
-    fun nextFreeNumber(): Int? = client?.lastNumber()?.plus(1)
+    fun freeNumbers(): FreeNumbers? {
+        val c = client ?: return null
+        fun fetch() = runCatching { c.freeNumbers() }.getOrNull()
+        return fetch() ?: if (relogin()) fetch() else null
+    }
 
     /** @return de nummers die nog niet in ZCBS bestaan (gewone weergave, zet geen vergrendeling). */
     @Synchronized
@@ -147,22 +158,34 @@ class ItemEditService(private val settingsService: SettingsService) {
     }
 
     /**
-     * Controleert of de nummers nog vrij zijn: images.exe maakt de records aan en mag ze niet nog eens aanmaken.
-     * @return een melding als een nummer al bestaat of niet te controleren is, anders null.
+     * Zet de records die [input] noemt klaar om te bewerken. [input] is een nummer, een reeks ("11934-11945") of meer
+     * daarvan gescheiden door komma's of spaties. Records die niet bestaan, komen er niet bij en staan in [ChooseResult.missing].
      */
     @Synchronized
-    fun checkNumbersFree(numbers: List<String>): String? {
-        val c = client ?: return "Log eerst in bij ZCBS."
-        val taken = mutableListOf<String>()
-        for (n in numbers) {
-            when (runCatching { c.exists(n) }.getOrNull()) {
-                true -> taken += n
-                null -> return "Kan niet controleren of record $n al bestaat. Is je sessie bij ZCBS verlopen, of is ZCBS niet bereikbaar?"
-                false -> {}
-            }
+    fun chooseRecords(input: String): ChooseResult {
+        if (!loggedIn()) return ChooseResult(0, emptyList(), "Log eerst in bij ZCBS.")
+        val width = freeNumbers()?.width ?: 5
+        val numbers = try { parseNumbers(input, width) } catch (e: IllegalArgumentException) { return ChooseResult(0, emptyList(), e.message) }
+        if (numbers.isEmpty()) return ChooseResult(0, emptyList(), "Vul een recordnummer of een reeks in, bijvoorbeeld 11934 of 11934-11945.")
+        val missing = try { missingInZcbs(numbers) } catch (e: Exception) { return ChooseResult(0, emptyList(), "Geen verbinding met ZCBS: ${e.message ?: e.javaClass.simpleName}") }
+        val existing = numbers.filter { it !in missing }
+        if (existing.isEmpty()) return ChooseResult(0, missing, "Deze records bestaan niet in ZCBS: ${missing.take(5).joinToString()}.")
+        startBatch(existing.map { BatchRecord(it) })
+        return ChooseResult(existing.size, missing, null)
+    }
+
+    private fun parseNumbers(input: String, width: Int): List<String> {
+        val result = linkedSetOf<String>()
+        for (token in input.split(Regex("[,;\\s]+")).filter { it.isNotBlank() }) {
+            val parts = token.split('-', '–')
+            require(parts.size in 1..2 && parts.all { it.matches(Regex("\\d+")) }) { "\"$token\" is geen recordnummer of reeks. Gebruik bijvoorbeeld 11934 of 11934-11945." }
+            val from = parts.first().toLong()
+            val to = parts.last().toLong()
+            require(to >= from) { "In \"$token\" is het eerste nummer hoger dan het laatste." }
+            require(to - from < MAX_RECORDS && result.size + (to - from + 1) <= MAX_RECORDS) { "Kies maximaal $MAX_RECORDS records tegelijk." }
+            (from..to).forEach { result += it.toString().padStart(width, '0') }
         }
-        return if (taken.isEmpty()) null else
-            "Record ${taken.take(5).joinToString(", ")}${if (taken.size > 5) " en ${taken.size - 5} andere" else ""} bestaat al in ZCBS. images.exe zou een bestaand record niet mogen aanmaken. Kies een hoger beginnummer."
+        return result.toList()
     }
 
     // ---- Openen ----
@@ -377,4 +400,8 @@ class ItemEditService(private val settingsService: SettingsService) {
 
     /** Of de vorm van een veld meerkeuze is; de controller leest dan alle gekozen waarden. */
     fun isMulti(number: String, name: String): Boolean = record(number)?.baseline?.control(name)?.kind == ControlKind.MULTI
+
+    private companion object {
+        const val MAX_RECORDS = 500
+    }
 }

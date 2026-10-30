@@ -15,6 +15,7 @@ import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.zcbs.FakeZcbs
+import nl.vdzon.hkhworkflow.zcbs.NumberRange
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
@@ -225,8 +226,42 @@ class ItemEditServiceTest {
     }
 
     @Test
-    fun `welke nummers bestaan nog niet en wat is het volgende nummer`() {
+    fun `welke nummers bestaan nog niet`() {
         assertEquals(listOf("11999"), service.missingInZcbs(listOf("11905", "11999", "11902")))
-        assertEquals(11906, service.nextFreeNumber())
+    }
+
+    @Test
+    fun `de vrije nummers komen uit ZCBS, met het laatste record`() {
+        val free = service.freeNumbers()!!
+        assertEquals(5, free.width)
+        assertEquals(11905L, free.last)
+        assertEquals(listOf(NumberRange(1, 11901), NumberRange(11903, 11904), NumberRange(11906, 99999, open = true)), free.ranges)
+        assertNull(free.check(11906, 12), "na het laatste record is ruimte genoeg")
+        assertTrue(free.check(11903, 3)!!.contains("maar 2 aaneengesloten"))
+    }
+
+    @Test
+    fun `zonder inlog zijn er geen vrije nummers`() {
+        service.logout()
+        assertNull(service.freeNumbers())
+    }
+
+    @Test
+    fun `een nummer, een reeks of meer daarvan kiezen en alleen bestaande records bewaren`() {
+        val result = service.chooseRecords("11902-11903, 11905 11999")
+        assertNull(result.error)
+        assertEquals(2, result.count)
+        assertEquals(listOf("11903", "11999"), result.missing)
+        assertEquals(listOf("11902", "11905"), service.records().map { it.number })
+    }
+
+    @Test
+    fun `een ongeldige keuze geeft een duidelijke melding`() {
+        assertTrue(service.chooseRecords("abc").error!!.contains("geen recordnummer"))
+        assertTrue(service.chooseRecords("11905-11902").error!!.contains("eerste nummer hoger"))
+        assertTrue(service.chooseRecords("").error!!.contains("Vul een recordnummer"))
+        assertTrue(service.chooseRecords("1-2000").error!!.contains("maximaal 500"))
+        assertTrue(service.chooseRecords("00099998").error!!.contains("bestaan niet"))
+        assertEquals(listOf("11905", "11902", "11999"), service.records().map { it.number }, "een mislukte keuze laat de lijst met rust")
     }
 }

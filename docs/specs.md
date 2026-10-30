@@ -5,7 +5,12 @@
 > wat images.exe en pdf2zcbs.exe precies doen) staat in [zcbs-achtergrond.md](zcbs-achtergrond.md).
 > De bronnen: de ZCBS-handleidingen in deze map en het UX-ontwerp [ZcbsServer UX.pdf](ZcbsServer%20UX.pdf).
 
-Laatst bijgewerkt: 19 oktober 2026.
+Laatst bijgewerkt: 30 oktober 2026.
+
+> **30 oktober 2026 — de eerste versie is simpeler gemaakt** na overleg met Jan (HKH): de flow volgt zijn stappenplan, zonder het invullen van gegevens,
+> en het bewerken van records is een aparte knop. De app begint nu met inloggen bij ZCBS en het kiezen van een collectie, en er is een beheerderslogin.
+> Alles daarover staat in [specs-nieuwe-bestanden.md](specs-nieuwe-bestanden.md). Waar dit document daar van afwijkt (de acht fasen met bewerken, de
+> archived-map, de demoschermen, het woord "batch"), geldt het nieuwe document. §5.3 t/m §5.5 zijn hieronder bijgewerkt.
 
 ---
 
@@ -203,33 +208,33 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 
 | Module | Mag gebruiken | Inhoud |
 |---|---|---|
-| `settings` | – | `WorkflowSettings`, `AnswerRule`, `SettingsService` (JSON lezen/schrijven, controles), `WorkflowProperties`; `api/SettingsController` |
+| `settings` | – | `WorkflowSettings`, `AnswerRule`, `SourceRoot`, `SettingsService` (JSON lezen/schrijven, controles), `WorkflowProperties` (o.a. het beheerderswachtwoord); `api/SettingsController` |
 | `exerunner` | – | `ExeRunner`: start één extern programma tegelijk, leest uitvoer, stuurt invoer, automatische antwoorden, logbestand per run |
 | `sftp` | `settings` | `SftpService`: sftp-upload met vastgezette vingerafdruk, nooit overschrijven of verwijderen; `api/SftpController` (Test verbinding, vingerafdruk vastzetten) |
-| `zcbs` | `settings` | De client voor ZCBS: `ZcbsClient` (inloggen, `LAST`, bestaat het record, formulier ophalen, opslaan; cookies in het geheugen), `FormParser` (Jsoup), `ItemForm` (alle velden die een browser post plus de zichtbare velden), `RecordRebuilder` (de controle tegen `a0`), `ZcbsText` (tekens uit Word en woorden die ZCBS weigert), `ZcbsPages` (welke pagina is dit) |
-| `items` | `zcbs`, `settings` | `ItemEditService`: de records van een batch bewerken (openen, voorbeeld, opslaan met opnieuw inloggen, conflictcontrole en teruglezen; later; sessie in het geheugen); `api/ItemsController` en de pagina's Records |
-| `testrun` | `settings`, `exerunner`, `sftp`, `items` | `TestRunService` (de stappenketen met controles), `SourceFilesService` (bestanden van de server ophalen), model/views, `sequenceNumbers`; `api/TestController` |
-| `ux` | – | `DemoData` + `api/UxController`: de UX-schermen met voorbeeldgegevens |
+| `zcbs` | `settings` | De client voor ZCBS: `ZcbsClient` (inloggen, `LAST`, de vrije nummers, bestaat het record, formulier ophalen, opslaan; cookies in het geheugen), `FreeNumbers` (vrije reeksen en de controle of een reeks bestanden aaneengesloten past), `FormParser` (Jsoup), `ItemForm` (alle velden die een browser post plus de zichtbare velden), `RecordRebuilder` (de controle tegen `a0`), `ZcbsText` (tekens uit Word en woorden die ZCBS weigert), `ZcbsPages` (welke pagina is dit) |
+| `items` | `zcbs`, `settings` | `ItemEditService`: inloggen bij ZCBS (in het geheugen), de vrije nummers, en de records die Carla kiest bewerken (openen, voorbeeld, opslaan met opnieuw inloggen, conflictcontrole en teruglezen; later); `api/ItemsController` en de pagina's Records |
+| `testrun` | `settings`, `exerunner`, `sftp`, `items`, `zcbs` | `TestRunService` (de stappenketen met controles en de fasen van Carla), `SourceFilesService` (bladeren door de mappen met scans en kopiëren), `ProcessedLog` (wat al verwerkt is), model/views, `sequenceNumbers`; `api/NewFilesController` (pagina Nieuwe bestanden en Verwerkt) en `api/TestController` (technisch) |
+| `ux` | `settings`, `items` | Het begin van de app: `api/ShellController` (inloggen, collectie, acties, beheerderslogin), `AdminAccess`, `WebConfig` (wie waar mag komen) |
 
 ### 5.3 Routes
 
 | Methode | Pad | Wat |
 |---|---|---|
-| GET | `/` | Te verwerken (demo) |
-| GET | `/batch/controleren?files=..&collectie=..` | Batch controleren (demo; nummers vanaf 1711) |
-| GET | `/batches`, `/batches/demo-bezig`, `/batches/demo-klaar` | Batches (demo) |
-| GET/POST | `/demo-flow`, `/demo-flow/login`, `/demo-flow/bestanden`, `/demo-flow/voorbereiden`, `/demo-flow/start`, `/demo-flow/volgende`, `/demo-flow/records/{nr}[/voorbeeld\|/opslaan\|/later\|/terug\|/zcbs-versie]`, `/demo-flow/klaar` | **Klikbare demo van de hele flow** (inloggen tot afsluiten) met nepgegevens; zie [specs-item-bekijken-bewerken.md](specs-item-bekijken-bewerken.md). Raakt ZCBS, de exe's en sftp niet |
-| GET | `/batch` | **Het hoofdscherm**: de batch in acht fasen (inloggen, bestanden ophalen, voorbereiden, pdf2zcbs, images.exe, upload, bewerken, afsluiten), op dezelfde stappen en controles als `/test` |
-| POST | `/batch/bestanden/kopieer`, `/bestanden/bevestig`, `/bestanden/andere`, `/voorbereiden` (`start`), `/afsluiten`, `/opnieuw` | Bestanden van de server kopiëren, de lijst bevestigen of opnieuw kiezen, voorbereiden (nummers controleren, `werk`-kopieën maken), afsluiten (opruimen en archiveren in één keer), opnieuw beginnen |
-| GET | `/records`, `/records/{nr}` | De records van de batch en het bewerkformulier van één record (het openen zet de vergrendeling van ZCBS) |
+| GET | `/`, `/collectie`, `/collectie/{naam}` | Inloggen bij ZCBS, de collectie kiezen, en dan "Nieuwe bestanden in ZCBS zetten" of "ZCBS records aanpassen". Pagina's van Carla sturen naar `/` zolang je niet bent ingelogd |
+| GET | `/nieuw` (`bron`, `pad`) | **Het hoofdscherm**: de flow in zes fasen (bestanden kiezen, nummers, pdf2zcbs, images.exe, upload, back-up), met een controle na pdf2zcbs en images.exe |
+| POST | `/nieuw/kopieer` (`bron`, `pad`, `files`), `/nieuw/bestanden/verwijder`, `/bevestig`, `/andere`, `/nieuw/voorbereiden` (`start`), `/nieuw/gecontroleerd` (`stap`), `/nieuw/opnieuw` | Bestanden uit de map naar de invoermap kopiëren, een kopie weghalen, de lijst bevestigen of opnieuw kiezen, nummers geven (vrije reeks controleren, `werk`-kopieën maken), de uitvoer als gecontroleerd markeren, opnieuw beginnen |
+| GET | `/nieuw/resultaat/{soort}/{nummer}` | Een bestand uit de uitvoer (afbeelding, pdf of tekst) om te controleren; alleen voor nummers van de lopende doorloop |
+| GET | `/verwerkt` | Wat al verwerkt is, per doorloop |
+| GET/POST | `/beheer`, `/beheer/inloggen`, `/beheer/uitloggen` | Inloggen als beheerder (wachtwoord uit het configuratiebestand); nodig voor `/instellingen` en `/test` |
+| GET | `/records`, `/records/{nr}` | De gekozen records en het bewerkformulier van één record (het openen zet de vergrendeling van ZCBS) |
+| POST | `/records/kies` (`nummers`) | Een recordnummer, een reeks (`11934-11945`) of meer daarvan kiezen om te bewerken |
 | POST | `/records/{nr}/voorbeeld`, `/opslaan`, `/terug`, `/conflict`, `/later` | Voorbeeld van de wijziging, opslaan (opnieuw inloggen, formulier opnieuw ophalen, conflictcontrole, posten, teruglezen), terug naar het formulier, conflict oplossen, record op later zetten |
 | POST | `/zcbs/login`, `/zcbs/logout` | Inloggen bij ZCBS (naam en wachtwoord, alleen in het geheugen) |
-| POST | `/test/bronbestanden` (`files`) | De aangevinkte pdf's van de server naar de testmap kopiëren |
 | GET/POST | `/instellingen` | Instellingen
 | GET | `/test` | Testpagina |
 | POST | `/test/start` (`startNumber`), `/test/reset` | Testrun starten / nieuwe test |
 | POST | `/instellingen/sftp-test`, `/instellingen/sftp-vingerafdruk` (`fingerprint`) | Verbinding testen (toont vingerafdruk, controleert de mappen, schrijft niets) / vingerafdruk vastzetten |
-| POST | `/test/steps/{id}/run` (`mode=IN_APP\|WINDOW`, `auto=true\|false`, `upload`, `records`) | Stap uitvoeren; `upload` en `records` (standaard uit) gelden alleen voor images.exe met automatisch uitvoeren |
+| POST | `/test/steps/{id}/run` (`mode=IN_APP\|WINDOW`, `auto=true\|false`) | Stap uitvoeren; automatisch gebruikt de onthouden antwoorden |
 | POST | `/test/steps/{id}/skip`, `/done`, `/retry` | Overslaan / toch klaar / opnieuw |
 | GET | `/test/console` | htmx-fragment, elke seconde zolang er iets draait; stuurt `HX-Refresh` als het klaar is |
 | POST | `/test/console/input` (`line`), `/test/console/stop` | Invoer sturen / programma stoppen |
@@ -241,25 +246,24 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 
 Opgeslagen in JSON; velden:
 
-- `testFolder` — map met de te testen pdf's.
-- `archivedFolder` — waar de originelen na verwerking heen gaan.
+- `testFolder` — de invoermap (`c:\zcbs\invoer`): hier komen de gekozen pdf's te staan voordat ze verwerkt worden.
 - `pdf2zcbsExe`, `imagesExe` — volledige paden. Mag elk uitvoerbaar bestand zijn (op Mac/Linux een script met
   `chmod +x`); de pagina waarschuwt als een pad niet bestaat of niet uitvoerbaar is.
-- `sourceFolder` — de bronmap op de server (`K:\scabslelly`), met een submap per persoon; hier haalt de testpagina de bestanden op.
-- `zcbsBaseUrl` — het adres van ZCBS: `http://localhost:8081` (lokale kopie, zie `tools/zcbs-local`) of de echte site. Het script is `/cgi-bin/<collectie>.pl`.
+- `sourceFolders` — de mappen met scans, één per regel `naam=pad` (`Jelly=K:\scans jelly`, `Ria=K:\scans ria`); Carla bladert erdoor en de naam laat zien wie het scande.
+- `zcbsBaseUrl` — het adres van ZCBS: `http://localhost:8081` (lokale kopie, zie `tools/docker/zcbs`) of de echte site. Het script is `/cgi-bin/<collectie>.pl`.
 - `perlioUnbuffered` (standaard **aan**) — start de programma's met `PERLIO=:unix` (zie §6).
 - `collection` (standaard `archief`) — antwoord op "Kies de ZCBS-toepassing" en basis voor de sftp-mappen.
-- `imagesFileType` (`a`), `imagesResolution` (`6`), `imagesInstitution` (`4`) — vaste antwoorden voor images.exe.
-- `backup100pctFolder` — back-up van de 100pct vóór het opruimen.
+- `backup100pctFolder` en `backupPdfFolder` — back-up van de 100pct en van de pdf's met recordnummer vóór het opruimen (op K:).
 - `sftpHost`, `sftpPort` (22), `sftpUser`, `sftpPassword` (verborgen in de UI, zoals de andere wachtwoorden),
   `sftpHostKey` (vastgezette vingerafdruk, `SHA256:…`; zonder deze wordt er niet geüpload), `sftpBaseDir`
   (standaard `/domains/historischekringheemskerk.nl/public_html`), `sftpOcrDir` en `sftpPdfDir` (relatief aan de basismap;
   leeg = `<collectie>/ocr` en `<collectie>/pdf`).
-- De antwoorden voor bestandstype, resolutie, instelling, collectie, uploaden, records en het verwijderen van mappen zet de
-  testpagina **bovenop** de regels in `imagesAnswers`; die gaan voor. Overschrijven en verwijderen zijn altijd `n`.
-- `pdf2zcbsAnswers`, `imagesAnswers` — lijsten `{pattern, answer, secret}` voor automatisch uitvoeren.
+- `pdf2zcbsAnswers`, `imagesAnswers` — lijsten `{pattern, answer, secret}`: de **onthouden antwoorden**. Handmatig uitvoeren past ze aan met wat Carla intypt
+  (niet de wachtwoorden); automatisch uitvoeren gebruikt ze. Alleen de collectie, overschrijven en het verwijderen van de mappen van images.exe staan vast en gaan voor.
   Standaardregels zijn afgeleid uit de handleidingen (`WorkflowSettings.DEFAULT_*`), met veilige keuzes:
   type `a`, resolutie `6`, uploaden `n`, records aanmaken `n`, overschrijven `n`, verwijderen `n`, FTP-wachtwoord leeg.
+- Het beheerderswachtwoord staat niet in deze instellingen maar in `application.properties` (`hkh.workflow.admin-password`); het verwerkt-log in
+  `hkh.workflow.processed-log`.
 - **Wachtwoorden** (`secret = true`): in de UI een `*`-veld; de waarde gaat nooit terug naar de browser
   (placeholder "•••••••• (opgeslagen)"); leeg laten = behouden, vinkje "wissen" = leegmaken. Staan wél leesbaar in het
   JSON-bestand.
@@ -268,15 +272,17 @@ Opgeslagen in JSON; velden:
 
 ### 5.5 Testworkflow (pagina Test)
 
+> **Bijgewerkt 30 oktober 2026.** De flow van Carla staat in [specs-nieuwe-bestanden.md](specs-nieuwe-bestanden.md) en draait op dezelfde stappen en controles.
+> De stappen "records bewerken" en "archiveren" zijn eruit (bewerken is een aparte knop; de originelen blijven staan), en het opruimen maakt nu ook een
+> back-up van de pdf's en schrijft het verwerkt-log. Hieronder staat de technische pagina `/test` (alleen beheerder), met de stappen per bestand.
 Bedoeld voor de eerste echte run bij HKH, **in het echte archief** omdat er geen testdatabase is. Daarom volgt de flow Carla's
 stappenplan (§2), draait elke stap pas na jouw goedkeuring, en blijft alles op schijf zo staan dat een stap die misgaat op de
 oude manier kan worden afgemaakt. Er wordt pas iets verwijderd of gearchiveerd als de stappen daarvoor kloppen.
 
-0. **Bestanden ophalen van de server** (alleen als `sourceFolder` is ingesteld, vóór de run): de pdf's onder de bronmap, per persoon en map, met vinkjes. Kopieert de aangevinkte naar de testmap (nooit overschrijven, de originelen blijven staan) en onthoudt per bestand wie het gescand heeft (de mapnaam, bestand `herkomst.tsv` in de testmap). Die naam staat daarna in de lijst, in de testtabel en op de recordpagina.
+0. **Bestanden kiezen** (vóór de run, op de pagina Nieuwe bestanden): bladeren door de mappen met scans (`sourceFolders`) en de aangevinkte pdf's naar de invoermap kopiëren (nooit overschrijven, de originelen blijven staan). De app onthoudt per bestand uit welke bronmap het kwam (Jelly of Ria, bestand `herkomst.tsv` in de invoermap). Op de technische pagina zet je de pdf's zelf in de invoermap.
 1. Vraagt een **beginnummer** (alleen cijfers; voorloopnullen blijven: `01650` → `01651`).
 2. Neemt alle `*.pdf` in de testmap (niet recursief, gesorteerd op naam). Stappen, in volgorde: per bestand **hernoemen**,
-   één keer **pdf2zcbs**, één keer **images**, één keer **upload**, één keer **records bewerken**, één keer **opruimen**,
-   per bestand **archiveren** (2n + 5 stappen). Beide programma's draaien één keer per batch, want ze verwerken alles wat in hun map staat en
+   één keer **pdf2zcbs**, één keer **images**, één keer **upload**, één keer **back-up en opruimen** (n + 4 stappen). Beide programma's draaien één keer voor alle bestanden samen, want ze verwerken alles wat in hun map staat en
    pdf2zcbs leegt zijn `output/` bij elke start.
 3. **Elke stap start de gebruiker zelf.** De kaart toont de eerstvolgende stap met **wat hij gaat doen** (paden, aantallen,
    antwoorden) en **waarom hij nu niet kan** (rood, knoppen uit). Daarna kijk je in de tabel of het klopt.
@@ -292,9 +298,7 @@ oude manier kan worden afgemaakt. Er wordt pas iets verwijderd of gearchiveerd a
 | pdf2zcbs.exe | Kopieert alle `werk\<nummer>.pdf` naar de map van pdf2zcbs en start het programma één keer in die map, zonder argumenten. Verwacht per bestand tekst, pdf, small en large in `output\`. | er andere pdf's in de map staan; `output\` resultaten van een andere run bevat (het programma wist die map bij de start) |
 | images.exe | Kopieert de **large-jpg's** uit `pdf2zcbs\output\large` naar `<map van images.exe>\images` en start het programma één keer. Verwacht per bestand small, large en 100pct. Wist en overschrijft nooit. | large-jpg's ontbreken; er andere bestanden in `images\` staan; `small`, `large` of `100pct` oude resultaten bevatten (die zouden opnieuw worden geüpload) |
 | Upload (sftp) | Zet tekst en pdf's op de server in `<collectie>/ocr` en `<collectie>/pdf`. **Eerst een controle** van alles (mappen bestaan, geen bestand bestaat al), pas dan uploaden onder een tijdelijke naam, hernoemen, rechten 644 en de grootte controleren. Nooit overschrijven, nooit verwijderen, nooit mappen aanmaken. Bij opnieuw proberen worden al geüploade bestanden overgeslagen. | sftp niet volledig ingesteld, vingerafdruk niet vastgezet of anders, lokale bestanden ontbreken, doelmap ontbreekt, een doelbestand bestaat al |
-| Records bewerken | Logt in bij ZCBS met je eigen naam en wachtwoord (alleen in het geheugen), controleert dat de records bestaan (gewone weergave, zet geen vergrendeling) en opent de pagina **Records**: de records één voor één bewerken via het ZCBS-formulier (zie [specs-item-bekijken-bewerken.md](specs-item-bekijken-bewerken.md)). Klaar als elk record is opgeslagen of op later staat. Bij het echte archief staat er een waarschuwing. | ZCBS-adres niet ingesteld, niet ingelogd, een record bestaat niet in ZCBS |
-| Opruimen | **Eerst** de 100pct kopiëren naar de back-upmap en de grootte controleren, **dan** verwijderen: `pdf2zcbs\output`, `images\small`, `large`, `100pct`, de eigen bestanden in `images\images` en `log-*.txt` in de images-map. Alleen binnen de mappen van de programma's. | back-upmap ontbreekt of niet bestaat, een 100pct ontbreekt. Waarschuwt als de upload is overgeslagen |
-| Archiveren | **Verplaatst het origineel** naar de archived-map (die de back-up van de invoermap vervangt); bestaat de naam al, dan `naam-1.pdf` enz. | archived-map niet ingesteld, origineel weg |
+| Back-up en opruimen | **Eerst** de 100pct en de pdf's (met recordnummer) kopiëren naar de back-upmappen en de grootte controleren, **dan** verwijderen: `pdf2zcbs\output`, `images\small`, `large`, `100pct`, de eigen bestanden in `images\images`, `log-*.txt` in de images-map, de pdf's in de map van pdf2zcbs en de kopieën in `werk` en in de invoermap. Alleen wat bij deze doorloop hoort. Daarna komen de bestanden in het verwerkt-log. De originelen op K: blijven staan. | back-upmappen ontbreken of bestaan niet, een 100pct of pdf ontbreekt. Waarschuwt als de upload is overgeslagen |
 
 **images.exe en de keuzes die in productie schrijven.** Bij Automatisch uitvoeren staan er twee vinkjes, standaard **uit**:
 *Afbeeldingen uploaden (FTP)* en *Lege records aanmaken*. Records aanmaken kan alleen samen met uploaden, en uploaden vraagt
@@ -421,6 +425,10 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 - De demoschermen (Te verwerken, Batch, Batches) zijn nog niet gekoppeld; de testpagina is de motor van de latere batch.
 - **25 oktober 2026, daarna:** de pagina **Batch** (`/batch`) laat de echte flow zien zoals de demo (acht fasen met een balk bovenaan, per fase een overzicht en een goedkeuring); in het menu staat hij bovenaan, de demo's staan onder "Demo's" en de oude testpagina heet nu "Test (technisch)". Doorgelopen in de browser tegen de lokale ZCBS.
 - **25 oktober 2026, later:** de echte bewerkfunctie is gebouwd en op de Mac doorgelopen tegen de lokale ZCBS in Docker: bestanden ophalen van de server, de testketen met de nep-exe's, de lege records via de nep-images.exe, en daarna in de browser een record bewerkt, opgeslagen en teruggelezen (met de echte ZCBS-code). Nieuwe modules `zcbs` en `items`. 86 tests, waarvan 4 contracttests tegen de lokale ZCBS (`mvn test -Dzcbs.live=true`). Nog niet gedaan: alles tegen de echte HKH-server, en het eigen inlogscherm van de app.
+- **30 oktober 2026, vereenvoudigd:** na het overleg met Jan is de flow herbouwd tot de pagina **Nieuwe bestanden** (zes fasen zonder bewerken, bladeren door K:, vrije nummers uit ZCBS,
+  controle na pdf2zcbs en images.exe, back-up van 100pct en pdf's, verwerkt-log), met een start (inloggen, collectie, twee knoppen), een beheerderslogin en onthouden antwoorden voor
+  images.exe. De demoschermen en de modules ervoor zijn verwijderd. Doorgelopen in de browser tegen de lokale ZCBS, de lokale sftp en de nep-programma's; de tests slagen
+  (`mvn test`, en `-Dzcbs.live=true` tegen de lokale ZCBS). Zie [specs-nieuwe-bestanden.md](specs-nieuwe-bestanden.md).
 - **25 oktober 2026:** er is een klikbare demo van de hele flow zoals Carla hem gaat doorlopen (menu *Hele flow*, `/demo-flow`): inloggen, nieuwe bestanden, voorbereiden, pdf2zcbs, images.exe (met een optionele mislukking), upload, records één voor één bewerken (voorbeeld, "later", vergrendeld, intussen gewijzigd, niet veilig) en afsluiten. Alleen nepdata in het geheugen (`ux`-module, `FlowDemo.kt`); nog geen koppeling met ZCBS.
 
 ## 9. Volgende stappen

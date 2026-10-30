@@ -25,6 +25,31 @@ object ZcbsPages {
     /** Het hoogste nummer uit het antwoord op `search=LAST` (de regel `zcbs_archief = "0000 11933 0000"`). */
     fun lastNumber(html: String): Int? = lastList.find(html)?.groupValues?.get(1)?.split(' ')?.mapNotNull { it.toIntOrNull() }?.maxOrNull()
 
+    private val freeCell = Regex("""<td>&nbsp;(\d+)(?:-(\d*))?&nbsp;</td>""")
+
+    /**
+     * De vrije nummers uit de pagina voor een nieuw record (`ident=0&upd_form=new`): een tabel met losse nummers ("10006"),
+     * reeksen ("11935-99000") en een open reeks ("99003-"). Null als dit de pagina niet is, bijvoorbeeld omdat je niet bent ingelogd
+     * of geen recht hebt om records aan te maken.
+     */
+    fun freeNumbers(html: String, last: Long? = null): FreeNumbers? {
+        val start = html.indexOf("Niet gebruikte (dus vrije)")
+        if (start < 0) return null
+        val table = html.substring(start).substringBefore("</table>")
+        val cells = freeCell.findAll(table).map { it.groupValues[1] to it.groups[2]?.value }.toList()
+        if (cells.isEmpty()) return null
+        val width = cells.flatMap { listOfNotNull(it.first, it.second?.takeIf { s -> s.isNotEmpty() }) }.maxOf { it.length }
+        val limit = "9".repeat(width).toLong()
+        val ranges = cells.map { (from, to) ->
+            when {
+                to == null -> NumberRange(from.toLong(), from.toLong())
+                to.isEmpty() -> NumberRange(from.toLong(), limit, open = true)
+                else -> NumberRange(from.toLong(), to.toLong())
+            }
+        }
+        return FreeNumbers(ranges, width, last)
+    }
+
     private fun plain(html: String): String =
         html.replace(Regex("<script.*?</script>", RegexOption.DOT_MATCHES_ALL), " ").replace(Regex("<[^>]+>"), " ").replace("&nbsp;", " ").replace(Regex("\\s+"), " ").trim()
 

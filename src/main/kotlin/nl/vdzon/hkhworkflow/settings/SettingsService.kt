@@ -42,19 +42,16 @@ class SettingsService(
                 }
                 WorkflowSettings(
                     testFolder = node.path("testFolder").asText(""),
-                    archivedFolder = node.path("archivedFolder").asText(""),
                     imagesExe = node.path("imagesExe").asText(""),
                     pdf2zcbsExe = node.path("pdf2zcbsExe").asText(""),
                     perlioUnbuffered = node.path("perlioUnbuffered").asBoolean(true),
                     pdf2zcbsAnswers = rules("pdf2zcbsAnswers", WorkflowSettings.DEFAULT_PDF2ZCBS_ANSWERS),
                     imagesAnswers = rules("imagesAnswers", WorkflowSettings.DEFAULT_IMAGES_ANSWERS),
                     collection = node.path("collection").asText("archief"),
-                    imagesFileType = node.path("imagesFileType").asText("a"),
-                    imagesResolution = node.path("imagesResolution").asText("6"),
-                    imagesInstitution = node.path("imagesInstitution").asText("4"),
                     backup100pctFolder = node.path("backup100pctFolder").asText(""),
+                    backupPdfFolder = node.path("backupPdfFolder").asText(""),
                     zcbsBaseUrl = node.path("zcbsBaseUrl").asText(""),
-                    sourceFolder = node.path("sourceFolder").asText(""),
+                    sourceFolders = node.path("sourceFolders").asText(""),
                     sftpHost = node.path("sftpHost").asText(""),
                     sftpPort = node.path("sftpPort").asInt(22),
                     sftpUser = node.path("sftpUser").asText(""),
@@ -79,16 +76,13 @@ class SettingsService(
     fun save(settings: WorkflowSettings): WorkflowSettings {
         val cleaned = settings.copy(
             testFolder = settings.testFolder.trim(),
-            archivedFolder = settings.archivedFolder.trim(),
             imagesExe = settings.imagesExe.trim(),
             pdf2zcbsExe = settings.pdf2zcbsExe.trim(),
             collection = settings.collection.trim(),
-            imagesFileType = settings.imagesFileType.trim(),
-            imagesResolution = settings.imagesResolution.trim(),
-            imagesInstitution = settings.imagesInstitution.trim(),
             backup100pctFolder = settings.backup100pctFolder.trim(),
+            backupPdfFolder = settings.backupPdfFolder.trim(),
             zcbsBaseUrl = settings.zcbsBaseUrl.trim().trimEnd('/'),
-            sourceFolder = settings.sourceFolder.trim(),
+            sourceFolders = settings.sourceFolders.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n"),
             sftpHost = settings.sftpHost.trim(),
             sftpUser = settings.sftpUser.trim(),
             sftpHostKey = settings.sftpHostKey.trim(),
@@ -119,7 +113,6 @@ class SettingsService(
             else if (!Files.isExecutable(Path.of(value))) problems[field] = "Bestand is niet uitvoerbaar (op Mac/Linux: chmod +x)."
         }
         dir("testFolder", settings.testFolder)
-        dir("archivedFolder", settings.archivedFolder)
         exe("imagesExe", settings.imagesExe)
         exe("pdf2zcbsExe", settings.pdf2zcbsExe)
         return problems
@@ -131,6 +124,9 @@ class SettingsService(
         if (settings.collection.isBlank()) problems["collection"] = "Nog niet ingevuld."
         if (settings.backup100pctFolder.isBlank()) problems["backup100pctFolder"] = "Nog niet ingevuld."
         else if (!Files.isDirectory(Path.of(settings.backup100pctFolder))) problems["backup100pctFolder"] = "Map bestaat niet."
+        if (settings.backupPdfFolder.isBlank()) problems["backupPdfFolder"] = "Nog niet ingevuld."
+        else if (!Files.isDirectory(Path.of(settings.backupPdfFolder))) problems["backupPdfFolder"] = "Map bestaat niet."
+        if (settings.sourceRoots().isEmpty()) problems["sourceFolders"] = "Nog niet ingevuld: zonder deze mappen kan Carla geen scans kiezen."
         if (settings.zcbsBaseUrl.isBlank()) problems["zcbsBaseUrl"] = "Nog niet ingevuld."
         if (settings.sftpHost.isBlank()) problems["sftpHost"] = "Nog niet ingevuld."
         if (settings.sftpUser.isBlank()) problems["sftpUser"] = "Nog niet ingevuld."

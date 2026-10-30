@@ -6,11 +6,11 @@ import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
-import nl.vdzon.hkhworkflow.items.EditStatus
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.AnswerRule
 import nl.vdzon.hkhworkflow.settings.SettingsService
@@ -28,14 +28,14 @@ import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
-/** De volledige stappenketen, met nep-programma's (shellscripts uit de testresources) en een sftp-server in het geheugen. */
+/** De volledige stappenketen, met nep-programma's (shellscripts uit de testresources), een nep-ZCBS en een sftp-server in het geheugen. */
 @EnabledOnOs(OS.MAC, OS.LINUX)
 class TestRunServiceTest {
     @TempDir
     lateinit var dir: Path
 
     private lateinit var inbox: Path
-    private lateinit var archived: Path
+    private lateinit var backupPdf: Path
     private lateinit var backup: Path
     private lateinit var p2zDir: Path
     private lateinit var imgDir: Path
@@ -45,6 +45,8 @@ class TestRunServiceTest {
     private lateinit var service: TestRunService
     private lateinit var items: ItemEditService
     private lateinit var zcbs: FakeZcbs
+    private lateinit var runner: ExeRunner
+    private lateinit var processed: ProcessedLog
 
     private fun fake(name: String, into: Path, asName: String): Path {
         Files.createDirectories(into)
@@ -57,8 +59,9 @@ class TestRunServiceTest {
     @BeforeEach
     fun setUp() {
         zcbs = FakeZcbs()
+        zcbs.numberWidth = 8
         inbox = Files.createDirectories(dir.resolve("invoer"))
-        archived = dir.resolve("backup_invoer_org")
+        backupPdf = Files.createDirectories(dir.resolve("backup_invoer_org"))
         backup = Files.createDirectories(dir.resolve("backup_100pct"))
         p2zDir = dir.resolve("pdf2zcbs")
         imgDir = dir.resolve("images")
@@ -73,10 +76,13 @@ class TestRunServiceTest {
         Files.createDirectories(serverRoot.resolve("public_html/archief/pdf"))
         server = TestSftpServer(serverRoot, dir.resolve("hostkey.ser"))
 
-        settings = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
+        val properties = WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString())
+        settings = SettingsService(ObjectMapper(), properties)
         save { it }
         items = ItemEditService(settings)
-        service = TestRunService(settings, ExeRunner("UTF-8", dir.resolve("logs").toString()), SftpService(settings), items, SourceFilesService(settings))
+        runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        processed = ProcessedLog(settings, properties)
+        service = TestRunService(settings, runner, SftpService(settings), items, SourceFilesService(settings, processed), processed)
     }
 
     @AfterEach
@@ -87,7 +93,7 @@ class TestRunServiceTest {
     }
 
     private fun base() = WorkflowSettings(
-        testFolder = inbox.toString(), archivedFolder = archived.toString(),
+        testFolder = inbox.toString(), backupPdfFolder = backupPdf.toString(),
         imagesExe = imgDir.resolve("images.sh").toString(), pdf2zcbsExe = p2zDir.resolve("pdf2zcbs.sh").toString(),
         collection = "archief", backup100pctFolder = backup.toString(),
         sftpHost = "localhost", sftpPort = server.port, sftpUser = TestSftpServer.USER, sftpPassword = TestSftpServer.PASSWORD,
@@ -105,9 +111,9 @@ class TestRunServiceTest {
     private fun stepView(id: Int): StepView = service.view()!!.rows.flatMap { it.cells }.first { it.id == id }
 
     /** Voert de volgende stap uit en wacht tot een programma klaar is. */
-    private fun runNext(auto: Boolean = false, options: StepOptions = StepOptions()): StepView {
+    private fun runNext(auto: Boolean = false): StepView {
         val step = next()
-        service.execute(step.id, RunMode.IN_APP, auto, options)
+        service.execute(step.id, RunMode.IN_APP, auto)
         val deadline = System.currentTimeMillis() + 15_000
         while (stepView(step.id).status == "RUNNING" && System.currentTimeMillis() < deadline) Thread.sleep(50)
         return stepView(step.id)
@@ -116,8 +122,6 @@ class TestRunServiceTest {
     /** Voert stappen uit tot de volgende stap van het gegeven type aan de beurt is (die wordt zelf niet uitgevoerd). */
     private fun runUntil(type: String) {
         while (next().type != type) {
-            // Records bewerken heeft een eigen test (met inloggen en een nep-ZCBS); hier slaan we de stap over.
-            if (next().type == "EDIT") { service.skip(next().id); continue }
             val result = runNext()
             assertEquals("DONE", result.status, "${result.type}: ${result.message}")
         }
@@ -134,13 +138,13 @@ class TestRunServiceTest {
     // ---- opzet van de stappen ----
 
     @Test
-    fun `creates one step per file for renaming and archiving and one per batch for the rest`() {
+    fun `creates one step per file for renaming and one per run for the rest`() {
         service.start("0100")
         val view = service.view()!!
         assertEquals(listOf("0100.pdf", "0101.pdf"), view.rows.map { it.newName })
         assertEquals(listOf("xx01.pdf", "xx02.pdf"), view.rows.map { it.originalName })
-        assertEquals(9, view.totalCount, "2 x hernoemen, pdf2zcbs, images, upload, records bewerken, opruimen, 2 x archiveren")
-        assertEquals(listOf("Hernoemen", "pdf2zcbs.exe", "images.exe", "Upload (sftp)", "Records bewerken", "Opruimen", "Archiveren"), view.stepTypes)
+        assertEquals(6, view.totalCount, "2 x hernoemen, pdf2zcbs, images, upload, back-up en opruimen")
+        assertEquals(listOf("Hernoemen", "pdf2zcbs.exe", "images.exe", "Upload (sftp)", "Back-up en opruimen"), view.stepTypes)
         assertEquals("Hernoem xx01.pdf naar 0100.pdf?", view.next!!.question)
     }
 
@@ -192,87 +196,127 @@ class TestRunServiceTest {
         assertTrue(Files.exists(remote("/public_html/archief/pdf/90000001.pdf")))
         assertEquals(listOf("OK", "OK"), states(0, "server"))
 
-        // records bewerken: de stap kan pas als je bent ingelogd en de records bestaan; hij is klaar als alles is opgeslagen of op later staat.
-        assertTrue(next().problems.any { it.contains("Log eerst in") }, next().problems.toString())
-        zcbs.addRecord("edit-leeg.html", "90000000")
-        zcbs.addRecord("edit-leeg.html", "90000001")
-        assertEquals(null, items.login("Test Beheerder", "Beheer1"))
-        val edit = next()
-        assertEquals("EDIT", edit.type)
-        service.execute(edit.id, RunMode.IN_APP)
-        assertEquals("RUNNING", stepView(edit.id).status)
-        assertEquals(listOf("PENDING"), states(0, "ZCBS"))
-        assertTrue(items.open("90000000") is nl.vdzon.hkhworkflow.items.OpenOutcome.Ready)
-        assertEquals(nl.vdzon.hkhworkflow.items.SaveOutcome.Saved, items.save("90000000", mapOf("a5" to listOf("Eerste titel"))))
-        assertEquals("RUNNING", stepView(edit.id).status, "nog niet alle records zijn klaar")
-        items.later("90000001")
-        assertEquals("DONE", stepView(edit.id).status)
-        assertEquals(listOf("OK"), states(0, "ZCBS"))
-        assertEquals(EditStatus.LATER, items.statusOf("90000001"))
-
-        // opruimen: eerst back-up, dan weg; de originelen staan er nog.
+        // back-up en opruimen: eerst de back-up van 100pct en pdf, dan weg; de originelen op de bron blijven staan.
+        assertTrue(next().plan.any { it.contains("verwerkt-log") })
         assertEquals("DONE", runNext().status)
         assertEquals(listOf("90000000.jpg", "90000001.jpg"), filesIn(backup))
+        assertEquals(listOf("90000000.pdf", "90000001.pdf"), filesIn(backupPdf))
         assertFalse(Files.exists(p2zDir.resolve("output")))
         assertFalse(Files.exists(imgDir.resolve("small")))
         assertFalse(Files.exists(imgDir.resolve("100pct")))
         assertEquals(emptyList(), filesIn(imgDir.resolve("images")))
         assertEquals(listOf("images", "images.sh"), filesIn(imgDir), "het logbestand is weg; het programma en de lege invoermap blijven")
-        assertTrue(Files.exists(inbox.resolve("xx01.pdf")))
-        assertEquals(listOf("server", "ZCBS", "back-up"), service.view()!!.rows[0].checks.map { it.label })
-        assertEquals(listOf("OK"), states(0, "back-up"))
-
-        // archiveren: de originelen verhuizen naar de archived-map en alles is klaar.
-        repeat(2) { assertEquals("DONE", runNext().status) }
-        assertEquals(listOf("xx01.pdf", "xx02.pdf"), filesIn(archived))
-        assertEquals(listOf("notes.txt", "werk"), filesIn(inbox))
+        assertEquals(listOf("pdf2zcbs.sh"), filesIn(p2zDir), "ook de pdf's die pdf2zcbs kreeg zijn weg")
+        assertEquals(listOf("notes.txt"), filesIn(inbox), "de kopieën in de invoermap en de werkmap zijn opgeruimd")
+        assertEquals(listOf("server", "back-up"), service.view()!!.rows[0].checks.map { it.label })
+        assertEquals(listOf("OK", "OK"), states(0, "back-up"))
         assertNull(service.view()!!.next)
     }
 
-    // ---- de batch in acht fasen ----
+    @Test
+    fun `de chain zet de bestanden in het verwerkt-log`() {
+        service.start("90000000")
+        runUntil("CLEANUP")
+        assertEquals(emptyList(), processed.all())
+        assertEquals("DONE", runNext().status)
+        val logged = processed.all()
+        assertEquals(listOf("90000000", "90000001"), logged.map { it.number })
+        assertEquals(listOf("xx01.pdf", "xx02.pdf"), logged.map { it.name })
+        assertEquals(1, processed.runs().size)
+        assertEquals("archief", logged[0].collection)
+    }
+
+    // ---- de flow van Carla ----
 
     @Test
-    fun `de batch loopt in acht fasen van inloggen tot afsluiten`() {
-        assertEquals(1, service.batchView().current, "eerst inloggen")
+    fun `de flow loopt in zes fasen met een controle na pdf2zcbs en na images`() {
         assertEquals(null, items.login("Test Beheerder", "Beheer1"))
-        assertEquals(2, service.batchView().current, "dan de bestanden")
+        assertEquals(1, service.flowView().current, "eerst de bestanden kiezen")
         service.confirmFiles()
-        assertEquals(3, service.batchView().current, "dan voorbereiden")
+        assertEquals(2, service.flowView().current, "dan de nummers")
 
-        // een nummer dat al bestaat in ZCBS wordt geweigerd; er is dan niets gekopieerd
-        zcbs.addRecord("edit-leeg.html", "90000010")
-        assertTrue(service.prepare("90000010")!!.contains("bestaat al"))
-        assertEquals(3, service.batchView().current)
+        // een reeks die niet aaneengesloten past (11 bestaat al) wordt geweigerd; er is dan niets gekopieerd
+        zcbs.addRecord("edit-leeg.html", "90000011")
+        assertTrue(service.prepare("90000010")!!.contains("passen niet"))
+        assertTrue(service.prepare("abc")!!.contains("alleen cijfers"))
+        assertEquals(2, service.flowView().current)
         assertFalse(Files.exists(inbox.resolve("werk")))
 
-        zcbs.records.remove("90000010")
-        assertEquals(null, service.prepare("90000010"))
-        assertEquals(listOf("90000010.pdf", "90000011.pdf"), filesIn(inbox.resolve("werk")))
-        assertEquals(4, service.batchView().current)
-        assertEquals(listOf("done", "done", "done", "now", "todo", "todo", "todo", "todo"), service.batchView().phases.map { it.state })
+        // 12 en 13 zijn vrij en sluiten aan
+        assertEquals(null, service.prepare("90000012"))
+        assertEquals(listOf("90000012.pdf", "90000013.pdf"), filesIn(inbox.resolve("werk")))
+        assertEquals(3, service.flowView().current)
+        assertEquals(listOf("done", "done", "now", "todo", "todo", "todo"), service.flowView().phases.map { it.state })
+        assertEquals("90000012 t/m 90000013", service.flowView().phases[1].note)
 
-        repeat(3) { assertEquals("DONE", runNext().status) }
-        assertEquals(7, service.batchView().current, "pdf2zcbs, images en upload zijn klaar")
-        zcbs.addRecord("edit-leeg.html", "90000010")
-        zcbs.addRecord("edit-leeg.html", "90000011")
-        service.execute(next().id, RunMode.IN_APP)
-        items.later("90000010")
-        items.later("90000011")
-        assertEquals(8, service.batchView().current)
+        // pdf2zcbs draait; daarna moet Carla controleren voordat images mag
+        assertEquals("DONE", runNext().status)
+        var flow = service.flowView()
+        assertEquals(3, flow.current)
+        assertTrue(flow.review, "de uitvoer van pdf2zcbs wacht op controle")
+        assertTrue(next().problems.any { it.contains("Controleer eerst") }, next().problems.toString())
+        assertEquals("FAILED", runNext().status, "images start niet voor de controle")
+        assertFalse(Files.exists(imgDir.resolve("images/90000012.jpg")))
+        service.retry(next().id)
+        assertTrue(service.confirmReview(StepType.IMAGES)!!.contains("nog niet klaar"))
+        assertEquals(null, service.confirmReview(StepType.PDF2ZCBS))
+        flow = service.flowView()
+        assertEquals(4, flow.current)
+        assertFalse(flow.review)
 
-        assertEquals(null, service.finish())
-        val done = service.batchView()
+        assertEquals("DONE", runNext().status)
+        flow = service.flowView()
+        assertEquals(4, flow.current)
+        assertTrue(flow.review, "de uitvoer van images wacht op controle")
+        assertTrue(next().problems.any { it.contains("Controleer eerst") })
+        assertEquals(null, service.confirmReview(StepType.IMAGES))
+        assertEquals(5, service.flowView().current)
+
+        assertEquals("DONE", runNext().status)
+        assertEquals(6, service.flowView().current)
+        assertEquals("DONE", runNext().status)
+        val done = service.flowView()
         assertTrue(done.finished)
-        assertEquals(9, done.current)
-        assertEquals(listOf("xx01.pdf", "xx02.pdf"), filesIn(archived))
-        assertEquals(listOf("90000010.jpg", "90000011.jpg"), filesIn(backup))
+        assertEquals(7, done.current)
+        assertEquals(listOf("90000012.jpg", "90000013.jpg"), filesIn(backup))
+        assertEquals(listOf("90000012.pdf", "90000013.pdf"), filesIn(backupPdf))
+        assertEquals(listOf("notes.txt"), filesIn(inbox))
+        assertEquals(listOf("Test Beheerder", "Test Beheerder"), processed.all().map { it.user })
     }
 
     @Test
-    fun `afsluiten stopt als er nog een stap voor ligt`() {
+    fun `de nummers moeten allemaal in een vrije reeks passen`() {
         assertEquals(null, items.login("Test Beheerder", "Beheer1"))
-        assertEquals(null, service.prepare("90000020"))
-        assertTrue(service.finish()!!.contains("nog een stap"))
+        zcbs.addRecord("edit-leeg.html", "00000003")
+        // de vrije nummers zijn 1-2 en 4 en hoger: twee bestanden passen op 1 en 2, maar niet op 2 en 3
+        assertTrue(service.prepare("00000002")!!.contains("passen niet"))
+        assertEquals(null, service.prepare("00000001"))
+        assertEquals(listOf("00000001.pdf", "00000002.pdf"), filesIn(inbox.resolve("werk")), "voorloopnullen blijven staan")
+    }
+
+    @Test
+    fun `zonder lijst met vrije nummers uit ZCBS start er niets`() {
+        assertTrue(service.prepare("90000000")!!.contains("vrije nummers"), "niet ingelogd")
+        assertFalse(Files.exists(inbox.resolve("werk")))
+    }
+
+    @Test
+    fun `de uitvoer die Carla controleert wordt alleen getoond voor nummers van deze run`() {
+        service.start("90000000")
+        runUntil("IMAGES")
+        assertNotNull(service.resultFile("pdf", "90000000"))
+        assertNotNull(service.resultFile("p2z-small", "90000001"))
+        assertEquals("tekst van 90000000", service.ocrExcerpt("90000000"))
+        assertNull(service.resultFile("pdf", "12345"), "geen nummer van deze run")
+        assertNull(service.resultFile("../../etc/passwd", "90000000"))
+        assertNull(service.resultFile("100pct", "90000000"), "images draaide nog niet")
+    }
+
+    @Test
+    fun `de back-up kan pas als de stappen ervoor klaar zijn`() {
+        service.start("90000020")
+        assertTrue(next().type != "CLEANUP")
+        assertThrows<IllegalStateException> { service.execute(service.view()!!.rows[0].cells[4].id, RunMode.IN_APP) }
     }
 
     // ---- een stap is pas klaar als de bestanden er zijn ----
@@ -332,7 +376,6 @@ class TestRunServiceTest {
         service.start("10")
         runUntil("PDF2ZCBS")
         repeat(3) { assertEquals("DONE", runNext().status) }
-        service.skip(next().id)
         save { it.copy(backup100pctFolder = "") }
 
         assertTrue(next().problems.any { it.contains("back-upmap") })
@@ -346,7 +389,6 @@ class TestRunServiceTest {
         service.start("10")
         runUntil("PDF2ZCBS")
         repeat(2) { assertEquals("DONE", runNext().status) }
-        service.skip(next().id)
         service.skip(next().id)
         assertTrue(next().warnings.any { it.contains("upload is overgeslagen") })
     }
@@ -380,10 +422,33 @@ class TestRunServiceTest {
     private fun answers(): Map<String, String> =
         Files.readAllLines(imgDir.resolve("answers.txt")).associate { it.substringBefore("=") to it.substringAfter("=") }
 
+    private fun rememberedAnswer(pattern: String): String? = settings.get().imagesAnswers.firstOrNull { it.pattern == pattern }?.answer
+
+    /** Typt de antwoorden voor een handmatige run: wacht tot het programma een bekende vraag stelt en antwoordt op die vraag. */
+    private fun answerManually(answers: Map<String, String>, seen: MutableList<String> = mutableListOf()) {
+        var sent = 0
+        val deadline = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < deadline) {
+            val snap = runner.snapshot() ?: break
+            if (!snap.running) break
+            val question = snap.question
+            if (question != null && snap.inputsSent == sent) {
+                seen += "$question => ${snap.suggestion}"
+                runner.sendInput(answers[question] ?: error("Onverwachte vraag: $question"))
+                sent++
+            } else Thread.sleep(30)
+        }
+    }
+
+    private fun waitFor(step: StepView): StepView {
+        val deadline = System.currentTimeMillis() + 15_000
+        while (stepView(step.id).status == "RUNNING" && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        return stepView(step.id)
+    }
+
     @Test
-    fun `automatic images answers are safe by default and follow the settings`() {
+    fun `automatische antwoorden van images zijn standaard veilig`() {
         useQuestionsImages()
-        save { it.copy(collection = "archief", imagesFileType = "a", imagesResolution = "6") }
         service.start("10")
         runUntil("PDF2ZCBS")
         assertEquals("DONE", runNext().status)
@@ -393,42 +458,79 @@ class TestRunServiceTest {
         assertEquals(
             mapOf("type" to "a", "resolutie" to "6", "upload" to "n", "records" to "n", "verwijdermappen" to "n", "verwijderbron" to "n"),
             answers(),
+            "tot er handmatig is geantwoord wordt er niets geüpload en worden er geen records aangemaakt",
         )
+        assertTrue(stepView(service.view()!!.rows[0].cells[2].id).message!!.contains("niet naar de server geüpload"))
     }
 
     @Test
-    fun `upload and records are only answered yes when the user ticked them, and the collection comes from the settings`() {
+    fun `handmatig typen onthoudt de antwoorden en automatisch gebruikt ze`() {
         useQuestionsImages()
         save { it.copy(imagesAnswers = WorkflowSettings.DEFAULT_IMAGES_ANSWERS.map { r -> if (r.pattern == "FTP wachtwoord") AnswerRule("FTP wachtwoord", "geheimpje", true) else r }) }
         service.start("10")
         runUntil("PDF2ZCBS")
         assertEquals("DONE", runNext().status)
+        val images = next()
+        assertEquals("n", rememberedAnswer("UPLOADEN aangemaakte images"))
 
-        assertEquals("DONE", runNext(auto = true, options = StepOptions(upload = true, records = true)).status)
+        // handmatig: Carla typt, de app stelt het onthouden antwoord voor
+        service.execute(images.id, RunMode.IN_APP, auto = false)
+        val seen = mutableListOf<String>()
+        answerManually(
+            mapOf(
+                "Type ENTER/RETURN indien OK" to "a", "Kies 1,2,3" to "7", "UPLOADEN aangemaakte images" to "j",
+                "Nummer, naam of plaats instelling" to "4", "FTP wachtwoord" to "ander-wachtwoord", "Kies de ZCBS-toepassing" to "archief",
+                "OVERSCHRIJVEN" to "n", "AANMAKEN en UPLOADEN van de bijbehorende" to "j",
+                "VERWIJDEREN (tijdelijk) aangemaakte mappen" to "n", "VERWIJDEREN inhoud van de map [images]" to "n",
+            ),
+            seen,
+        )
+        assertEquals("DONE", waitFor(images).status)
+        assertTrue(seen.contains("Kies 1,2,3 => 6"), seen.toString())
+        assertTrue(seen.contains("UPLOADEN aangemaakte images => n"), "het voorstel is het onthouden antwoord: $seen")
+        assertTrue(seen.contains("FTP wachtwoord => null"), "een wachtwoord wordt nooit voorgesteld: $seen")
+        assertEquals("ander-wachtwoord", answers()["wachtwoord"])
 
+        // onthouden: wat ze typte, behalve het wachtwoord
+        assertEquals("7", rememberedAnswer("Kies 1,2,3"))
+        assertEquals("j", rememberedAnswer("UPLOADEN aangemaakte images"))
+        assertEquals("j", rememberedAnswer("AANMAKEN en UPLOADEN van de bijbehorende"))
+        assertEquals("geheimpje", rememberedAnswer("FTP wachtwoord"), "het wachtwoord uit de instellingen blijft zoals het was")
+        assertFalse(stepView(images.id).message!!.contains("niet naar de server geüpload"), stepView(images.id).message)
+
+        // automatisch: de onthouden antwoorden, met de vaste regels erbovenop
+        service.retry(images.id)
+        assertTrue(next().warnings.isEmpty(), "het onthouden antwoord is nu ja: ${next().warnings}")
+        assertEquals("DONE", runNext(auto = true).status)
         val given = answers()
+        assertEquals("7", given["resolutie"])
         assertEquals("j", given["upload"])
         assertEquals("j", given["records"])
-        assertEquals("4", given["instelling"])
-        assertEquals("archief", given["collectie"], "de collectie uit de instellingen gaat voor de standaardregel")
+        assertEquals("geheimpje", given["wachtwoord"])
+        assertEquals("archief", given["collectie"], "de collectie uit de instellingen gaat voor")
         assertEquals("n", given["overschrijven"], "nooit overschrijven")
         assertEquals("n", given["verwijdermappen"])
         assertEquals("n", given["verwijderbron"])
     }
 
     @Test
-    fun `records without upload and automatic upload without a password are refused`() {
+    fun `automatisch uitvoeren waarschuwt als de onthouden antwoorden niet uploaden`() {
+        service.start("10")
+        runUntil("PDF2ZCBS")
+        assertEquals("DONE", runNext().status)
+        assertTrue(next().warnings.any { it.contains("onthouden antwoorden") }, next().warnings.toString())
+        assertTrue(next().plan.any { it.contains("uploaden naar de server nee") })
+    }
+
+    @Test
+    fun `automatisch uploaden zonder wachtwoord wordt geweigerd`() {
         useQuestionsImages()
+        save { it.copy(imagesAnswers = WorkflowSettings.DEFAULT_IMAGES_ANSWERS.map { r -> if (r.pattern.startsWith("UPLOADEN")) AnswerRule(r.pattern, "j") else r }) }
         service.start("10")
         runUntil("PDF2ZCBS")
         assertEquals("DONE", runNext().status)
 
-        val noUpload = runNext(auto = true, options = StepOptions(upload = false, records = true))
-        assertEquals("FAILED", noUpload.status)
-        assertTrue(noUpload.message!!.contains("alleen samen met uploaden"), noUpload.message)
-
-        service.retry(noUpload.id)
-        val noPassword = runNext(auto = true, options = StepOptions(upload = true, records = false))
+        val noPassword = runNext(auto = true)
         assertEquals("FAILED", noPassword.status)
         assertTrue(noPassword.message!!.contains("FTP-wachtwoord"), noPassword.message)
         assertFalse(Files.exists(imgDir.resolve("answers.txt")), "het programma is niet gestart")

@@ -12,16 +12,10 @@
         <div class="alert alert-ok" th:if="${saved}">Instellingen opgeslagen.</div>
         <form class="card pad" method="post" th:action="@{/instellingen}" style="display:flex;flex-direction:column;gap:22px;max-width:980px">
             <div class="field">
-                <label class="f" for="testFolder">Testmap</label>
-                <input type="text" id="testFolder" name="testFolder" th:value="${settings.testFolder}" placeholder="C:\zcbs\test">
-                <span class="hint">Hier zet je de pdf's neer die je op de testpagina wilt verwerken.</span>
+                <label class="f" for="testFolder">Invoermap</label>
+                <input type="text" id="testFolder" name="testFolder" th:value="${settings.testFolder}" placeholder="C:\zcbs\invoer">
+                <span class="hint">Hier komen de pdf's te staan die Carla op de pagina Nieuwe bestanden kiest, voordat ze verwerkt worden (<span class="mono">c:\zcbs\invoer</span>). Na afloop ruimt de app de kopieën hier op.</span>
                 <span class="warn" th:if="${problems['testFolder']}" th:text="${problems['testFolder']}"></span>
-            </div>
-            <div class="field">
-                <label class="f" for="archivedFolder">Archived-map</label>
-                <input type="text" id="archivedFolder" name="archivedFolder" th:value="${settings.archivedFolder}" placeholder="C:\zcbs\archived">
-                <span class="hint">Hier gaan de originele bestanden naartoe als ze klaar zijn. Dit vervangt de back-up van de invoermap.</span>
-                <span class="warn" th:if="${problems['archivedFolder']}" th:text="${problems['archivedFolder']}"></span>
             </div>
             <div class="field">
                 <label class="f" for="pdf2zcbsExe">pdf2zcbs.exe</label>
@@ -42,41 +36,37 @@
             <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
                 <legend class="f" style="padding:0;margin-bottom:6px">Bestanden van de server en ZCBS</legend>
                 <div class="field">
-                    <label class="f" for="sourceFolder">Bronmap op de server</label>
-                    <input type="text" id="sourceFolder" name="sourceFolder" th:value="${settings.sourceFolder}" placeholder="K:\scabslelly">
-                    <span class="hint">Hier zetten Ria en anderen de pdf's klaar, in een submap per persoon. De testpagina haalt de bestanden die je aanvinkt hier op en kopieert ze naar de testmap; de map toont ook wie het gescand heeft.</span>
+                    <label class="f" for="sourceFolders">Mappen met scans</label>
+                    <textarea id="sourceFolders" name="sourceFolders" rows="3" class="mono" placeholder="Jelly=K:\scans jelly&#10;Ria=K:\scans ria" th:text="${settings.sourceFolders}"></textarea>
+                    <span class="hint">Eén map per regel: <span class="mono">naam=pad</span>. In elke map staan submappen met scans. Op de pagina Nieuwe bestanden bladert Carla door deze mappen en vinkt aan wat ze op het archief wil zetten. De naam laat zien wie het gescand heeft. De bestanden op de schijf blijven staan.</span>
+                    <span class="warn" th:if="${problems['sourceFolders']}" th:text="${problems['sourceFolders']}"></span>
                 </div>
                 <div class="field">
                     <label class="f" for="zcbsBaseUrl">Adres van ZCBS</label>
                     <input type="text" id="zcbsBaseUrl" name="zcbsBaseUrl" th:value="${settings.zcbsBaseUrl}" placeholder="http://localhost:8081">
-                    <span class="hint">Voor het bewerken van de records. De lokale testkopie is <span class="mono">http://localhost:8081</span> (zie tools/zcbs-local); het echte archief is <span class="mono">https://www.historischekringheemskerk.nl</span>. Bij het echte archief schrijft elke opslag in ZCBS en gaat er een e-mail naar de beheerder. Naam en wachtwoord vraagt de app per keer en bewaart ze niet.</span>
+                    <span class="hint">Voor het kiezen van recordnummers en het bewerken van records. De lokale testkopie is <span class="mono">http://localhost:8081</span> (zie tools/docker/zcbs); het echte archief is <span class="mono">https://www.historischekringheemskerk.nl</span>. Bij het echte archief schrijft elke opslag in ZCBS en gaat er een e-mail naar de beheerder. Naam en wachtwoord vraagt de app per keer en bewaart ze niet.</span>
                     <span class="warn" th:if="${problems['zcbsBaseUrl']}" th:text="${problems['zcbsBaseUrl']}"></span>
                 </div>
             </fieldset>
             <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
-                <legend class="f" style="padding:0;margin-bottom:6px">Collectie en images.exe</legend>
+                <legend class="f" style="padding:0;margin-bottom:6px">Collectie en back-up</legend>
                 <div class="field">
                     <label class="f" for="collection">Collectie</label>
                     <input type="text" id="collection" name="collection" th:value="${settings.collection}" placeholder="archief">
                     <span class="hint">Antwoord op "Kies de ZCBS-toepassing" van images.exe. Bepaalt ook de sftp-mappen <span class="mono">&lt;collectie&gt;/ocr</span> en <span class="mono">&lt;collectie&gt;/pdf</span>.</span>
                     <span class="warn" th:if="${problems['collection']}" th:text="${problems['collection']}"></span>
                 </div>
-                <div style="display:flex;gap:16px;flex-wrap:wrap">
-                    <div class="field" style="width:200px"><label class="f" for="imagesFileType">Bestandstype</label>
-                        <input type="text" id="imagesFileType" name="imagesFileType" th:value="${settings.imagesFileType}" placeholder="a">
-                        <span class="hint">a = het recordnummer is de bestandsnaam.</span></div>
-                    <div class="field" style="width:200px"><label class="f" for="imagesResolution">Resolutie</label>
-                        <input type="text" id="imagesResolution" name="imagesResolution" th:value="${settings.imagesResolution}" placeholder="6">
-                        <span class="hint">1-3: small 100x100. 6-8: small 250x250.</span></div>
-                    <div class="field" style="width:200px"><label class="f" for="imagesInstitution">Instelling</label>
-                        <input type="text" id="imagesInstitution" name="imagesInstitution" th:value="${settings.imagesInstitution}" placeholder="4">
-                        <span class="hint">Nummer van de ZCBS-instelling (HKH is 4).</span></div>
-                </div>
                 <div class="field">
                     <label class="f" for="backup100pctFolder">Back-upmap voor 100pct</label>
-                    <input type="text" id="backup100pctFolder" name="backup100pctFolder" th:value="${settings.backup100pctFolder}" placeholder="C:\zcbs\backup_100pct">
-                    <span class="hint">De 100pct-afbeeldingen worden hierheen gekopieerd voordat de exe-mappen worden opgeruimd.</span>
+                    <input type="text" id="backup100pctFolder" name="backup100pctFolder" th:value="${settings.backup100pctFolder}" placeholder="K:\backup_100pct">
+                    <span class="hint">De 100pct-afbeeldingen worden hierheen gekopieerd voordat de mappen van de programma's worden opgeruimd.</span>
                     <span class="warn" th:if="${problems['backup100pctFolder']}" th:text="${problems['backup100pctFolder']}"></span>
+                </div>
+                <div class="field">
+                    <label class="f" for="backupPdfFolder">Back-upmap voor de pdf's</label>
+                    <input type="text" id="backupPdfFolder" name="backupPdfFolder" th:value="${settings.backupPdfFolder}" placeholder="K:\backup_invoer_org">
+                    <span class="hint">De verwerkte pdf's, met hun recordnummer als naam, worden hierheen gekopieerd voordat de invoermap wordt opgeruimd.</span>
+                    <span class="warn" th:if="${problems['backupPdfFolder']}" th:text="${problems['backupPdfFolder']}"></span>
                 </div>
             </fieldset>
             <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
@@ -122,7 +112,7 @@
             </fieldset>
             <div th:replace="~{fragments/answers :: answers('pdf2zcbs', 'Antwoorden voor pdf2zcbs.exe', ${pdf2zcbsRows})}"></div>
             <div th:replace="~{fragments/answers :: answers('images', 'Antwoorden voor images.exe', ${imagesRows})}"></div>
-            <p class="hint" style="margin:0">Bestandstype, resolutie, instelling, collectie, uploaden, records en het verwijderen van mappen zet de testpagina bovenop deze antwoorden; die gaan voor. Wachtwoorden worden niet in de pagina getoond, maar staan wel leesbaar in het instellingenbestand. Zet daar dus alleen een testwachtwoord in, of beveilig het bestand.</p>
+            <p class="hint" style="margin:0">Bij <b>Handmatig uitvoeren</b> onthoudt de app wat Carla intypt en past deze antwoorden daarop aan; de volgende keer vult hij ze alvast voor. <b>Automatisch uitvoeren</b> gebruikt ze zoals ze hier staan. Alleen de collectie, het overschrijven en het verwijderen van de mappen van images.exe staan vast (altijd nee) en gaan voor. Uploaden en records aanmaken staan op nee tot er een keer handmatig is geantwoord. Wachtwoorden worden niet in de pagina getoond, maar staan wel leesbaar in het instellingenbestand. Zet daar dus alleen een testwachtwoord in, of beveilig het bestand.</p>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
                 <span class="hint">Opgeslagen in <span class="mono" th:text="${settingsFile}"></span></span>
                 <button type="submit" class="btn btn-p">Opslaan</button>

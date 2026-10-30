@@ -16,17 +16,17 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
-/** De pagina's om de records van de batch te bewerken via het ZCBS-formulier. */
+/** Inloggen bij ZCBS en de pagina's om records te bewerken via het ZCBS-formulier. */
 @Controller
 class ItemsController(private val items: ItemEditService) {
 
-    private fun back(target: String): String = when (target) { "/records" -> "redirect:/records"; "/batch" -> "redirect:/batch"; else -> "redirect:/test" }
+    private fun back(target: String): String = when (target) { "/records" -> "redirect:/records"; "/nieuw" -> "redirect:/nieuw"; "/test" -> "redirect:/test"; else -> "redirect:/" }
 
     @PostMapping("/zcbs/login")
     fun login(
         @RequestParam("naam", defaultValue = "") name: String,
         @RequestParam("wachtwoord", defaultValue = "") password: String,
-        @RequestParam("terug", defaultValue = "/test") target: String,
+        @RequestParam("terug", defaultValue = "/") target: String,
         redirect: RedirectAttributes,
     ): String {
         val error = items.login(name, password)
@@ -35,20 +35,31 @@ class ItemsController(private val items: ItemEditService) {
     }
 
     @PostMapping("/zcbs/logout")
-    fun logout(@RequestParam("terug", defaultValue = "/test") target: String): String {
+    fun logout(@RequestParam("terug", defaultValue = "/") target: String): String {
         items.logout()
         return back(target)
     }
 
     @GetMapping("/records")
     fun list(@RequestParam("opgeslagen", required = false) saved: String?, model: Model): String {
-        if (items.records().isEmpty()) return "redirect:/test"
         model.addAttribute("active", "records")
         model.addAttribute("items", items)
         model.addAttribute("records", items.records())
         model.addAttribute("saved", saved)
         model.addAttribute("loggedIn", items.loggedIn())
         return "records"
+    }
+
+    /** Kiest de records die bewerkt worden: een nummer, een reeks of meer daarvan. */
+    @PostMapping("/records/kies")
+    fun choose(@RequestParam("nummers", defaultValue = "") numbers: String, redirect: RedirectAttributes): String {
+        val result = items.chooseRecords(numbers)
+        if (result.error != null) redirect.addFlashAttribute("error", result.error)
+        else {
+            val missing = if (result.missing.isEmpty()) "" else " Deze bestaan niet in ZCBS en staan er niet bij: ${result.missing.take(8).joinToString()}${if (result.missing.size > 8) " en ${result.missing.size - 8} andere" else ""}."
+            redirect.addFlashAttribute("info", "${result.count} ${if (result.count == 1) "record staat" else "records staan"} klaar om te bewerken.$missing")
+        }
+        return "redirect:/records"
     }
 
     private fun showForm(model: Model, number: String, panel: String? = null, messages: List<String> = emptyList(), conflict: List<ConflictRow> = emptyList()): String {
@@ -82,7 +93,7 @@ class ItemsController(private val items: ItemEditService) {
                 }
                 blockedPage(model, number, panel, outcome.message)
             }
-            is OpenOutcome.NeedsLogin -> { redirect.addFlashAttribute("error", "Je sessie bij ZCBS is verlopen. Log opnieuw in."); "redirect:/test" }
+            is OpenOutcome.NeedsLogin -> { redirect.addFlashAttribute("error", "Je sessie bij ZCBS is verlopen. Log opnieuw in."); "redirect:/" }
         }
     }
 
@@ -165,7 +176,7 @@ class ItemsController(private val items: ItemEditService) {
         is SaveOutcome.Locked -> showForm(model, number, "locked", listOf(outcome.message))
         is SaveOutcome.Conflict -> showForm(model, number, "conflict", conflict = outcome.rows)
         is SaveOutcome.Failed -> showForm(model, number, "error", listOf(outcome.message))
-        is SaveOutcome.NeedsLogin -> { redirect.addFlashAttribute("error", "Je sessie bij ZCBS is verlopen. Log opnieuw in; je invoer blijft bewaard."); "redirect:/test" }
+        is SaveOutcome.NeedsLogin -> { redirect.addFlashAttribute("error", "Je sessie bij ZCBS is verlopen. Log opnieuw in; je invoer blijft bewaard."); "redirect:/" }
     }
 
     @PostMapping("/records/{nr}/later")

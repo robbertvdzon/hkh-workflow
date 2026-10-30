@@ -5,18 +5,16 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Soorten stappen, in de volgorde waarin ze draaien. Hernoemen en archiveren zijn per bestand. De rest draait één
- * keer per batch, omdat de programma's alles verwerken wat in hun map staat en pdf2zcbs zijn `output/` bij elke
- * start leegt.
+ * Soorten stappen, in de volgorde waarin ze draaien. Hernoemen is per bestand. De rest draait één keer voor alle
+ * bestanden samen, omdat de programma's alles verwerken wat in hun map staat en pdf2zcbs zijn `output/` bij elke
+ * start leegt. Het invullen van de gegevens in ZCBS hoort er niet bij: dat gebeurt op een andere dag.
  */
 enum class StepType(val label: String, val perFile: Boolean, val usesExe: Boolean = false) {
     RENAME("Hernoemen", true),
     PDF2ZCBS("pdf2zcbs.exe", false, usesExe = true),
     IMAGES("images.exe", false, usesExe = true),
     UPLOAD("Upload (sftp)", false),
-    EDIT("Records bewerken", false),
-    CLEANUP("Opruimen", false),
-    ARCHIVE("Archiveren", true),
+    CLEANUP("Back-up en opruimen", false),
 }
 
 enum class StepStatus(val label: String) {
@@ -32,25 +30,13 @@ data class TestFile(val index: Int, val original: Path, val number: String, val 
     val newName: String get() = "$number.pdf"
 }
 
-/** Keuzes die de gebruiker bij het starten van images.exe maakt. Standaard schrijft het niets naar de server. */
-data class StepOptions(
-    /** Antwoord j op "UPLOADEN aangemaakte images ... naar webserver?" (schrijft in de echte collectie). */
-    val upload: Boolean = false,
-    /** Antwoord j op "AANMAKEN en UPLOADEN van de bijbehorende ... lege DATABASE RECORDS?" (schrijft in de echte collectie). */
-    val records: Boolean = false,
-)
-
-/** Eén stap: voor een stap per bestand bevat [files] precies één bestand, voor een batchstap alle bestanden. */
+/** Eén stap: voor een stap per bestand bevat [files] precies één bestand, voor een stap voor alles samen alle bestanden. */
 class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
     @Volatile
     var status: StepStatus = StepStatus.PENDING
 
     @Volatile
     var message: String? = null
-
-    /** De keuzes waarmee een images-stap is gestart (uploaden en records aanmaken). */
-    @Volatile
-    var options: StepOptions? = null
 
     /** Paden op de server die in deze run zijn geüpload en gecontroleerd (alleen bij de uploadstap). */
     val uploaded: MutableSet<String> = ConcurrentHashMap.newKeySet()
@@ -67,12 +53,10 @@ class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
     val question: String
         get() = when (type) {
             StepType.RENAME -> "Hernoem ${file.originalName} naar ${file.newName}?"
-            StepType.ARCHIVE -> "Verplaats origineel ${file.originalName} naar de archived-map?"
             StepType.PDF2ZCBS, StepType.IMAGES ->
                 "Run ${type.label} één keer voor ${files.size} ${if (files.size == 1) "bestand" else "bestanden"} ($fileNames)?"
             StepType.UPLOAD -> "Upload tekst en pdf van ${files.size} ${if (files.size == 1) "bestand" else "bestanden"} naar de server?"
-            StepType.EDIT -> "Bewerk ${files.size} ${if (files.size == 1) "record" else "records"} in ZCBS?"
-            StepType.CLEANUP -> "Maak een back-up van de 100pct en ruim de mappen van de programma's op?"
+            StepType.CLEANUP -> "Maak een back-up van de 100pct en de pdf's en ruim de mappen op?"
         }
 }
 
@@ -84,6 +68,13 @@ class TestRun(
     val steps: List<Step>,
     val createdAt: Instant = Instant.now(),
 ) {
+    /** Bij de flow van Carla moet ze de uitvoer van pdf2zcbs en images.exe eerst controleren voordat de volgende stap kan. */
+    @Volatile
+    var gated: Boolean = false
+
+    /** De stappen waarvan de uitvoer is gecontroleerd. */
+    val reviewed: MutableSet<StepType> = ConcurrentHashMap.newKeySet()
+
     /** De eerstvolgende stap die nog niet klaar of overgeslagen is. */
     fun nextStep(): Step? = steps.firstOrNull { !it.finished }
 }
@@ -118,7 +109,9 @@ data class CheckGroupView(val label: String, val items: List<CheckView>)
 data class FileRowView(
     val originalName: String,
     val newName: String,
-    /** Wie het gescand heeft: de persoon van de map waarin het bestand op de server stond (leeg als dat niet bekend is). */
+    /** Het recordnummer van dit bestand. */
+    val number: String,
+    /** Wie het gescand heeft: de naam van de bronmap waarin het bestand stond (leeg als dat niet bekend is). */
     val by: String,
     val cells: List<StepView>,
     val checks: List<CheckGroupView>,
@@ -137,11 +130,12 @@ data class TestRunView(
 )
 
 
-/** Eén fase in de balk bovenaan de batchpagina. [state] is done, now of todo. */
+/** Eén fase in de balk bovenaan de pagina Nieuwe bestanden. [state] is done, now of todo. */
 data class PhaseView(val nr: Int, val title: String, val state: String, val note: String?)
 
 /**
- * De batch zoals Carla hem ziet: acht fasen (inloggen, bestanden ophalen, voorbereiden, pdf2zcbs, images.exe, upload,
- * bewerken, afsluiten). [current] is de fase die aan de beurt is, of 9 als alles klaar is.
+ * De flow zoals Carla hem ziet: zes fasen (bestanden kiezen, nummers, pdf2zcbs, images.exe, upload, back-up). [current] is de
+ * fase die aan de beurt is, of 7 als alles klaar is. [review] is gezet als de uitvoer van de huidige fase klaar is en Carla
+ * hem moet controleren voordat ze verder kan.
  */
-data class BatchView(val phases: List<PhaseView>, val current: Int, val finished: Boolean, val run: TestRunView?)
+data class FlowView(val phases: List<PhaseView>, val current: Int, val finished: Boolean, val review: Boolean, val run: TestRunView?)
