@@ -127,6 +127,8 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 .choice{display:flex;flex-direction:column;gap:8px;padding:22px 24px;border:1px solid var(--line);border-radius:12px;background:#fff;text-decoration:none;color:var(--ink);font-size:16px}
 .choice:hover{border-color:var(--accent);box-shadow:0 1px 6px rgba(0,0,0,.08)}
 .choice b{font-family:var(--serif);font-size:20px}
+.choice-off{opacity:.5;cursor:not-allowed;background:transparent}
+.choice-off:hover{border-color:var(--line);box-shadow:none}
 .runhead{display:flex;flex-direction:column;gap:2px}
 .head > .btn,.head > .row-actions{flex-shrink:0;white-space:nowrap}
 .tr.th > span{min-width:0;overflow-wrap:anywhere}

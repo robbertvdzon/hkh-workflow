@@ -1,20 +1,19 @@
 <!DOCTYPE html>
 <html lang="nl" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Beheerder')}"></head>
+<head th:replace="~{fragments/layout :: head('Beheer')}"></head>
 <body>
 <div class="app">
     <nav th:replace="~{fragments/layout :: side}"></nav>
     <main>
         <div>
-            <h1>Beheerder</h1>
-            <p class="sub">De instellingen en de technische pagina's zijn alleen voor de beheerder.</p>
+            <h1>Beheer</h1>
+            <p class="sub">De instellingen zijn alleen voor de beheerder.</p>
         </div>
         <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
         <section class="card pad stack" style="max-width:520px" th:if="${loggedIn}">
             <h2 style="margin:0">Je bent ingelogd als beheerder</h2>
             <div class="row-actions">
                 <a class="btn btn-p" th:href="@{/instellingen}">Instellingen</a>
-                <a class="btn btn-s" th:href="@{/test}">Test (technisch)</a>
                 <form method="post" th:action="@{/beheer/uitloggen}"><button class="btn btn-s" type="submit">Uitloggen als beheerder</button></form>
             </div>
         </section>

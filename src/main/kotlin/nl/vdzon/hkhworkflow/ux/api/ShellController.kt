@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpSession
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
+import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.ux.AdminAccess
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -26,12 +27,18 @@ class ShellAdvice(private val items: ItemEditService, private val admin: AdminAc
     @ModelAttribute("zcbsRealArchive")
     fun realArchive(): Boolean = items.loggedIn() && !settingsService.get().zcbsIsLocal()
 
+    @ModelAttribute("zcbsRights")
+    fun rights(): List<String> = items.rights()
+
     @ModelAttribute("collectionName")
-    fun collectionName(): String = settingsService.get().collection.ifBlank { "archief" }
+    fun collectionName(): String = WorkflowSettings.COLLECTION
 
     @ModelAttribute("zcbsAddress")
     fun zcbsAddress(): String = settingsService.get().zcbsBaseUrl
 }
+
+/** Een collectie op de keuzepagina. Alleen de collecties waar de app mee werkt, zijn te kiezen. */
+data class CollectionChoice(val name: String, val enabled: Boolean, val hint: String)
 
 /**
  * Het begin van de app: inloggen bij ZCBS, daarna de collectie kiezen en dan een van twee dingen doen: nieuwe bestanden in ZCBS
@@ -52,14 +59,23 @@ class ShellController(private val items: ItemEditService, private val admin: Adm
     @GetMapping("/collectie")
     fun collections(model: Model): String {
         model.addAttribute("active", "start")
-        model.addAttribute("collections", listOf(settingsService.get().collection.ifBlank { "archief" }))
+        val rights = items.rights()
+        model.addAttribute(
+            "collections",
+            WorkflowSettings.ALL_COLLECTIONS.map {
+                when {
+                    it !in rights -> CollectionChoice(it, false, "Geen rechten")
+                    it !in WorkflowSettings.IMPLEMENTED_COLLECTIONS -> CollectionChoice(it, false, "Nog niet beschikbaar")
+                    else -> CollectionChoice(it, true, "Collectie in ZCBS")
+                }
+            },
+        )
         return "collectie"
     }
 
     @GetMapping("/collectie/{name}")
     fun collection(@org.springframework.web.bind.annotation.PathVariable("name") name: String, model: Model): String {
-        val known = settingsService.get().collection.ifBlank { "archief" }
-        if (name != known) return "redirect:/collectie"
+        if (!items.canUse(name)) return "redirect:/collectie"
         model.addAttribute("active", "start")
         model.addAttribute("collection", name)
         return "collectie-acties"

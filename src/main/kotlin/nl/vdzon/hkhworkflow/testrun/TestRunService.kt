@@ -153,8 +153,8 @@ class TestRunService(
             line(server, "100pct", "jpg", s.remoteImagesDir("100pct")),
             line(server, "tekst (ocr)", "txt", s.remoteOcrDir()),
             line(server, "pdf", "pdf", s.remotePdfDir()),
-            line("Back-up", "100pct", "jpg", s.backup100pctFolder),
-            line("Back-up", "pdf", "pdf", s.backupPdfFolder),
+            line("Back-up", "100pct", "jpg", s.backup100pctFolder()),
+            line("Back-up", "pdf", "pdf", s.backupPdfFolder()),
         )
     }
 
@@ -245,7 +245,7 @@ class TestRunService(
             if (ok) EnvCheck(id, okLabel, true, okDetail) else EnvCheck(id, failLabel, false, detail)
         val roots = s.sourceRoots()
         val unreachable = roots.filter { !folder(it.path) }
-        val backups = listOf(s.backup100pctFolder, s.backupPdfFolder).filter { !folder(it) }
+        val backups = listOf(s.backup100pctFolder(), s.backupPdfFolder()).filter { !folder(it) }
         val exes = listOf(s.pdf2zcbsExe, s.imagesExe).filter { !file(it) }
         val ftpSettled = s.ftpHost.isNotBlank() && s.ftpUser.isNotBlank() && s.ftpPassword.isNotEmpty()
         val ftp = if (ftpSettled) ftpService.testConnection(5_000) else null
@@ -424,8 +424,8 @@ class TestRunService(
     private class Layout(val s: WorkflowSettings) {
         val p2z: Path? = s.pdf2zcbsExe.trim().takeIf { it.isNotEmpty() }?.let { Path.of(it).toAbsolutePath().parent }
         val img: Path? = s.imagesExe.trim().takeIf { it.isNotEmpty() }?.let { Path.of(it).toAbsolutePath().parent }
-        val backup: Path? = s.backup100pctFolder.trim().takeIf { it.isNotEmpty() }?.let { Path.of(it) }
-        val backupPdf: Path? = s.backupPdfFolder.trim().takeIf { it.isNotEmpty() }?.let { Path.of(it) }
+        val backup: Path? = s.backup100pctFolder().trim().takeIf { it.isNotEmpty() }?.let { Path.of(it) }
+        val backupPdf: Path? = s.backupPdfFolder().trim().takeIf { it.isNotEmpty() }?.let { Path.of(it) }
 
         fun p2zOutput(): Path? = p2z?.resolve("output")
         fun ocr(f: TestFile): Path? = p2zOutput()?.resolve("ocr")?.resolve("${f.number}.txt")
@@ -504,7 +504,7 @@ class TestRunService(
                 if (current.gated && StepType.IMAGES !in current.reviewed) add("Controleer eerst de bestanden van images.exe en bevestig dat ze goed zijn.")
                 if (s.ftpHost.isBlank()) add("Ftp-host is niet ingesteld (Instellingen).")
                 if (s.ftpUser.isBlank()) add("Ftp-gebruiker is niet ingesteld (Instellingen).")
-                if (s.ftpPassword.isEmpty()) add("Ftp-wachtwoord is niet ingesteld (Instellingen).")
+                if (s.ftpPassword.isEmpty()) add("Ftp-wachtwoord is niet ingesteld (Instellingen, bij de antwoorden voor images.exe).")
                 if (s.collection.isBlank()) add("Collectie is niet ingesteld (Instellingen).")
                 step.files.forEach {
                     if (!l.ocr(it).present(allowEmpty = true)) add("Tekstbestand ontbreekt: ${l.ocr(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")
@@ -514,10 +514,10 @@ class TestRunService(
 
             StepType.CLEANUP -> buildList {
                 if (l.p2z == null || l.img == null) add("Stel eerst de paden van pdf2zcbs.exe en images.exe in.")
-                if (s.backup100pctFolder.isBlank()) add("Stel eerst de back-upmap voor de 100pct in (Instellingen).")
-                else if (!Files.isDirectory(Path.of(s.backup100pctFolder))) add("Back-upmap voor de 100pct bestaat niet: ${s.backup100pctFolder}")
-                if (s.backupPdfFolder.isBlank()) add("Stel eerst de back-upmap voor de pdf's in (Instellingen).")
-                else if (!Files.isDirectory(Path.of(s.backupPdfFolder))) add("Back-upmap voor de pdf's bestaat niet: ${s.backupPdfFolder}")
+                if (s.backup100pctFolder().isBlank()) add("Stel eerst de back-upmap voor de 100pct in (Instellingen).")
+                else if (!Files.isDirectory(Path.of(s.backup100pctFolder()))) add("Back-upmap voor de 100pct bestaat niet: ${s.backup100pctFolder()}")
+                if (s.backupPdfFolder().isBlank()) add("Stel eerst de back-upmap voor de pdf's in (Instellingen).")
+                else if (!Files.isDirectory(Path.of(s.backupPdfFolder()))) add("Back-upmap voor de pdf's bestaat niet: ${s.backupPdfFolder()}")
                 step.files.forEach {
                     if (!l.img100(it).present()) add("100pct ontbreekt, dus geen back-up mogelijk: ${l.img100(it) ?: "(images.exe niet ingesteld)"}")
                     if (!current.workDir.resolve(it.newName).present()) add("De pdf met recordnummer ontbreekt, dus geen back-up mogelijk: ${current.workDir.resolve(it.newName)}")
@@ -551,67 +551,40 @@ class TestRunService(
         val expected = step.files.flatMap {
             listOf("tekst" to l.ocr(it)!!, "pdf" to l.pdf(it)!!, "small" to l.p2zSmall(it)!!, "large" to l.p2zLarge(it)!!)
         }
-        val known = s.pdf2zcbsAnswers.map { AutoAnswer(it.pattern, it.answer, it.secret) }
+        val known = ExeAnswers.PDF2ZCBS
         runExe(current, step, s, Path.of(s.pdf2zcbsExe), dir, copies, expected, mode, if (auto) known else null, known)
     }
 
     private fun runImages(current: TestRun, step: Step, s: WorkflowSettings, mode: RunMode, auto: Boolean) {
-        if (auto && yes(remembered(s, UPLOAD_QUESTION))) {
-            check(s.imagesAnswers.any { it.pattern.contains("FTP wachtwoord", ignoreCase = true) && it.answer.isNotEmpty() }) {
-                "Voor uploaden met automatisch uitvoeren moet bij Instellingen het FTP-wachtwoord staan (regel 'FTP wachtwoord'). Gebruik anders Handmatig uitvoeren."
+        if (auto) {
+            check(s.ftpPassword.isNotEmpty()) {
+                "Voor automatisch uitvoeren moet bij Instellingen het FTP-wachtwoord staan. Gebruik anders Handmatig uitvoeren: typ het één keer in, dan neemt de app het over."
             }
         }
         val l = Layout(s)
         val dir = l.img!!
         val copies = step.files.map { l.p2zLarge(it)!! to l.imgIn(it)!! }
         val expected = step.files.flatMap { listOf("small" to l.imgSmall(it)!!, "large" to l.imgLarge(it)!!, "100pct" to l.img100(it)!!) }
-        val known = s.imagesAnswers.map { AutoAnswer(it.pattern, it.answer, it.secret) }
+        val known = ExeAnswers.images(s)
         // De vragen over verwijderen en overschrijven beantwoordt de app ook bij handmatig uitvoeren zelf met nee: images.exe wist anders de
-        // afbeeldingen die de app nog nodig heeft voor de controle en de back-up (het opruimen doet de app daarna zelf).
-        runExe(current, step, s, Path.of(s.imagesExe), dir, copies, expected, mode, if (auto) imagesRules(s) + known else null, known, if (auto) emptyList() else safetyRules() + rememberedSecrets(s))
+        // afbeeldingen die de app nog nodig heeft voor de controle en de back-up (het opruimen doet de app daarna zelf). Bij handmatig
+        // uitvoeren stelt hij de andere antwoorden alleen voor; een ingesteld FTP-wachtwoord geeft hij wel één keer vanzelf.
+        val forced = if (auto) emptyList() else ExeAnswers.SAFETY + known.filter { it.secret && it.answer.isNotEmpty() }.map { it.copy(once = true) }
+        runExe(current, step, s, Path.of(s.imagesExe), dir, copies, expected, mode, if (auto) known else null, known, forced)
     }
-
-    /**
-     * Antwoorden die altijd gelden en dus voor de onthouden antwoorden gaan: de collectie komt uit de instellingen, en er wordt nooit
-     * overschreven of verwijderd (de app ruimt zelf op, ná de back-up). De rest (bestandstype, resolutie, instelling, uploaden, records
-     * aanmaken) zijn de onthouden antwoorden uit Instellingen, die de app van de laatste handmatige run overneemt.
-     */
-    private fun imagesRules(s: WorkflowSettings): List<AutoAnswer> = listOf(AutoAnswer("Kies de ZCBS-toepassing", s.collection)) + safetyRules()
-
-    /** Nooit overschrijven op de server en nooit de afbeeldingen van images.exe wissen: dat is altijd nee, ook als iemand zelf typt. */
-    private fun safetyRules(): List<AutoAnswer> = listOf(
-        AutoAnswer("OVERSCHRIJVEN", "n"),
-        AutoAnswer("VERWIJDEREN (tijdelijk) aangemaakte mappen", "n"),
-        AutoAnswer("VERWIJDEREN inhoud van de map [images]", "n"),
-    )
-
-    private fun remembered(s: WorkflowSettings, question: String): String? =
-        s.imagesAnswers.firstOrNull { it.pattern.contains(question, ignoreCase = true) }?.answer
 
     private fun yes(answer: String?): Boolean = answer?.trim()?.lowercase() in setOf("j", "ja", "y", "yes")
 
-    /** Wachtwoorden die de app van de vorige keer onthield (zoals het FTP-wachtwoord van images.exe): ze worden één keer per run automatisch gegeven, ook bij handmatig uitvoeren. */
-    private fun rememberedSecrets(s: WorkflowSettings): List<AutoAnswer> =
-        s.imagesAnswers.filter { it.secret && it.answer.isNotEmpty() }.map { AutoAnswer(it.pattern, it.answer, secret = true, once = true) }
-
-    /** Onthoudt wat Carla zelf heeft ingetypt, zodat het de volgende keer wordt voorgesteld en automatisch kan worden gegeven. */
-    private fun learn(type: StepType, typed: Map<String, String>, typedSecrets: Map<String, String>) {
-        if (typed.isEmpty() && typedSecrets.isEmpty()) return
+    /**
+     * Het ftp-wachtwoord dat iemand bij handmatig uitvoeren van images.exe typt, wordt de instelling als die nog leeg is. Verder
+     * leert de app niets: de antwoorden zijn vast.
+     */
+    private fun learnPassword(typedSecrets: Map<String, String>) {
+        val typed = typedSecrets.entries.firstOrNull { it.key.contains(ExeAnswers.FTP_PASSWORD_QUESTION, ignoreCase = true) }?.value.orEmpty()
         val s = settingsService.get()
-        // De submap is een keuze per keer en een naam leren we niet: die vraag blijft een Enter.
-        fun update(rules: List<nl.vdzon.hkhworkflow.settings.AnswerRule>) = rules.map { r ->
-            val value = if (r.secret) typedSecrets[r.pattern]?.takeIf { it.isNotEmpty() } else typed[r.pattern]?.takeIf { !r.pattern.startsWith(NOT_LEARNED) }
-            value?.let { r.copy(answer = it) } ?: r
-        }
-        val updated = when (type) {
-            StepType.PDF2ZCBS -> s.copy(pdf2zcbsAnswers = update(s.pdf2zcbsAnswers))
-            StepType.IMAGES -> s.copy(imagesAnswers = update(s.imagesAnswers))
-            else -> return
-        }
-        if (updated != s) {
-            settingsService.save(updated)
-            log.info("Antwoorden van {} onthouden: {}", type.label, typed.keys + typedSecrets.keys)
-        }
+        if (typed.isEmpty() || s.ftpPassword.isNotEmpty()) return
+        settingsService.save(s.withFtpPassword(typed))
+        log.info("Het FTP-wachtwoord dat is getypt bij handmatig uitvoeren is overgenomen als instelling.")
     }
 
     private fun runExe(
@@ -646,7 +619,7 @@ class TestRunService(
                 val missing = if (code == 0) expected.filter { !it.second.present(allowEmpty = it.first == "tekst") } else emptyList()
                 // Buiten het slot: dit leest een paar pagina's van ZCBS.
                 val note = if (code == 0 && missing.isEmpty() && step.type == StepType.IMAGES) imagesNote(step) else ""
-                if (code == 0 && missing.isEmpty() && autoAnswers == null) learn(step.type, exeRunner.typedAnswers(), exeRunner.typedSecretAnswers())
+                if (code == 0 && missing.isEmpty() && autoAnswers == null && step.type == StepType.IMAGES) learnPassword(exeRunner.typedSecretAnswers())
                 synchronized(this) {
                     if (code != 0) {
                         step.status = StepStatus.FAILED
@@ -676,8 +649,8 @@ class TestRunService(
     private fun imagesNote(step: Step): String {
         val given = exeRunner.givenAnswers()
         fun answer(question: String) = given.entries.firstOrNull { it.key.contains(question, ignoreCase = true) }?.value
-        val uploaded = yes(answer(UPLOAD_QUESTION))
-        val records = yes(answer(RECORDS_QUESTION))
+        val uploaded = yes(answer(ExeAnswers.UPLOAD_QUESTION))
+        val records = yes(answer(ExeAnswers.RECORDS_QUESTION))
         return buildList {
             if (!uploaded) add(" Let op: de afbeeldingen zijn niet naar de server geüpload.")
             if (!records) add(" Let op: er zijn geen records aangemaakt in ZCBS.")
@@ -840,16 +813,12 @@ class TestRunService(
         if (step.type == StepType.CLEANUP && current.steps.first { it.type == StepType.UPLOAD }.status == StepStatus.SKIPPED) {
             add("De upload is overgeslagen. Na het opruimen zijn de tekst en pdf's weg, tenzij je ze zelf op de server hebt gezet.")
         }
-        if (step.type == StepType.IMAGES && (!yes(remembered(s, UPLOAD_QUESTION)) || !yes(remembered(s, RECORDS_QUESTION)))) {
-            add("Bij Automatisch uitvoeren zou images.exe nu niet uploaden en geen records aanmaken: dat zijn de onthouden antwoorden. Voer het één keer handmatig uit en antwoord ja; de app onthoudt dat voor de volgende keer.")
-        }
     }
 
     private fun plan(current: TestRun, step: Step, s: WorkflowSettings): List<String> {
         val l = Layout(s)
         val n = step.files.size
         val unset = "(niet ingesteld)"
-        fun yn(answer: String?) = if (yes(answer)) "ja" else "nee"
         return when (step.type) {
             StepType.RENAME -> listOf("Maakt een kopie van ${step.file.originalName} als ${current.workDir.resolve(step.file.newName)}.", "Het origineel blijft staan.")
             StepType.PDF2ZCBS -> listOf(
@@ -859,8 +828,8 @@ class TestRunService(
             )
             StepType.IMAGES -> listOf(
                 "Zet de $n large-jpg's uit ${l.p2zOutput()?.resolve("large") ?: unset} in ${l.img?.resolve("images") ?: unset}.",
-                "Start ${s.imagesExe.ifBlank { unset }} één keer. Handmatig typ je zelf de antwoorden; de app onthoudt ze en stelt ze de volgende keer voor.",
-                "Automatisch geeft de app de onthouden antwoorden: uploaden naar de server ${yn(remembered(s, UPLOAD_QUESTION))}, records aanmaken ${yn(remembered(s, RECORDS_QUESTION))}, collectie ${s.collection}.",
+                "Start ${s.imagesExe.ifBlank { unset }} één keer. Handmatig typ je zelf de antwoorden; de app stelt de vaste antwoorden voor.",
+                "Automatisch geeft de app de vaste antwoorden: uploaden naar de server ja, records aanmaken ja, collectie ${s.collection}, resolutie ${s.imagesResolution()}.",
                 "Er wordt nooit overschreven en niets verwijderd: de vragen daarover beantwoordt de app zelf met nee (ook bij handmatig), zodat de mappen small, large, 100pct en images blijven staan.",
                 "Verwacht per bestand in ${l.img ?: unset}: small, large en 100pct.",
             )
@@ -871,8 +840,8 @@ class TestRunService(
                 "Eerst een controle: de mappen bestaan en geen enkel bestand bestaat al. Er wordt niets overschreven, aangemaakt of verwijderd.",
             )
             StepType.CLEANUP -> listOf(
-                "Kopieert de $n 100pct-afbeeldingen naar ${s.backup100pctFolder.ifBlank { unset }}.",
-                "Kopieert de $n pdf's met hun recordnummer naar ${s.backupPdfFolder.ifBlank { unset }}.",
+                "Kopieert de $n 100pct-afbeeldingen naar ${s.backup100pctFolder().ifBlank { unset }}.",
+                "Kopieert de $n pdf's met hun recordnummer naar ${s.backupPdfFolder().ifBlank { unset }}.",
                 "Verwijdert daarna ${l.p2zOutput() ?: unset}, ${l.img?.resolve("small") ?: unset}, large en 100pct, de bronbestanden in ${l.img?.resolve("images") ?: unset}, log-*.txt in ${l.img ?: unset} en de $n kopieën in de invoermap.",
                 "De bestanden op K: blijven staan. De tekst en pdf's in output zijn dan weg: die moeten op de server staan (stap Upload).",
                 "Zet de bestanden in het verwerkt-log, zodat je later kunt zien wat al op het archief staat.",
@@ -1006,8 +975,5 @@ class TestRunService(
 
     private companion object {
         const val LEFTOVERS_MESSAGE = "Er staan nog bestanden van een eerdere run in je invoermap of in de mappen van pdf2zcbs.exe of images.exe. Verplaats of verwijder ze eerst (of kies bij je invoermap voor \"horen erbij\")."
-        const val NOT_LEARNED = "Geef een ENTER/RETURN"
-        const val UPLOAD_QUESTION = "UPLOADEN aangemaakte images"
-        const val RECORDS_QUESTION = "AANMAKEN en UPLOADEN van de bijbehorende"
     }
 }

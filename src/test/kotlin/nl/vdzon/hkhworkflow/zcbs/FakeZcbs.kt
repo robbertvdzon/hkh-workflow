@@ -33,6 +33,33 @@ class FakeZcbs : AutoCloseable {
         it.createContext("/cgi-bin/archief.pl") { ex -> handle(ex) }
         it.start()
     }
+    private val otherCollections = mutableMapOf<String, MutableMap<String, String>>()
+
+    /**
+     * Geeft [user] rechten bij een andere collectie dan het archief: het script van die collectie herkent hem dan bij het inloggen,
+     * met [password] (standaard dat uit [users]). Zonder `grant` bestaat het script niet (404), en een gebruiker zonder recht krijgt
+     * het foute-inlogscherm.
+     */
+    fun grant(collection: String, user: String, password: String = users.getValue(user)) {
+        val allowed = otherCollections.getOrPut(collection) {
+            val set = mutableMapOf<String, String>()
+            server.createContext("/cgi-bin/$collection.pl") { ex ->
+                requests += "${ex.requestMethod} ${ex.requestURI}"
+                val form = String(ex.requestBody.readAllBytes(), StandardCharsets.ISO_8859_1).split('&').filter { it.contains('=') }.associate {
+                    URLDecoder.decode(it.substringBefore('='), "ISO-8859-1") to URLDecoder.decode(it.substringAfter('='), "ISO-8859-1")
+                }
+                val name = form["user"].orEmpty()
+                val ok = set[name] != null && set[name] == form["pswd"]
+                val bytes = Fixtures.page(if (ok) "login-ok.html" else "login-fout.html").toByteArray(StandardCharsets.ISO_8859_1)
+                ex.responseHeaders.add("Content-Type", "text/html; charset=iso-8859-1")
+                ex.sendResponseHeaders(200, bytes.size.toLong())
+                ex.responseBody.use { it.write(bytes) }
+            }
+            set
+        }
+        allowed[user] = password
+    }
+
     val baseUrl: String get() = "http://127.0.0.1:${server.address.port}"
 
     fun addRecord(fixture: String, number: String) {

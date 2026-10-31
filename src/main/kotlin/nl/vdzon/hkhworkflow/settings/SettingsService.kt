@@ -13,7 +13,7 @@ import tools.jackson.databind.ObjectMapper
 @Service
 class SettingsService(
     private val objectMapper: ObjectMapper,
-    properties: WorkflowProperties,
+    private val properties: WorkflowProperties,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val file: Path = Path.of(properties.settingsFile).toAbsolutePath()
@@ -31,52 +31,79 @@ class SettingsService(
                 val node = objectMapper.readTree(Files.readString(file))
                 fun text(name: String, oldName: String, default: String): String =
                     node.path(name).takeIf { it.isString }?.asText() ?: node.path(oldName).takeIf { it.isString }?.asText() ?: default
-                fun rules(name: String, defaults: List<AnswerRule>): List<AnswerRule> {
-                    val array = node.path(name)
-                    if (!array.isArray) return defaults
-                    // Expliciete lus: JsonNode in Jackson 3 heeft een eigen map(), dus geen Kotlin-map gebruiken.
-                    val result = mutableListOf<AnswerRule>()
+                val oldBaseUrl = node.path("zcbsBaseUrl").asText("")
+                // De antwoorden voor images.exe stonden vroeger in dit bestand (een lijst {pattern, answer, secret}); nu zijn ze vast, op de
+                // resolutie en het ftp-wachtwoord na. Die twee nemen we over uit zo'n oud bestand.
+                fun oldAnswer(pattern: String): String? {
+                    val array = node.path("imagesAnswers")
+                    if (!array.isArray) return null
                     for (i in 0 until array.size()) {
                         val item = array.get(i)
-                        result.add(AnswerRule(item.path("pattern").asText(""), item.path("answer").asText(""), item.path("secret").asBoolean(false)))
+                        if (item.path("pattern").asText("").equals(pattern, ignoreCase = true)) return item.path("answer").asText("")
                     }
-                    // Een oude lijst mist nieuwe standaardvragen: die komen er (alleen in het geheugen, tot er opgeslagen wordt) bij, zodat ze meteen herkend worden.
-                    return if (name == "imagesAnswers") result + defaults.filter { d -> result.none { it.pattern == d.pattern } } else result
+                    return null
                 }
-                WorkflowSettings(
-                    testFolder = node.path("testFolder").asText(""),
-                    imagesExe = node.path("imagesExe").asText(""),
-                    pdf2zcbsExe = node.path("pdf2zcbsExe").asText(""),
-                    perlioUnbuffered = node.path("perlioUnbuffered").asBoolean(true),
-                    pdf2zcbsAnswers = rules("pdf2zcbsAnswers", WorkflowSettings.DEFAULT_PDF2ZCBS_ANSWERS),
-                    imagesAnswers = rules("imagesAnswers", WorkflowSettings.DEFAULT_IMAGES_ANSWERS),
-                    collection = node.path("collection").asText("archief"),
-                    backup100pctFolder = node.path("backup100pctFolder").asText(""),
-                    backupPdfFolder = node.path("backupPdfFolder").asText(""),
-                    leftoversFolder = node.path("leftoversFolder").asText(""),
+                val oldResolution = oldAnswer("Kies 1,2,3")?.takeIf { it in CollectionSettings.RESOLUTIONS }
+                val loadedCollections = linkedMapOf<String, CollectionSettings>()
+                val collectionsNode = node.path("collections")
+                if (collectionsNode.isObject) {
+                    for (name in collectionsNode.propertyNames()) {
+                        val c = collectionsNode.path(name)
+                        loadedCollections[name] = CollectionSettings(
+                            imagesResolution = c.path("imagesResolution").asText("").takeIf { it in CollectionSettings.RESOLUTIONS } ?: CollectionSettings.DEFAULT_RESOLUTION,
+                            backup100pctFolder = c.path("backup100pctFolder").asText(""),
+                            backupPdfFolder = c.path("backupPdfFolder").asText(""),
+                        )
+                    }
+                } else {
+                    // Een bestand van voor de instellingen per collectie: alles hoorde bij het archief.
+                    loadedCollections[WorkflowSettings.COLLECTION] = CollectionSettings(
+                        imagesResolution = oldResolution ?: CollectionSettings.DEFAULT_RESOLUTION,
+                        backup100pctFolder = node.path("backup100pctFolder").asText(""),
+                        backupPdfFolder = node.path("backupPdfFolder").asText(""),
+                    )
+                }
+                withEnvironment(
+                    WorkflowSettings(
+                        testFolder = node.path("testFolder").asText(""),
+                        imagesExe = node.path("imagesExe").asText(""),
+                        pdf2zcbsExe = node.path("pdf2zcbsExe").asText(""),
+                        perlioUnbuffered = node.path("perlioUnbuffered").asBoolean(true),
+                        collections = loadedCollections,
+                        leftoversFolder = node.path("leftoversFolder").asText(""),
                     logSource = node.path("logSource").asText(""),
                     logFtpPassword = node.path("logFtpPassword").asBoolean(true),
-                    zcbsBaseUrl = node.path("zcbsBaseUrl").asText(""),
-                    sourceFolders = node.path("sourceFolders").asText(""),
-                    // Een instellingenbestand uit de tijd van sftp gebruikt dezelfde gegevens voor ftp (behalve de poort en de vingerafdruk).
-                    ftpHost = text("ftpHost", "sftpHost", ""),
-                    ftpPort = node.path("ftpPort").asInt(21),
-                    ftpUser = text("ftpUser", "sftpUser", ""),
-                    ftpPassword = text("ftpPassword", "sftpPassword", ""),
-                    ftpBaseDir = text("ftpBaseDir", "sftpBaseDir", WorkflowSettings.DEFAULT_FTP_BASE_DIR),
-                    ftpOcrDir = text("ftpOcrDir", "sftpOcrDir", ""),
-                    ftpPdfDir = text("ftpPdfDir", "sftpPdfDir", ""),
+                        // Een bestand van voor deze keuze: alles wat niet het echte archief is, geldt als test. Zo wijst een oude instelling nooit ineens naar het echte archief.
+                        useTestZcbs = if (node.path("useTestZcbs").isBoolean) node.path("useTestZcbs").asBoolean(true) else !oldBaseUrl.contains("historischekringheemskerk.nl"),
+                        sourceFolders = node.path("sourceFolders").asText(""),
+                        // Het wachtwoord: de eigen instelling, anders het oude antwoord op "FTP wachtwoord" (ook uit de tijd van sftp).
+                        ftpPassword = text("ftpPassword", "sftpPassword", "").ifEmpty { oldAnswer("FTP wachtwoord").orEmpty() },
+                    ),
                 )
             } catch (e: Exception) {
                 log.warn("Kan instellingen niet lezen uit {}: {}", file, e.message)
-                WorkflowSettings()
+                withEnvironment(WorkflowSettings())
             }
         } else {
-            WorkflowSettings()
+            withEnvironment(WorkflowSettings())
         }
         cached = loaded
         return loaded
     }
+
+    /**
+     * Vult in wat uit de keuze voor de test-ZCBS volgt: het adres van ZCBS en de ftp-server. De test-ZCBS staat in de
+     * eigenschappen van de app (standaard op deze computer), het echte archief staat vast. Gebruiker, basismap en collectie
+     * zijn altijd dezelfde.
+     */
+    fun withEnvironment(settings: WorkflowSettings): WorkflowSettings = settings.copy(
+        zcbsBaseUrl = if (settings.useTestZcbs) properties.testZcbsUrl.trim().trimEnd('/') else WorkflowSettings.PRODUCTION_ZCBS_URL,
+        ftpHost = if (settings.useTestZcbs) properties.testFtpHost.trim() else WorkflowSettings.PRODUCTION_FTP_HOST,
+        ftpPort = if (settings.useTestZcbs) properties.testFtpPort else 21,
+        ftpUser = WorkflowSettings.FTP_USER,
+        ftpBaseDir = WorkflowSettings.DEFAULT_FTP_BASE_DIR,
+        collection = WorkflowSettings.COLLECTION,
+    )
 
     @Synchronized
     fun save(settings: WorkflowSettings): WorkflowSettings {
@@ -84,20 +111,16 @@ class SettingsService(
             testFolder = settings.testFolder.trim(),
             imagesExe = settings.imagesExe.trim(),
             pdf2zcbsExe = settings.pdf2zcbsExe.trim(),
-            collection = settings.collection.trim(),
-            backup100pctFolder = settings.backup100pctFolder.trim(),
-            backupPdfFolder = settings.backupPdfFolder.trim(),
+            collections = settings.collections.mapValues { (_, c) ->
+                c.copy(
+                    imagesResolution = c.imagesResolution.trim().takeIf { it in CollectionSettings.RESOLUTIONS } ?: CollectionSettings.DEFAULT_RESOLUTION,
+                    backup100pctFolder = c.backup100pctFolder.trim(),
+                    backupPdfFolder = c.backupPdfFolder.trim(),
+                )
+            },
             leftoversFolder = settings.leftoversFolder.trim(),
             logSource = settings.logSource.trim(),
-            zcbsBaseUrl = settings.zcbsBaseUrl.trim().trimEnd('/'),
             sourceFolders = settings.sourceFolders.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n"),
-            ftpHost = settings.ftpHost.trim(),
-            ftpUser = settings.ftpUser.trim(),
-            ftpBaseDir = settings.ftpBaseDir.trim(),
-            ftpOcrDir = settings.ftpOcrDir.trim(),
-            ftpPdfDir = settings.ftpPdfDir.trim(),
-            pdf2zcbsAnswers = settings.pdf2zcbsAnswers.filter { it.pattern.isNotBlank() },
-            imagesAnswers = settings.imagesAnswers.filter { it.pattern.isNotBlank() },
         )
         file.parent?.let { Files.createDirectories(it) }
         val tmp = file.resolveSibling(file.fileName.toString() + ".tmp")
@@ -128,16 +151,16 @@ class SettingsService(
     /** Waarschuwingen over de instellingen die alleen de latere stappen (upload, back-up) nodig hebben. */
     fun checkExtras(settings: WorkflowSettings): Map<String, String> {
         val problems = linkedMapOf<String, String>()
-        if (settings.collection.isBlank()) problems["collection"] = "Nog niet ingevuld."
-        if (settings.backup100pctFolder.isBlank()) problems["backup100pctFolder"] = "Nog niet ingevuld."
-        else if (!Files.isDirectory(Path.of(settings.backup100pctFolder))) problems["backup100pctFolder"] = "Map bestaat niet."
-        if (settings.backupPdfFolder.isBlank()) problems["backupPdfFolder"] = "Nog niet ingevuld."
-        else if (!Files.isDirectory(Path.of(settings.backupPdfFolder))) problems["backupPdfFolder"] = "Map bestaat niet."
-        if (settings.sourceRoots().isEmpty()) problems["sourceFolders"] = "Nog niet ingevuld: zonder deze mappen kan Carla geen scans kiezen."
-        if (settings.zcbsBaseUrl.isBlank()) problems["zcbsBaseUrl"] = "Nog niet ingevuld."
-        if (settings.ftpHost.isBlank()) problems["ftpHost"] = "Nog niet ingevuld."
-        if (settings.ftpUser.isBlank()) problems["ftpUser"] = "Nog niet ingevuld."
-        if (settings.ftpPassword.isEmpty()) problems["ftpPassword"] = "Nog niet ingevuld."
+        // Alleen de collecties waar de app mee werkt hebben de back-upmappen nodig; de sleutel is "<collectie>.<veld>".
+        for (c in WorkflowSettings.IMPLEMENTED_COLLECTIONS) {
+            val own = settings.collectionSettings(c)
+            if (own.backup100pctFolder.isBlank()) problems["$c.backup100pctFolder"] = "Nog niet ingevuld."
+            else if (!Files.isDirectory(Path.of(own.backup100pctFolder))) problems["$c.backup100pctFolder"] = "Map bestaat niet."
+            if (own.backupPdfFolder.isBlank()) problems["$c.backupPdfFolder"] = "Nog niet ingevuld."
+            else if (!Files.isDirectory(Path.of(own.backupPdfFolder))) problems["$c.backupPdfFolder"] = "Map bestaat niet."
+        }
+        if (settings.sourceRoots().isEmpty()) problems["sourceFolders"] = "Nog niet ingevuld: zonder deze mappen kan niemand scans kiezen."
+        if (settings.ftpPassword.isEmpty()) problems["ftpPassword"] = "Nog niet ingevuld. Vul het hier in, of typ het één keer in bij Handmatig uitvoeren van images.exe: dan neemt de app het over."
         return problems
     }
 }

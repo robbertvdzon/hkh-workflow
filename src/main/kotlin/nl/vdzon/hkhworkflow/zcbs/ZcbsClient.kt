@@ -16,7 +16,7 @@ class UnencodableException(val field: String, val chars: List<Char>) :
 
 sealed interface LoginOutcome {
     data object Ok : LoginOutcome
-    data class Failed(val message: String) : LoginOutcome
+    data class Failed(val message: String, val rateLimited: Boolean = false) : LoginOutcome
 }
 
 /**
@@ -65,7 +65,7 @@ class ZcbsClient(
         return when (page) {
             is Page.LoginOk, is Page.Form -> LoginOutcome.Ok
             is Page.LoginFailed -> LoginOutcome.Failed("Naam of wachtwoord niet herkend.")
-            is Page.RateLimited -> LoginOutcome.Failed("ZCBS vindt dat er te veel verzoeken zijn. Wacht even en probeer het opnieuw.")
+            is Page.RateLimited -> LoginOutcome.Failed("ZCBS vindt dat er te veel verzoeken zijn. Wacht even en probeer het opnieuw.", rateLimited = true)
             else -> LoginOutcome.Failed("ZCBS gaf een onverwacht antwoord op het inloggen: ${(page as? Page.Other)?.text ?: page}")
         }
     }

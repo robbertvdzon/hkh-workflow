@@ -11,10 +11,16 @@
         </div>
         <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
         <div class="choices">
-            <a class="choice" th:each="c : ${collections}" th:href="@{/collectie/{c}(c=${c})}">
-                <b th:text="${c}">archief</b>
-                <span class="hint">Collectie in ZCBS</span>
-            </a>
+            <th:block th:each="c : ${collections}">
+                <a class="choice" th:if="${c.enabled}" th:href="@{/collectie/{c}(c=${c.name})}">
+                    <b th:text="${c.name}">archief</b>
+                    <span class="hint" th:text="${c.hint}">Collectie in ZCBS</span>
+                </a>
+                <span class="choice choice-off" th:unless="${c.enabled}" aria-disabled="true">
+                    <b th:text="${c.name}">beeldbank</b>
+                    <span class="hint" th:text="${c.hint}">Nog niet beschikbaar</span>
+                </span>
+            </th:block>
         </div>
     </main>
 </div>

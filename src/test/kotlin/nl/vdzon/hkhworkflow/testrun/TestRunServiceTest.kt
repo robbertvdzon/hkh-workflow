@@ -12,7 +12,6 @@ import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
 import nl.vdzon.hkhworkflow.items.ItemEditService
-import nl.vdzon.hkhworkflow.settings.AnswerRule
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
@@ -98,12 +97,12 @@ class TestRunServiceTest {
     }
 
     private fun base() = WorkflowSettings(
-        testFolder = inbox.toString(), backupPdfFolder = backupPdf.toString(),
+        testFolder = inbox.toString(),
         imagesExe = imgDir.resolve("images.sh").toString(), pdf2zcbsExe = p2zDir.resolve("pdf2zcbs.sh").toString(),
-        collection = "archief", backup100pctFolder = backup.toString(), sourceFolders = "Ria=${dir.resolve("k-scans")}",
-        ftpHost = "localhost", ftpPort = server.port, ftpUser = TestFtpServer.USER, ftpPassword = TestFtpServer.PASSWORD,
+        collection = "archief", sourceFolders = "Ria=${dir.resolve("k-scans")}",
+        ftpHost = "localhost", ftpPort = server.port, ftpUser = TestFtpServer.USER,
         ftpBaseDir = "/public_html", zcbsBaseUrl = zcbs.baseUrl,
-    )
+    ).withBackups(pct = backup.toString(), pdf = backupPdf.toString()).withFtpPassword(TestFtpServer.PASSWORD)
 
     private fun save(change: (WorkflowSettings) -> WorkflowSettings) {
         settings.save(change(if (this::service.isInitialized) settings.get() else base()))
@@ -396,7 +395,7 @@ class TestRunServiceTest {
         service.start("10")
         runUntil("PDF2ZCBS")
         repeat(3) { assertEquals("DONE", runNext().status) }
-        save { it.copy(backup100pctFolder = "") }
+        save { it.withBackups(pct = "") }
 
         assertTrue(next().problems.any { it.contains("back-upmap") })
         assertEquals("FAILED", runNext().status)
@@ -475,7 +474,7 @@ class TestRunServiceTest {
         assertTrue(service.startFlow()!!.contains("mappen met scans"))
         save { it.copy(sourceFolders = "") }
         assertEquals("Er zijn geen mappen met scans ingesteld", check("scans").label)
-        save { it.copy(sourceFolders = "Ria=${dir.resolve("k-scans")}", imagesExe = "/bestaat/niet.exe", backupPdfFolder = "", ftpPassword = "") }
+        save { it.copy(sourceFolders = "Ria=${dir.resolve("k-scans")}", imagesExe = "/bestaat/niet.exe").withBackups(pdf = "").withFtpPassword("") }
         assertTrue(check("exes").detail.contains("/bestaat/niet.exe"))
         assertTrue(check("backup").detail.contains("(niet ingesteld)"))
         assertFalse(check("ftp").ok)
@@ -488,14 +487,14 @@ class TestRunServiceTest {
         assertNull(items.login("Test Beheerder", "Beheer1"))
         useUserFolder()
         service.acceptInput()
-        save { it.copy(backup100pctFolder = dir.resolve("K-weg").toString(), imagesExe = "/bestaat/niet.exe") }
+        save { it.withBackups(pct = dir.resolve("K-weg").toString()).copy(imagesExe = "/bestaat/niet.exe") }
         assertEquals("De back-upmappen zijn niet bereikbaar", check("backup").label)
         assertEquals("pdf2zcbs.exe of images.exe is niet gevonden", check("exes").label)
         assertEquals("Er staat geen werk van een eerdere keer", check("leftovers").label)
         assertTrue(service.environment().filter { !it.ok }.none { it.label.contains("zijn bereikbaar") || it.label.contains("zijn gevonden") }, "een rood punt zegt nooit dat het wel klopt")
 
         // de ftp-server: een map die ontbreekt, en een server die uit staat
-        save { it.copy(backup100pctFolder = backup.toString(), imagesExe = imgDir.resolve("images.sh").toString(), collection = "bestaatniet") }
+        save { it.copy(imagesExe = imgDir.resolve("images.sh").toString(), collection = "bestaatniet").withBackups(pct = backup.toString(), pdf = backupPdf.toString()) }
         assertEquals("Op de ftp-server ontbreken mappen", check("ftp").label)
         save { it.copy(collection = "archief") }
         assertTrue(check("ftp").ok)
@@ -712,8 +711,6 @@ class TestRunServiceTest {
     private fun answers(): Map<String, String> =
         Files.readAllLines(imgDir.resolve("answers.txt")).associate { it.substringBefore("=") to it.substringAfter("=") }
 
-    private fun rememberedAnswer(pattern: String): String? = settings.get().imagesAnswers.firstOrNull { it.pattern == pattern }?.answer
-
     /** Typt de antwoorden voor een handmatige run: wacht tot het programma een vraag stelt waar een antwoord voor is en antwoordt erop. Wat de app zelf beantwoordt, slaat het over. */
     private fun answerManually(answers: Map<String, String>, seen: MutableList<String> = mutableListOf()) {
         var handledAt = -1
@@ -737,7 +734,7 @@ class TestRunServiceTest {
     }
 
     @Test
-    fun `automatische antwoorden van images zijn standaard veilig`() {
+    fun `automatisch geeft images de vaste antwoorden`() {
         useQuestionsImages()
         service.start("10")
         runUntil("PDF2ZCBS")
@@ -746,24 +743,34 @@ class TestRunServiceTest {
         assertEquals("DONE", runNext(auto = true).status)
 
         assertEquals(
-            mapOf("type" to "a", "resolutie" to "6", "upload" to "n", "records" to "n", "verwijdermappen" to "n", "verwijderbron" to "n"),
+            mapOf(
+                "type" to "a", "resolutie" to "6", "upload" to "j", "instelling" to "4", "wachtwoord" to TestFtpServer.PASSWORD,
+                "collectie" to "archief", "overschrijven" to "n", "records" to "j", "verwijdermappen" to "n", "verwijderbron" to "n",
+            ),
             answers(),
-            "tot er handmatig is geantwoord wordt er niets geüpload en worden er geen records aangemaakt",
         )
-        assertTrue(stepView(service.view()!!.rows[0].cells[2].id).message!!.contains("niet naar de server geüpload"))
+        assertFalse(stepView(service.view()!!.rows[0].cells[2].id).message!!.contains("niet naar de server geüpload"))
     }
 
     @Test
-    fun `handmatig typen onthoudt de antwoorden en automatisch gebruikt ze`() {
+    fun `de resolutie komt uit de instellingen van de collectie`() {
         useQuestionsImages()
-        save { it.copy(imagesAnswers = WorkflowSettings.DEFAULT_IMAGES_ANSWERS.map { r -> if (r.pattern == "FTP wachtwoord") AnswerRule("FTP wachtwoord", "geheimpje", true) else r }) }
+        save { it.withCollection("archief") { c -> c.copy(imagesResolution = "7") }.withCollection("beeldbank") { c -> c.copy(imagesResolution = "2") } }
+        service.start("10")
+        runUntil("PDF2ZCBS")
+        assertEquals("DONE", runNext().status)
+        assertEquals("DONE", runNext(auto = true).status)
+        assertEquals("7", answers()["resolutie"], "die van het archief, niet die van een andere collectie")
+    }
+
+    @Test
+    fun `handmatig stelt images de vaste antwoorden voor, geeft het wachtwoord vanzelf en leert niets`() {
+        useQuestionsImages()
         service.start("10")
         runUntil("PDF2ZCBS")
         assertEquals("DONE", runNext().status)
         val images = next()
-        assertEquals("n", rememberedAnswer("UPLOADEN aangemaakte images"))
 
-        // handmatig: Carla typt, de app stelt het onthouden antwoord voor
         service.execute(images.id, RunMode.IN_APP, auto = false)
         val seen = mutableListOf<String>()
         answerManually(
@@ -780,43 +787,26 @@ class TestRunServiceTest {
         assertEquals("n", runner.givenAnswers()["VERWIJDEREN (tijdelijk) aangemaakte mappen"])
         assertEquals("n", runner.givenAnswers()["VERWIJDEREN inhoud van de map [images]"])
         assertTrue(runner.typedAnswers().keys.none { it.startsWith("VERWIJDEREN") || it == "OVERSCHRIJVEN" }, "die onthoudt de app niet als getypt")
-        assertTrue(seen.contains("Kies 1,2,3 => 6"), seen.toString())
-        assertTrue(seen.contains("UPLOADEN aangemaakte images => n"), "het voorstel is het onthouden antwoord: $seen")
-        assertTrue(seen.none { it.startsWith("FTP wachtwoord") }, "het onthouden wachtwoord geeft de app zelf, Carla hoeft niets te typen: $seen")
-        assertEquals("geheimpje", answers()["wachtwoord"], "het onthouden wachtwoord is gebruikt")
-        assertFalse(runner.snapshot()!!.output.contains("geheimpje"), "een wachtwoord staat nooit leesbaar in de console")
-        assertFalse(runner.logText()!!.contains("geheimpje"), "en niet in het log")
-
-        // onthouden: wat ze typte, behalve het wachtwoord
-        assertEquals("7", rememberedAnswer("Kies 1,2,3"))
-        assertEquals("j", rememberedAnswer("UPLOADEN aangemaakte images"))
-        assertEquals("j", rememberedAnswer("AANMAKEN en UPLOADEN van de bijbehorende"))
-        assertEquals("geheimpje", rememberedAnswer("FTP wachtwoord"), "het wachtwoord uit de instellingen blijft zoals het was")
-        assertFalse(stepView(images.id).message!!.contains("niet naar de server geüpload"), stepView(images.id).message)
-
-        // automatisch: de onthouden antwoorden, met de vaste regels erbovenop
-        service.retry(images.id)
-        assertTrue(next().warnings.isEmpty(), "het onthouden antwoord is nu ja: ${next().warnings}")
-        assertEquals("DONE", runNext(auto = true).status)
-        val given = answers()
-        assertEquals("7", given["resolutie"])
-        assertEquals("j", given["upload"])
-        assertEquals("j", given["records"])
-        assertEquals("geheimpje", given["wachtwoord"])
-        assertEquals("archief", given["collectie"], "de collectie uit de instellingen gaat voor")
-        assertEquals("n", given["overschrijven"], "nooit overschrijven")
-        assertEquals("n", given["verwijdermappen"])
-        assertEquals("n", given["verwijderbron"])
+        assertTrue(seen.contains("Kies 1,2,3 => 6"), "het voorstel is de resolutie van de collectie: $seen")
+        assertTrue(seen.contains("UPLOADEN aangemaakte images => j"), "het voorstel is het vaste antwoord: $seen")
+        assertTrue(seen.contains("AANMAKEN en UPLOADEN van de bijbehorende => j"), seen.toString())
+        assertTrue(seen.none { it.startsWith("FTP wachtwoord") }, "het ingestelde wachtwoord geeft de app zelf, er hoeft niets getypt: $seen")
+        assertEquals(TestFtpServer.PASSWORD, answers()["wachtwoord"], "het ingestelde wachtwoord is gebruikt")
+        assertFalse(runner.snapshot()!!.output.contains(TestFtpServer.PASSWORD), "een wachtwoord staat nooit leesbaar in de console")
+        assertFalse(runner.logText()!!.contains(TestFtpServer.PASSWORD), "en niet in het log")
+        assertEquals("7", answers()["resolutie"], "wat getypt wordt, gaat naar het programma")
+        assertEquals("6", settings.get().imagesResolution(), "maar de app leert het niet: de instelling blijft zoals ze was")
     }
 
     @Test
-    fun `een wachtwoord dat Carla typt wordt onthouden, nooit getoond en de volgende keer vanzelf gegeven`() {
+    fun `een wachtwoord dat bij handmatig uitvoeren wordt getypt, wordt de instelling, nooit getoond en de volgende keer vanzelf gegeven`() {
         useQuestionsImages()
+        settings.save(settings.get().withFtpPassword(""))
         service.start("10")
         runUntil("PDF2ZCBS")
         assertEquals("DONE", runNext().status)
         val images = next()
-        assertEquals("", settings.get().imagesAnswers.first { it.pattern == "FTP wachtwoord" }.answer, "nog geen wachtwoord onthouden")
+        assertEquals("", settings.get().ftpPassword, "nog geen wachtwoord ingesteld")
 
         service.execute(images.id, RunMode.IN_APP, auto = false)
         answerManually(
@@ -829,9 +819,9 @@ class TestRunServiceTest {
         assertEquals("getypt-pw", answers()["wachtwoord"])
         assertFalse(runner.snapshot()!!.output.contains("getypt-pw"), "niet in de console")
         assertFalse(runner.logText()!!.contains("getypt-pw"), "niet in het log")
-        assertEquals("getypt-pw", settings.get().imagesAnswers.first { it.pattern == "FTP wachtwoord" }.answer, "onthouden voor de volgende keer")
+        assertEquals("getypt-pw", settings.get().ftpPassword, "overgenomen als instelling")
 
-        // volgende keer, weer handmatig: het wachtwoord gaat vanzelf en Carla hoeft het niet te typen
+        // volgende keer, weer handmatig: het wachtwoord gaat vanzelf en er hoeft niets getypt
         service.retry(images.id)
         service.execute(images.id, RunMode.IN_APP, auto = false)
         val seen = mutableListOf<String>()
@@ -848,18 +838,9 @@ class TestRunServiceTest {
     }
 
     @Test
-    fun `automatisch uitvoeren waarschuwt als de onthouden antwoorden niet uploaden`() {
-        service.start("10")
-        runUntil("PDF2ZCBS")
-        assertEquals("DONE", runNext().status)
-        assertTrue(next().warnings.any { it.contains("onthouden antwoorden") }, next().warnings.toString())
-        assertTrue(next().plan.any { it.contains("uploaden naar de server nee") })
-    }
-
-    @Test
-    fun `automatisch uploaden zonder wachtwoord wordt geweigerd`() {
+    fun `automatisch uitvoeren zonder ftp-wachtwoord wordt geweigerd`() {
         useQuestionsImages()
-        save { it.copy(imagesAnswers = WorkflowSettings.DEFAULT_IMAGES_ANSWERS.map { r -> if (r.pattern.startsWith("UPLOADEN")) AnswerRule(r.pattern, "j") else r }) }
+        save { it.withFtpPassword("") }
         service.start("10")
         runUntil("PDF2ZCBS")
         assertEquals("DONE", runNext().status)

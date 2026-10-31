@@ -35,9 +35,9 @@ class FtpServiceTest {
             WorkflowSettings(
                 collection = "archief",
                 ftpHost = "localhost", ftpPort = server.port,
-                ftpUser = TestFtpServer.USER, ftpPassword = TestFtpServer.PASSWORD,
+                ftpUser = TestFtpServer.USER,
                 ftpBaseDir = "/public_html",
-            ),
+            ).withFtpPassword(TestFtpServer.PASSWORD),
         )
         service = FtpService(settings)
     }
@@ -108,7 +108,7 @@ class FtpServiceTest {
 
     @Test
     fun `wrong password fails without uploading`() {
-        settings.save(settings.get().copy(ftpPassword = "fout"))
+        settings.save(settings.get().withFtpPassword("fout"))
         val e = assertThrows<Exception> { service.upload(listOf(item("1.txt"))) }
         assertTrue(e.message!!.contains("inloggen is mislukt"), e.message)
         assertFalse(Files.exists(serverRoot.resolve("public_html/archief/ocr/1.txt")))
@@ -132,13 +132,13 @@ class FtpServiceTest {
 
     @Test
     fun `test connection reports a failing login and an unreachable server`() {
-        settings.save(settings.get().copy(ftpPassword = "fout"))
+        settings.save(settings.get().withFtpPassword("fout"))
         val login = service.testConnection()
         assertFalse(login.ok)
         assertTrue(login.message.startsWith("Verbinden mislukt"), login.message)
 
         server.close()
-        settings.save(settings.get().copy(ftpPassword = TestFtpServer.PASSWORD))
+        settings.save(settings.get().withFtpPassword(TestFtpServer.PASSWORD))
         assertFalse(service.testConnection(2_000).ok)
     }
 }

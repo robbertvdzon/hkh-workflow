@@ -125,7 +125,7 @@
                         </div>
                         <div th:if="${console.running and console.mode.name() == 'IN_APP' and !console.auto and console.suggestion != null}" id="suggest"
                              th:attr="data-key=${console.question + '#' + console.inputsSent},data-answer=${console.suggestion}" class="alert alert-info" style="margin-bottom:8px">
-                            Onthouden antwoord op deze vraag: <b th:text="${console.suggestion.isEmpty()} ? '(alleen Enter)' : ${console.suggestion}"></b>.
+                            Voorgesteld antwoord op deze vraag: <b th:text="${console.suggestion.isEmpty()} ? '(alleen Enter)' : ${console.suggestion}"></b>.
                             <span th:if="${console.suggestion.isEmpty()}">Dat is een lege regel, dus er staat niets in het invoerveld: druk op de gemarkeerde knop <b>Enter</b> om het te gebruiken, of typ iets anders.</span>
                             <span th:unless="${console.suggestion.isEmpty()}">Het staat al in het invoerveld; druk op Enter of Verstuur om het te gebruiken, of typ iets anders.</span>
                         </div>

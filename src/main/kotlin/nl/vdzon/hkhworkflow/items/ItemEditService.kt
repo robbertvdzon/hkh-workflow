@@ -3,6 +3,7 @@ package nl.vdzon.hkhworkflow.items
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import nl.vdzon.hkhworkflow.settings.SettingsService
+import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.zcbs.FreeNumbers
 import nl.vdzon.hkhworkflow.zcbs.ItemForm
 import nl.vdzon.hkhworkflow.zcbs.LoginOutcome
@@ -81,34 +82,66 @@ class ItemEditService(private val settingsService: SettingsService) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val time = DateTimeFormatter.ofPattern("HH:mm")
 
-    @Volatile private var client: ZcbsClient? = null
+    /** Per collectie waar de gebruiker rechten heeft (de inlog slaagde bij het script van die collectie) de ingelogde client. */
+    @Volatile private var clients: Map<String, ZcbsClient> = emptyMap()
+    /** De client van de collectie waar de app mee werkt (het archief). Leeg als de gebruiker daar geen rechten heeft. */
+    private val client: ZcbsClient? get() = clients[WorkflowSettings.COLLECTION]
     @Volatile private var userName: String? = null
     val user: String? get() = userName
     private var password: String = ""
+    /** Het ZCBS-adres waarbij is ingelogd. Wisselt de app naar een andere ZCBS (de test of het echte archief), dan geldt de inlog niet meer. */
+    @Volatile private var loginBase: String = ""
     @Volatile private var batch: List<EditRecord> = emptyList()
 
-    fun loggedIn(): Boolean = userName != null && client != null
+    /** Ingelogd: de naam en het wachtwoord zijn bij minstens één collectie herkend. Zie [rights] voor welke. */
+    fun loggedIn(): Boolean {
+        if (userName != null && clients.isNotEmpty() && loginBase != settingsService.get().zcbsBaseUrl) logout()
+        return userName != null && clients.isNotEmpty()
+    }
 
-    /** @return een foutmelding, of null als de inlog gelukt is. */
+    /** De collecties waar de gebruiker rechten heeft, in de volgorde van [WorkflowSettings.ALL_COLLECTIONS]. */
+    fun rights(): List<String> = if (loggedIn()) WorkflowSettings.ALL_COLLECTIONS.filter { it in clients } else emptyList()
+
+    /** Mag de gebruiker met deze collectie werken? Rechten hebben en door de app ondersteund. */
+    fun canUse(collection: String): Boolean = collection in WorkflowSettings.IMPLEMENTED_COLLECTIONS && collection in rights()
+
+    /**
+     * Logt in bij ZCBS. Rechten gelden per collectie, dus dezelfde naam en hetzelfde wachtwoord worden bij het script van elke
+     * collectie geprobeerd. Je bent ingelogd als het bij minstens één lukt. ZCBS geeft bij een fout wachtwoord en bij een
+     * ontbrekend recht hetzelfde antwoord (een externe gebruiker), dus die twee zijn niet te onderscheiden.
+     * @return een foutmelding, of null als de inlog gelukt is.
+     */
     @Synchronized
     fun login(name: String, pw: String): String? {
         val s = settingsService.get()
         if (s.zcbsBaseUrl.isBlank()) return "Stel eerst het adres van ZCBS in bij Instellingen."
         if (name.isBlank() || pw.isEmpty()) return "Vul je naam en je wachtwoord in."
-        val candidate = ZcbsClient(s.zcbsBaseUrl, s.zcbsScriptPath())
-        return try {
-            when (val result = candidate.login(name.trim(), pw)) {
-                is LoginOutcome.Ok -> { client = candidate; userName = name.trim(); password = pw; null }
-                is LoginOutcome.Failed -> result.message
+        val granted = linkedMapOf<String, ZcbsClient>()
+        var rateLimited: String? = null
+        for ((i, collection) in WorkflowSettings.ALL_COLLECTIONS.withIndex()) {
+            val candidate = ZcbsClient(s.zcbsBaseUrl, "/cgi-bin/$collection.pl")
+            try {
+                when (val result = candidate.login(name.trim(), pw)) {
+                    is LoginOutcome.Ok -> granted[collection] = candidate
+                    is LoginOutcome.Failed -> if (result.rateLimited) rateLimited = result.message
+                }
+            } catch (e: Exception) {
+                // Geen verbinding met ZCBS zelf: stoppen in plaats van elke collectie te laten verlopen. Later mislukt = geen recht daar.
+                if (i == 0) {
+                    log.warn("Inloggen bij ZCBS mislukt: {}", e.message)
+                    return "Geen verbinding met ZCBS (${s.zcbsBaseUrl}): ${e.message ?: e.javaClass.simpleName}"
+                }
+                log.info("Inloggen bij collectie {} mislukt: {}", collection, e.message)
             }
-        } catch (e: Exception) {
-            log.warn("Inloggen bij ZCBS mislukt: {}", e.message)
-            "Geen verbinding met ZCBS (${s.zcbsBaseUrl}): ${e.message ?: e.javaClass.simpleName}"
         }
+        if (granted.isEmpty()) return rateLimited ?: "Naam of wachtwoord niet herkend, of je hebt nergens rechten."
+        clients = granted; userName = name.trim(); password = pw; loginBase = s.zcbsBaseUrl
+        log.info("{} ingelogd bij ZCBS, rechten: {}", userName, granted.keys.joinToString())
+        return null
     }
 
     @Synchronized
-    fun logout() { client = null; userName = null; password = "" }
+    fun logout() { clients = emptyMap(); userName = null; password = ""; loginBase = "" }
 
     /** Opnieuw inloggen met de bewaarde gegevens, bijvoorbeeld omdat de sessie bij ZCBS verlopen is. */
     private fun relogin(): Boolean {

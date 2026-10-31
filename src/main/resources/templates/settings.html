@@ -7,14 +7,14 @@
     <main>
         <div>
             <h1>Instellingen</h1>
-            <p class="sub">Mappen en programma's op deze computer. Gebruik volledige paden, bijvoorbeeld <span class="mono">C:\zcbs\images-werk\images.exe</span>.</p>
+            <p class="sub">Hier staat hoe deze app samenwerkt met ZCBS, het systeem achter de archieven van de Historische Kring Heemskerk. De app zet nieuwe scans in ZCBS met <span class="mono">pdf2zcbs.exe</span> en <span class="mono">images.exe</span> en laat daarna de records aanpassen. Hieronder staat welke ZCBS dat is, waar de programma's, scans en back-ups op deze computer staan en hoe de app naar de server schrijft. Gebruik volledige paden, bijvoorbeeld <span class="mono">C:\zcbs\images-werk\images.exe</span>.</p>
         </div>
         <div class="alert alert-ok" th:if="${saved}">Instellingen opgeslagen.</div>
         <form class="card pad" method="post" th:action="@{/instellingen}" style="display:flex;flex-direction:column;gap:22px;max-width:980px">
             <div class="field">
                 <label class="f" for="testFolder">Invoermap</label>
                 <input type="text" id="testFolder" name="testFolder" th:value="${settings.testFolder}" placeholder="C:\zcbs\invoer">
-                <span class="hint">Hier komen de pdf's te staan die Carla op de pagina Nieuwe bestanden kiest, voordat ze verwerkt worden (<span class="mono">c:\zcbs\invoer</span>). Elke gebruiker krijgt hierin een eigen submap met zijn of haar ZCBS-naam. Na afloop ruimt de app de kopieën op.</span>
+                <span class="hint">Hier komen de pdf's te staan die een gebruiker op de pagina Nieuwe bestanden kiest, voordat ze verwerkt worden (<span class="mono">c:\zcbs\invoer</span>). Elke gebruiker krijgt hierin een eigen submap met zijn of haar ZCBS-naam. Na afloop ruimt de app de kopieën op.</span>
                 <span class="warn" th:if="${problems['testFolder']}" th:text="${problems['testFolder']}"></span>
             </div>
             <div class="field">
@@ -38,40 +38,24 @@
                 <div class="field">
                     <label class="f" for="sourceFolders">Mappen met scans</label>
                     <textarea id="sourceFolders" name="sourceFolders" rows="3" class="mono" placeholder="Jelly=K:\scans jelly&#10;Ria=K:\scans ria" th:text="${settings.sourceFolders}"></textarea>
-                    <span class="hint">Eén map per regel: <span class="mono">naam=pad</span>. In elke map staan submappen met scans. Op de pagina Nieuwe bestanden bladert Carla door deze mappen en vinkt aan wat ze op het archief wil zetten. De naam laat zien wie het gescand heeft. De bestanden op de schijf blijven staan.</span>
+                    <span class="hint">Eén map per regel: <span class="mono">naam=pad</span>. In elke map staan submappen met scans. Op de pagina Nieuwe bestanden bladert de gebruiker door deze mappen en vinkt aan wat op het archief moet komen. De naam laat zien wie het gescand heeft. De bestanden op de schijf blijven staan.</span>
                     <span class="warn" th:if="${problems['sourceFolders']}" th:text="${problems['sourceFolders']}"></span>
                 </div>
                 <div class="field">
-                    <label class="f" for="zcbsBaseUrl">Adres van ZCBS</label>
-                    <input type="text" id="zcbsBaseUrl" name="zcbsBaseUrl" th:value="${settings.zcbsBaseUrl}" placeholder="http://localhost:8081">
-                    <span class="hint">Voor het kiezen van recordnummers en het bewerken van records. De lokale testkopie is <span class="mono">http://localhost:8081</span> (zie tools/docker/zcbs); het echte archief is <span class="mono">https://www.historischekringheemskerk.nl</span>. Bij het echte archief schrijft elke opslag in ZCBS en gaat er een e-mail naar de beheerder. Naam en wachtwoord vraagt de app per keer en bewaart ze niet.</span>
-                    <span class="warn" th:if="${problems['zcbsBaseUrl']}" th:text="${problems['zcbsBaseUrl']}"></span>
+                    <label style="display:flex;gap:10px;align-items:flex-start">
+                        <input type="checkbox" name="useTestZcbs" th:checked="${settings.useTestZcbs}" style="margin-top:2px">
+                        <span><b>Gebruik de test-ZCBS op localhost</b><br>
+                            <span class="hint">Aan: de test-ZCBS in Docker (<span class="mono">tools/docker/zcbs</span>), nu <span class="mono" th:text="${testZcbsUrl}"></span>. Er wordt niets in het echte archief geschreven.
+                            Uit: het echte archief, <span class="mono">https://www.historischekringheemskerk.nl</span>. Dan schrijft de app echt in de collectie en op de echte server. De ftp-server volgt dezelfde keuze.</span></span>
+                    </label>
                 </div>
             </fieldset>
             <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
-                <legend class="f" style="padding:0;margin-bottom:6px">Collectie en back-up</legend>
-                <div class="field">
-                    <label class="f" for="collection">Collectie</label>
-                    <input type="text" id="collection" name="collection" th:value="${settings.collection}" placeholder="archief">
-                    <span class="hint">Antwoord op "Kies de ZCBS-toepassing" van images.exe. Bepaalt ook de ftp-mappen <span class="mono">&lt;collectie&gt;/ocr</span> en <span class="mono">&lt;collectie&gt;/pdf</span>.</span>
-                    <span class="warn" th:if="${problems['collection']}" th:text="${problems['collection']}"></span>
-                </div>
-                <div class="field">
-                    <label class="f" for="backup100pctFolder">Back-upmap voor 100pct</label>
-                    <input type="text" id="backup100pctFolder" name="backup100pctFolder" th:value="${settings.backup100pctFolder}" placeholder="K:\backup_100pct">
-                    <span class="hint">De 100pct-afbeeldingen worden hierheen gekopieerd voordat de mappen van de programma's worden opgeruimd.</span>
-                    <span class="warn" th:if="${problems['backup100pctFolder']}" th:text="${problems['backup100pctFolder']}"></span>
-                </div>
-                <div class="field">
-                    <label class="f" for="backupPdfFolder">Back-upmap voor de pdf's</label>
-                    <input type="text" id="backupPdfFolder" name="backupPdfFolder" th:value="${settings.backupPdfFolder}" placeholder="K:\backup_invoer_org">
-                    <span class="hint">De verwerkte pdf's, met hun recordnummer als naam, worden hierheen gekopieerd voordat de invoermap wordt opgeruimd.</span>
-                    <span class="warn" th:if="${problems['backupPdfFolder']}" th:text="${problems['backupPdfFolder']}"></span>
-                </div>
+                <legend class="f" style="padding:0;margin-bottom:6px">Resten van een eerdere run</legend>
                 <div class="field">
                     <label class="f" for="leftoversFolder">Map voor resten van een eerdere run</label>
                     <input type="text" id="leftoversFolder" name="leftoversFolder" th:value="${settings.leftoversFolder}" placeholder="K:\resten (leeg = submap resten van de invoermap)">
-                    <span class="hint">Staan er bij het begin nog bestanden in de mappen van pdf2zcbs.exe en images.exe, dan kan Carla ze hierheen verplaatsen (of verwijderen) voordat ze begint.</span>
+                    <span class="hint">Staan er bij het begin nog bestanden in de mappen van pdf2zcbs.exe en images.exe, dan kunnen die hierheen verplaatst (of verwijderd) worden voordat de gebruiker begint.</span>
                 </div>
             </fieldset>
             <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
@@ -88,44 +72,45 @@
                 </label>
             </fieldset>
             <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
-                <legend class="f" style="padding:0;margin-bottom:6px">Ftp-server (tekst en pdf's)</legend>
-                <div style="display:flex;gap:16px;flex-wrap:wrap">
-                    <div class="field" style="flex:1;min-width:260px"><label class="f" for="ftpHost">Host</label>
-                        <input type="text" id="ftpHost" name="ftpHost" th:value="${settings.ftpHost}" autocomplete="off">
-                        <span class="warn" th:if="${problems['ftpHost']}" th:text="${problems['ftpHost']}"></span></div>
-                    <div class="field" style="width:110px"><label class="f" for="ftpPort">Poort</label>
-                        <input type="text" id="ftpPort" name="ftpPort" th:value="${settings.ftpPort}" inputmode="numeric"></div>
-                    <div class="field" style="width:220px"><label class="f" for="ftpUser">Gebruiker</label>
-                        <input type="text" id="ftpUser" name="ftpUser" th:value="${settings.ftpUser}" autocomplete="off">
-                        <span class="warn" th:if="${problems['ftpUser']}" th:text="${problems['ftpUser']}"></span></div>
-                </div>
+                <legend class="f" style="padding:0;margin-bottom:6px">FTP-wachtwoord</legend>
                 <div class="field">
-                    <label class="f" for="ftpPassword">Wachtwoord</label>
+                    <label class="f" for="ftpPassword">Wachtwoord van <span class="mono" th:text="${settings.ftpUser}"></span></label>
                     <div style="display:flex;gap:12px;align-items:center">
                         <input type="password" id="ftpPassword" name="ftpPassword" autocomplete="new-password" style="max-width:320px"
                                th:placeholder="${hasFtpPassword} ? '•••••••• (opgeslagen)' : ''">
                         <label th:if="${hasFtpPassword}" style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="ftpPasswordClear"> wissen</label>
                     </div>
-                    <span class="hint">Leeg laten = het opgeslagen wachtwoord houden. Het staat wel leesbaar in het instellingenbestand, dat niet in git komt.</span>
+                    <span class="hint">Eén wachtwoord voor de hele server, dus voor alle collecties. Het gaat naar images.exe en naar de ftp-upload van de app (gewone ftp, niet versleuteld, op <span class="mono" th:text="${settings.ftpHost} + ':' + ${settings.ftpPort}"></span>). Leeg laten = het opgeslagen wachtwoord houden. Weet je het niet, dan kun je het één keer intypen bij Handmatig uitvoeren van images.exe: de app neemt het dan over. Het staat leesbaar in het instellingenbestand, dat niet in git komt.</span>
                     <span class="warn" th:if="${problems['ftpPassword']}" th:text="${problems['ftpPassword']}"></span>
                 </div>
-                <div class="field">
-                    <label class="f" for="ftpBaseDir">Basismap op de server</label>
-                    <input type="text" id="ftpBaseDir" name="ftpBaseDir" th:value="${settings.ftpBaseDir}" class="mono">
-                    <span class="hint">Bij de ftp-account van images.exe (<span class="mono">ZCBS@historischekringheemskerk.nl</span>) is dit <span class="mono">/public_html</span>. Gewone ftp is niet versleuteld: wachtwoord en bestanden gaan leesbaar over het netwerk, net als bij images.exe.</span>
-                </div>
-                <div style="display:flex;gap:16px;flex-wrap:wrap">
-                    <div class="field" style="flex:1;min-width:260px"><label class="f" for="ftpOcrDir">Map voor tekstbestanden</label>
-                        <input type="text" id="ftpOcrDir" name="ftpOcrDir" th:value="${settings.ftpOcrDir}" class="mono" placeholder="leeg = <collectie>/ocr">
-                        <span class="hint">Nu: <span class="mono" th:text="${settings.remoteOcrDir()}"></span></span></div>
-                    <div class="field" style="flex:1;min-width:260px"><label class="f" for="ftpPdfDir">Map voor pdf's</label>
-                        <input type="text" id="ftpPdfDir" name="ftpPdfDir" th:value="${settings.ftpPdfDir}" class="mono" placeholder="leeg = <collectie>/pdf">
-                        <span class="hint">Nu: <span class="mono" th:text="${settings.remotePdfDir()}"></span></span></div>
+            </fieldset>
+            <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
+                <legend class="f" style="padding:0;margin-bottom:6px">Per collectie</legend>
+                <p class="hint" style="margin:0">De antwoorden van images.exe en pdf2zcbs.exe staan vast in de app, op de resolutie na. Die verschilt per collectie, net als de mappen voor de back-up.
+                    Collecties waar de app nog niet mee werkt kun je alvast instellen.</p>
+                <div th:each="c : ${collectionRows}" class="card pad" style="display:flex;flex-direction:column;gap:12px;border:1px solid #e0d8c6;box-shadow:none">
+                    <h3 style="margin:0" th:text="${c.name} + (${c.implemented} ? '' : ' (nog niet in gebruik)')">archief</h3>
+                    <div class="field">
+                        <label class="f" th:for="${'resolution-' + c.name}">Resolutie van images.exe</label>
+                        <select th:id="${'resolution-' + c.name}" th:name="${'resolution-' + c.name}">
+                            <option th:each="r : ${resolutions}" th:value="${r.first}" th:text="${r.second}" th:selected="${r.first == c.settings.imagesResolution}"></option>
+                        </select>
+                        <span class="hint">Het antwoord op "Kies 1,2,3 (objecten, boeken, etc), of kies 6,7,8 (foto's, etc)".</span>
+                    </div>
+                    <div class="field">
+                        <label class="f" th:for="${'backup100pctFolder-' + c.name}">Back-upmap voor 100pct</label>
+                        <input type="text" th:id="${'backup100pctFolder-' + c.name}" th:name="${'backup100pctFolder-' + c.name}" th:value="${c.settings.backup100pctFolder}" placeholder="K:\backup_100pct">
+                        <span class="hint">De 100pct-afbeeldingen worden hierheen gekopieerd voordat de mappen van de programma's worden opgeruimd.</span>
+                        <span class="warn" th:if="${problems[c.name + '.backup100pctFolder']}" th:text="${problems[c.name + '.backup100pctFolder']}"></span>
+                    </div>
+                    <div class="field">
+                        <label class="f" th:for="${'backupPdfFolder-' + c.name}">Back-upmap voor de pdf's</label>
+                        <input type="text" th:id="${'backupPdfFolder-' + c.name}" th:name="${'backupPdfFolder-' + c.name}" th:value="${c.settings.backupPdfFolder}" placeholder="K:\backup_invoer_org">
+                        <span class="hint">De verwerkte pdf's, met hun recordnummer als naam, worden hierheen gekopieerd voordat de invoermap wordt opgeruimd.</span>
+                        <span class="warn" th:if="${problems[c.name + '.backupPdfFolder']}" th:text="${problems[c.name + '.backupPdfFolder']}"></span>
+                    </div>
                 </div>
             </fieldset>
-            <div th:replace="~{fragments/answers :: answers('pdf2zcbs', 'Antwoorden voor pdf2zcbs.exe', ${pdf2zcbsRows})}"></div>
-            <div th:replace="~{fragments/answers :: answers('images', 'Antwoorden voor images.exe', ${imagesRows})}"></div>
-            <p class="hint" style="margin:0">Bij <b>Handmatig uitvoeren</b> onthoudt de app wat Carla intypt en past deze antwoorden daarop aan; de volgende keer vult hij ze alvast voor. <b>Automatisch uitvoeren</b> gebruikt ze zoals ze hier staan. Alleen de collectie, het overschrijven en het verwijderen van de mappen van images.exe staan vast (altijd nee) en gaan voor. Uploaden en records aanmaken staan op nee tot er een keer handmatig is geantwoord. Het FTP-wachtwoord van images.exe onthoudt de app als iemand het één keer intypt; wachtwoorden worden niet in de pagina getoond, maar staan wel leesbaar in het instellingenbestand. Zet daar dus alleen een testwachtwoord in, of beveilig het bestand.</p>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
                 <span class="hint">Opgeslagen in <span class="mono" th:text="${settingsFile}"></span></span>
                 <button type="submit" class="btn btn-p">Opslaan</button>
@@ -133,7 +118,8 @@
         </form>
         <section class="card pad" style="display:flex;flex-direction:column;gap:12px;max-width:980px;margin-top:18px">
             <h2 style="margin:0">Test verbinding</h2>
-            <p class="hint" style="margin:0">Maakt verbinding met de <b>opgeslagen</b> instellingen, logt in en controleert of de mappen voor tekst en pdf's bestaan. Er wordt niets geschreven.</p>
+            <p class="hint" style="margin:0">De app zet tekst en pdf's op de server met gewone ftp, met hetzelfde account als <span class="mono">images.exe</span>: <span class="mono" th:text="${settings.ftpUser}"></span> op <span class="mono" th:text="${settings.ftpHost} + ':' + ${settings.ftpPort}"></span>, basismap <span class="mono" th:text="${settings.ftpBaseDir}"></span>. Gewone ftp is niet versleuteld: wachtwoord en bestanden gaan leesbaar over het netwerk.</p>
+            <p class="hint" style="margin:0">De test maakt verbinding met de <b>opgeslagen</b> instellingen, logt in en controleert of de mappen voor tekst en pdf's bestaan. Er wordt niets geschreven.</p>
             <form method="post" th:action="@{/instellingen/ftp-test}"><button class="btn btn-s" type="submit">Test verbinding</button></form>
             <div th:if="${ftpTest != null}" style="display:flex;flex-direction:column;gap:8px">
                 <div class="alert" th:classappend="${ftpTest.ok} ? 'alert-ok' : 'alert-err'" th:text="${ftpTest.message}"></div>

@@ -63,6 +63,43 @@ class ItemEditServiceTest {
     }
 
     @Test
+    fun `inloggen probeert alle collecties en onthoudt waar je rechten hebt`() {
+        zcbs.grant("beeldbank", "Test Beheerder")
+        zcbs.grant("bidprent", "Test Bewerker")
+        val other = ItemEditService(settings)
+        assertNull(other.login("Test Beheerder", "Beheer1"))
+        assertEquals(listOf("archief", "beeldbank"), other.rights(), "de rest geeft geen recht of bestaat niet op de server")
+        assertTrue(other.canUse("archief"))
+        assertFalse(other.canUse("beeldbank"), "rechten, maar de app werkt er nog niet mee")
+        assertFalse(other.canUse("bidprent"))
+        assertContains(zcbs.requests, "POST /cgi-bin/beeldbank.pl")
+        assertContains(zcbs.requests, "POST /cgi-bin/bidprent.pl", "ook waar hij geen recht heeft wordt gevraagd")
+        other.logout()
+        assertEquals(emptyList(), other.rights())
+    }
+
+    @Test
+    fun `iemand met alleen rechten bij een andere collectie kan inloggen, maar niet met het archief werken`() {
+        zcbs.grant("beeldbank", "Alleen Beeldbank", "Beeld1")
+        val other = ItemEditService(settings)
+        // het archief kent hem niet, de beeldbank wel: ZCBS beslist per collectie
+        assertNull(other.login("Alleen Beeldbank", "Beeld1"))
+        assertTrue(other.loggedIn())
+        assertEquals(listOf("beeldbank"), other.rights())
+        assertFalse(other.canUse("archief"))
+        other.startBatch(listOf(BatchRecord("11905", "scan.pdf")))
+        assertEquals(OpenOutcome.NeedsLogin, other.open("11905"), "geen rechten in het archief: opnieuw inloggen helpt niet, maar er wordt niets gedaan")
+    }
+
+    @Test
+    fun `een naam zonder rechten bij welke collectie dan ook kan niet inloggen`() {
+        val other = ItemEditService(settings)
+        assertContains(other.login("Onbekend", "fout")!!, "nergens rechten")
+        assertFalse(other.loggedIn())
+        assertEquals(emptyList(), other.rights())
+    }
+
+    @Test
     fun `openen haalt het formulier op en zet de status op bezig`() {
         val ready = opened("11905")
         assertEquals(EditStatus.BEZIG, ready.record.status)
