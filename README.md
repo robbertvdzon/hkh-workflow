@@ -31,6 +31,16 @@ Instelbaar met omgevingsvariabelen:
 | `HKH_WORKFLOW_SETTINGS_FILE` | `hkh-workflow-settings.json` | Instellingenbestand (relatief = t.o.v. de map waaruit je de jar start) |
 | `HKH_WORKFLOW_PROCESSED_LOG` | `hkh-workflow-verwerkt.tsv` | Het log van wat er verwerkt is (zonder pad: naast het instellingenbestand) |
 | `HKH_WORKFLOW_CONSOLE_CHARSET` | `IBM850` | Codepagina van de DOS-uitvoer van de exe's |
+| `HKH_WORKFLOW_ADMIN_LOG_URL` | `https://hkh-admin.vdzonsoftware.nl` | Waar het workflow-logboek naartoe gaat; leeg = niets melden |
+
+## Workflow-logboek
+
+De app meldt elke inlogpoging en elke doorloop (nieuwe bestanden in ZCBS zetten, records aanpassen) aan het beheerscherm van hkh
+(`https://hkh-admin.vdzonsoftware.nl`, pagina Workflow-logboek): met een sessie-uuid, alle instellingen (zonder wachtwoorden), de
+gekozen bestanden, de stappen en de uitvoer en het log van pdf2zcbs.exe en images.exe. Bij elke stap wordt de volledige stand opnieuw
+gestuurd; een fout of onbereikbare server hindert de app niet. Stel `hkh.workflow.admin-log-url` (of `HKH_WORKFLOW_ADMIN_LOG_URL`) in
+op een leeg adres om niets te melden, of op een lokale hkh-backend om te testen. De code staat in de module `adminlog` en de
+`FlowLogReporter` (testrun) en `EditLogReporter` (items).
 
 ## Schermen
 

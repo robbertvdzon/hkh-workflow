@@ -415,6 +415,7 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 | Schrijven in productie | Upload en records standaard uit en per run te kiezen; ftp overschrijft en verwijdert nooit, controleert eerst alles | Voorzichtigheid bij de eerste echte run |
 | Opruimen | Pas na de upload en met back-up van de 100pct; originelen pas in de laatste stap archiveren | Zo blijft de oude werkwijze altijd mogelijk |
 | Ingelogd blijven | Naam en wachtwoord van ZCBS versleuteld (AES-GCM) in een cookie van 30 dagen; sleutel in `hkh-workflow-inloggen.key` naast het instellingenbestand; uitloggen wist het cookie | Carla heeft een eigen pc; opnieuw inloggen na elke herstart was vervelend (Robbert, 30 oktober) |
+| Workflow-logboek | Elke inlogpoging en elke doorloop (nieuwe bestanden, records aanpassen) wordt met alle instellingen (zonder wachtwoorden), bestanden, stappen en logs van de exe's gemeld aan het beheerscherm van hkh (`/workflow-logboek`), met een sessie-uuid; elke stap stuurt de volledige stand opnieuw (`adminlog`-module, `hkh.workflow.admin-log-url`, leeg = uit). Het meldpunt vraagt geen inlog maar een vaste sleutel, met limieten tegen misbruik (zie `docs/workflow-logboek.md` in de repo hkh) | Robbert wil zien wie wanneer wat deed, ook op afstand (31 oktober); de gegevens zijn niet gevoelig |
 
 ---
 

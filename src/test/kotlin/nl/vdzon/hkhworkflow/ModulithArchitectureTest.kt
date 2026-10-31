@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.modulith.core.ApplicationModules
 
 class ModulithArchitectureTest {
-    private val modules = setOf("exerunner", "items", "settings", "ftp", "testrun", "ux", "zcbs")
+    private val modules = setOf("adminlog", "exerunner", "items", "settings", "ftp", "testrun", "ux", "zcbs")
     private val sourceRoot = Path.of("src/main/kotlin/nl/vdzon/hkhworkflow")
 
     @Test

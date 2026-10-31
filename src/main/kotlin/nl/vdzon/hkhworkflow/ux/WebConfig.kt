@@ -2,6 +2,7 @@ package nl.vdzon.hkhworkflow.ux
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import nl.vdzon.hkhworkflow.adminlog.AdminLogClient
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.items.RememberLogin
 import org.springframework.context.annotation.Configuration
@@ -15,7 +16,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
  * stap) mogen met een van beide.
  */
 @Configuration
-class WebConfig(private val items: ItemEditService, private val admin: AdminAccess, private val remember: RememberLogin) : WebMvcConfigurer {
+class WebConfig(
+    private val items: ItemEditService,
+    private val admin: AdminAccess,
+    private val remember: RememberLogin,
+    private val adminLog: AdminLogClient,
+) : WebMvcConfigurer {
 
     private val zcbsOnly = listOf("/collectie", "/nieuw", "/records", "/verwerkt")
     private val adminOnly = listOf("/instellingen", "/test/runs", "/test/start", "/test/reset")
@@ -28,6 +34,7 @@ class WebConfig(private val items: ItemEditService, private val admin: AdminAcce
         if (items.loggedIn() || path == "/zcbs/login" || path == "/zcbs/logout") return
         val (name, password) = remember.read(request) ?: return
         val error = items.login(name, password)
+        adminLog.login(name, error == null, "COOKIE", error)
         if (error != null && error.startsWith("Naam of wachtwoord")) remember.forget(response)
     }
 

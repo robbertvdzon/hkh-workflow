@@ -1,2 +1,2 @@
-@org.springframework.modulith.ApplicationModule(allowedDependencies = {"zcbs", "settings"})
+@org.springframework.modulith.ApplicationModule(allowedDependencies = {"adminlog", "zcbs", "settings"})
 package nl.vdzon.hkhworkflow.items;

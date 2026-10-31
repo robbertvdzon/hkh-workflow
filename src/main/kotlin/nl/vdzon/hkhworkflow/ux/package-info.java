@@ -1,2 +1,2 @@
-@org.springframework.modulith.ApplicationModule(allowedDependencies = {"settings", "items"})
+@org.springframework.modulith.ApplicationModule(allowedDependencies = {"adminlog", "settings", "items"})
 package nl.vdzon.hkhworkflow.ux;

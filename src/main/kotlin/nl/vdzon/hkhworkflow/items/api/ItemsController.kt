@@ -1,6 +1,9 @@
 package nl.vdzon.hkhworkflow.items.api
 
+import nl.vdzon.hkhworkflow.adminlog.AdminLogClient
+import nl.vdzon.hkhworkflow.items.Change
 import nl.vdzon.hkhworkflow.items.ConflictRow
+import nl.vdzon.hkhworkflow.items.EditLogReporter
 import nl.vdzon.hkhworkflow.items.EditStatus
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.items.OpenOutcome
@@ -20,7 +23,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /** Inloggen bij ZCBS en de pagina's om records te bewerken via het ZCBS-formulier. */
 @Controller
-class ItemsController(private val items: ItemEditService, private val remember: RememberLogin) {
+class ItemsController(
+    private val items: ItemEditService,
+    private val remember: RememberLogin,
+    private val adminLog: AdminLogClient,
+    private val editLog: EditLogReporter,
+) {
 
     private fun back(target: String): String = when (target) { "/records" -> "redirect:/records"; "/nieuw" -> "redirect:/nieuw"; "/test" -> "redirect:/test"; else -> "redirect:/" }
 
@@ -33,6 +41,7 @@ class ItemsController(private val items: ItemEditService, private val remember: 
         response: HttpServletResponse,
     ): String {
         val error = items.login(name, password)
+        adminLog.login(name.trim(), error == null, "PASSWORD", error)
         if (error != null) redirect.addFlashAttribute("error", error) else remember.remember(response, name, password)
         return back(target)
     }
@@ -138,6 +147,10 @@ class ItemsController(private val items: ItemEditService, private val remember: 
         }
     }
 
+    /** Wat er ten opzichte van ZCBS verandert met deze invoer, voor het workflow-logboek. */
+    private fun changesOf(number: String, values: Map<String, List<String>>): List<Change> =
+        (items.preview(number, values) as? PreviewOutcome.Ok)?.changes.orEmpty()
+
     @PostMapping("/records/{nr}/voorbeeld")
     fun preview(@PathVariable("nr") number: String, @RequestParam params: MultiValueMap<String, String>, model: Model): String {
         val r = items.record(number) ?: return "redirect:/records"
@@ -171,7 +184,9 @@ class ItemsController(private val items: ItemEditService, private val remember: 
     ): String {
         // Het volgende record bepalen vóór het opslaan: daarna staat dit record op opgeslagen.
         val nextNumber = items.nextNumber(number)
-        return handle(number, items.save(number, values(number, params)), model, redirect, if (next != null) nextNumber else null)
+        val values = values(number, params)
+        editLog.willSave(number, changesOf(number, values))
+        return handle(number, items.save(number, values), model, redirect, if (next != null) nextNumber else null)
     }
 
     @PostMapping("/records/{nr}/conflict")
@@ -182,7 +197,9 @@ class ItemsController(private val items: ItemEditService, private val remember: 
         model: Model,
         redirect: RedirectAttributes,
     ): String {
-        val outcome = items.resolveConflict(number, choice == "mijn", values(number, params))
+        val values = values(number, params)
+        if (choice == "mijn") editLog.willSave(number, changesOf(number, values))
+        val outcome = items.resolveConflict(number, choice == "mijn", values)
         return if (choice == "mijn") handle(number, outcome, model, redirect)
         else showForm(model, number, "info", listOf("De velden die botsten zijn vervangen door de versie uit ZCBS. Controleer het formulier en sla dan op."))
     }
