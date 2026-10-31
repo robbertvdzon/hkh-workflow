@@ -86,7 +86,7 @@ class FlowLogReporter(
 
         val run = view.run
         run?.rows?.forEach { current.numbers += it.number }
-        val chosen = if (run == null) flow.pdfsInTestFolder().map { it.fileName.toString() } else emptyList()
+        val chosen = if (run == null) flow.filesInTestFolder().map { it.fileName.toString() } else emptyList()
         val fileCount = run?.fileCount ?: chosen.size
         val titles = view.phases.map { it.title }
         val phaseLabel = if (view.finished) "Klaar" else titles.getOrNull(view.current - 1).orEmpty()

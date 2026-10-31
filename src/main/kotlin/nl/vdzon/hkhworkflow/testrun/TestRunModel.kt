@@ -25,9 +25,18 @@ enum class StepStatus(val label: String) {
     FAILED("Mislukt"),
 }
 
+/**
+ * Een gekozen bestand: een pdf, of een jpg (een afbeelding gaat niet door pdf2zcbs.exe en heeft geen tekst of pdf: ze gaat rechtstreeks naar
+ * images.exe).
+ */
 data class TestFile(val index: Int, val original: Path, val number: String, val by: String = "", val folder: String = "") {
     val originalName: String get() = original.fileName.toString()
-    val newName: String get() = "$number.pdf"
+    val isImage: Boolean get() = original.fileName.toString().substringAfterLast('.', "").lowercase() in IMAGE_EXTENSIONS
+    val newName: String get() = "$number.${if (isImage) "jpg" else "pdf"}"
+
+    companion object {
+        val IMAGE_EXTENSIONS = setOf("jpg", "jpeg")
+    }
 }
 
 /** Eén stap: voor een stap per bestand bevat [files] precies één bestand, voor een stap voor alles samen alle bestanden. */
@@ -46,16 +55,20 @@ class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
     /** Het bestand van een stap per bestand. */
     val file: TestFile get() = files.single()
 
-    /** De bestandsnamen die de stap verwerkt: images.exe krijgt jpg's, de rest werkt met de genummerde pdf's. */
+    /** De bestanden waar de stap echt iets mee doet: pdf2zcbs.exe en de upload slaan afbeeldingen over (ze hebben geen tekst of pdf). */
+    val activeFiles: List<TestFile>
+        get() = if (type == StepType.PDF2ZCBS || type == StepType.UPLOAD) files.filter { !it.isImage } else files
+
+    /** De bestandsnamen die de stap verwerkt: images.exe krijgt jpg's, de rest werkt met de genummerde bestanden. */
     val fileNames: String
-        get() = files.joinToString { if (type == StepType.IMAGES) "${it.number}.jpg" else it.newName }
+        get() = activeFiles.joinToString { if (type == StepType.IMAGES) "${it.number}.jpg" else it.newName }
 
     val question: String
         get() = when (type) {
             StepType.RENAME -> "Hernoem ${file.originalName} naar ${file.newName}?"
             StepType.PDF2ZCBS, StepType.IMAGES ->
-                "Run ${type.label} één keer voor ${files.size} ${if (files.size == 1) "bestand" else "bestanden"} ($fileNames)?"
-            StepType.UPLOAD -> "Upload tekst en pdf van ${files.size} ${if (files.size == 1) "bestand" else "bestanden"} naar de server?"
+                "Run ${type.label} één keer voor ${activeFiles.size} ${if (activeFiles.size == 1) "bestand" else "bestanden"} ($fileNames)?"
+            StepType.UPLOAD -> "Upload tekst en pdf van ${activeFiles.size} ${if (activeFiles.size == 1) "bestand" else "bestanden"} naar de server?"
             StepType.CLEANUP -> "Maak een back-up van de 100pct en de pdf's en ruim de mappen op?"
         }
 }

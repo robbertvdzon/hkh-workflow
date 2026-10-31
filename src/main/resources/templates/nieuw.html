@@ -98,28 +98,27 @@
                                 <input type="checkbox" id="all" title="Alles aanvinken" aria-label="Alles aanvinken"><span>Bestand</span><span>Grootte</span><span>Afmeting / pagina's</span><span>Gescand</span><span>Status</span><span></span>
                             </div>
                             <label class="tr pickrow" th:each="f : ${listing.files}" style="grid-template-columns:28px minmax(120px,1fr) 62px 110px 124px 130px 62px" th:classappend="${f.processed != null} ? 'done'">
-                                <input type="checkbox" name="files" th:value="${f.name}" th:disabled="${f.processed != null or !f.selectable}">
+                                <input type="checkbox" name="files" th:value="${f.name}" th:disabled="${f.processed != null}">
                                 <span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="pdf" th:text="${f.kindLabel}">PDF</span><span class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.name}" th:title="${f.name}">scan.pdf</span></span>
                                 <span class="muted" th:text="${f.sizeKb} + ' kB'">12 kB</span>
                                 <span class="muted" th:attr="data-detail=${f.name}">…</span>
                                 <span class="muted" th:text="${f.modified}">gescand</span>
                                 <span th:if="${f.processed != null}"><span class="chip c-ok" th:title="'Verwerkt door ' + ${f.processed.user} + ' op ' + ${f.processed.dateText}" th:text="'Al verwerkt: ' + ${f.processed.number}">Al verwerkt</span></span>
-                                <span th:if="${f.processed == null and f.selectable}" class="muted">–</span>
-                                <span th:if="${f.processed == null and !f.selectable}" class="muted" title="Alleen pdf's kunnen worden verwerkt; deze afbeelding is om te bekijken.">geen pdf</span>
-                                <button type="button" class="btn btn-s btn-sm" data-viewer th:attr="data-url=@{/nieuw/bron/bestand(bron=${listing.root.name},pad=${listing.relPath},naam=${f.name})},data-title=${f.name},data-kind=${f.selectable} ? 'pdf' : 'image'">Open</button>
+                                <span th:if="${f.processed == null}" class="muted">–</span>
+                                <button type="button" class="btn btn-s btn-sm" data-viewer th:attr="data-url=@{/nieuw/bron/bestand(bron=${listing.root.name},pad=${listing.relPath},naam=${f.name})},data-title=${f.name},data-kind=${f.kind}">Open</button>
                             </label>
                         </div>
-                        <p class="hint" style="margin:0">Tip: vink het eerste bestand aan, houd Shift ingedrukt en klik op het laatste: dan staat alles ertussen ook aan ("X t/m Y"). Bestanden die al verwerkt zijn, kun je niet aanvinken.
+                        <p class="hint" style="margin:0">Tip: vink het eerste bestand aan, houd Shift ingedrukt en klik op het laatste: dan staat alles ertussen ook aan ("X t/m Y"). Bestanden die al verwerkt zijn, kun je niet aanvinken. Een jpg of png gaat niet door pdf2zcbs.exe (geen tekst of pdf) maar rechtstreeks naar images.exe.
                             <span id="count"></span></p>
-                        <div><button class="btn btn-p" type="submit" id="copy" th:attr="data-ready=${pdfs.isEmpty()} ? '0' : '1'">Verder</button></div>
+                        <div><button class="btn btn-p" type="submit" id="copy" th:attr="data-ready=${chosen.isEmpty()} ? '0' : '1'">Verder</button></div>
                     </form>
                 </th:block>
             </section>
 
             <!-- Bestanden die al klaarstonden (alleen na "horen erbij"): ze doen mee, dus ze worden getoond -->
-            <section class="alert alert-info" th:if="${!pdfs.isEmpty()}">
-                <b th:text="${pdfs.size()} + (${pdfs.size() == 1} ? ' bestand stond' : ' bestanden stonden') + ' al klaar en ' + (${pdfs.size() == 1} ? 'doet' : 'doen') + ' mee:'">2 bestanden stonden al klaar en doen mee:</b>
-                <span class="mono" th:text="${#strings.listJoin(pdfs.![name], ', ')}"></span>
+            <section class="alert alert-info" th:if="${!chosen.isEmpty()}">
+                <b th:text="${chosen.size()} + (${chosen.size() == 1} ? ' bestand stond' : ' bestanden stonden') + ' al klaar en ' + (${chosen.size() == 1} ? 'doet' : 'doen') + ' mee:'">2 bestanden stonden al klaar en doen mee:</b>
+                <span class="mono" th:text="${#strings.listJoin(chosen.![name], ', ')}"></span>
                 <form method="post" th:action="@{/nieuw/bestanden/leeg}" style="display:inline"><button class="btn btn-s btn-sm" type="submit">Haal ze weg</button></form>
             </section>
         </th:block>

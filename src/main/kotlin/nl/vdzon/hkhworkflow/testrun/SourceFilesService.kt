@@ -15,11 +15,10 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 /**
- * Een pdf of afbeelding (jpg, png) in een map met scans. [processed] staat gevuld als het bestand al op het archief is gezet. Alleen een
- * pdf kan worden gekozen om te verwerken; een afbeelding is er om te bekijken.
+ * Een pdf of afbeelding (jpg, png) in een map met scans. [processed] staat gevuld als het bestand al op het archief is gezet. Alle drie
+ * kunnen worden gekozen; een png wordt bij het kiezen een jpg.
  */
 data class SourceFile(val name: String, val sizeKb: Long, val modified: String, val processed: ProcessedFile?, val kind: String = "pdf") {
-    val selectable: Boolean get() = kind == "pdf"
     val kindLabel: String get() = name.substringAfterLast('.', "").uppercase().replace("JPEG", "JPG")
 }
 
@@ -80,7 +79,7 @@ class SourceFilesService(private val settingsService: SettingsService, private v
                 SourceFile(
                     it.name, (runCatching { Files.size(it) }.getOrDefault(0) + 1023) / 1024,
                     runCatching { dateFormat.format(Files.getLastModifiedTime(it).toInstant()) }.getOrDefault(""),
-                    done[dir.toString() to it.name],
+                    done[dir.toString() to invoerName(it.name)],
                     if (it.extension.equals("pdf", ignoreCase = true)) "pdf" else "image",
                 )
             }
@@ -130,7 +129,7 @@ class SourceFilesService(private val settingsService: SettingsService, private v
         }
     }.getOrElse { "kan niet worden gelezen" }
 
-    /** Kopieert de gekozen pdf's (op naam) uit één map naar de invoermap. Al aanwezige bestanden worden overgeslagen. */
+    /** Kopieert de gekozen bestanden (pdf, jpg of png, op naam) uit één map naar de invoermap; een png wordt daarbij een jpg. Al aanwezige bestanden worden overgeslagen. */
     @Synchronized
     fun copy(rootName: String, relPath: String, names: List<String>): CopyResult {
         val target = input.ensure()
@@ -142,23 +141,43 @@ class SourceFilesService(private val settingsService: SettingsService, private v
         val skipped = mutableListOf<String>()
         val origins = readOrigins().toMutableMap()
         for (name in names) {
-            require(name == Path.of(name).fileName.toString() && name.lowercase().endsWith(".pdf")) { "Dit is geen pdf-bestand in de map: $name" }
+            require(name == Path.of(name).fileName.toString() && name.substringAfterLast('.', "").lowercase() in VIEWABLE) { "Dit is geen pdf of afbeelding in de map: $name" }
             val source = dir.resolve(name)
             require(source.isRegularFile()) { "Dit bestand staat niet in de map: $name" }
-            val dest = target.resolve(name)
+            val destName = invoerName(name)
+            val dest = target.resolve(destName)
             if (Files.exists(dest)) { skipped += "$name (staat al in de invoermap)"; continue }
-            val already = done[dir.toString() to name]
+            val already = done[dir.toString() to destName]
             if (already != null) { skipped += "$name (al verwerkt als ${already.number})"; continue }
-            val tmp = target.resolve("$name.kopie")
-            Files.copy(source, tmp, StandardCopyOption.REPLACE_EXISTING)
-            check(Files.size(tmp) == Files.size(source)) { "Kopie van $name is niet even groot als het origineel." }
+            val tmp = target.resolve("$destName.kopie")
+            if (name.endsWith(".png", ignoreCase = true)) {
+                convertToJpg(source, tmp)
+            } else {
+                Files.copy(source, tmp, StandardCopyOption.REPLACE_EXISTING)
+                check(Files.size(tmp) == Files.size(source)) { "Kopie van $name is niet even groot als het origineel." }
+            }
             Files.move(tmp, dest)
-            origins[name] = Origin(root.name, dir.toString())
+            origins[destName] = Origin(root.name, dir.toString())
             copied += name
         }
         writeOrigins(origins)
         log.info("{} bestanden uit {} gekopieerd naar {}", copied.size, dir, target)
         return CopyResult(copied, skipped)
+    }
+
+    /** Zet een png om in een jpg (op een witte achtergrond, want een jpg heeft geen doorzichtigheid). */
+    private fun convertToJpg(source: Path, target: Path) {
+        val image = javax.imageio.ImageIO.read(source.toFile()) ?: throw IllegalArgumentException("Kan de png niet lezen: ${source.name}")
+        val rgb = java.awt.image.BufferedImage(image.width, image.height, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        rgb.createGraphics().apply { color = java.awt.Color.WHITE; fillRect(0, 0, image.width, image.height); drawImage(image, 0, 0, null); dispose() }
+        val writer = javax.imageio.ImageIO.getImageWritersByFormatName("jpg").next()
+        try {
+            val params = writer.defaultWriteParam.apply { compressionMode = javax.imageio.ImageWriteParam.MODE_EXPLICIT; compressionQuality = 0.95f }
+            javax.imageio.ImageIO.createImageOutputStream(target.toFile()).use { out ->
+                writer.output = out
+                writer.write(null, javax.imageio.IIOImage(rgb, null, null), params)
+            }
+        } finally { writer.dispose() }
     }
 
     /** Haalt alle kopieën weg die de app zelf in de invoermap heeft gezet (wat Carla zelf neerzette, blijft staan). @return hoeveel. */
@@ -199,8 +218,11 @@ class SourceFilesService(private val settingsService: SettingsService, private v
     }
 
     companion object {
-        /** De soorten bestanden die in de lijst met scans staan en die te bekijken zijn. */
+        /** De soorten bestanden die in de lijst met scans staan: allemaal te bekijken en te kiezen. */
         val VIEWABLE = setOf("pdf", "jpg", "jpeg", "png")
+
+        /** De naam van een gekozen bestand in de invoermap: een png wordt een jpg, de rest blijft zoals het is. */
+        fun invoerName(name: String): String = if (name.endsWith(".png", ignoreCase = true)) name.dropLast(4) + ".jpg" else name
 
         /** Natuurlijke volgorde: cijfers als getal, zodat "scan 2" voor "scan 10" komt, en zonder onderscheid tussen hoofd- en kleine letters. */
         val naturalOrder: Comparator<String> = Comparator { a, b ->

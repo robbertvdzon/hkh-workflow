@@ -42,7 +42,7 @@ class SourceFilesServiceTest {
     }
 
     @Test
-    fun `afbeeldingen staan in de lijst maar zijn niet te kiezen, pdfs wel`() {
+    fun `afbeeldingen staan in de lijst en zijn net als pdfs te kiezen, een png wordt een jpg`() {
         val s = service()
         val ria = Path.of(s.roots().first { it.name == "Ria" }.path)
         javax.imageio.ImageIO.write(java.awt.image.BufferedImage(40, 30, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", ria.resolve("map58/kaart.png").toFile())
@@ -51,9 +51,18 @@ class SourceFilesServiceTest {
         val files = s.browse("Ria", "map58").files
         assertEquals(listOf("foto.JPG", "kaart.png"), files.map { it.name })
         assertEquals(listOf("JPG", "PNG"), files.map { it.kindLabel })
-        assertEquals(listOf(false, false), files.map { it.selectable })
-        assertTrue(s.browse("Ria", "map57").files.all { it.selectable })
-        assertFailsWith<IllegalArgumentException> { s.copy("Ria", "map58", listOf("kaart.png")) }
+        val result = s.copy("Ria", "map58", listOf("kaart.png", "foto.JPG"))
+        assertEquals(listOf("kaart.png", "foto.JPG"), result.copied)
+        val folder = s.browse("Ria", "map58") // de lijst blijft hetzelfde
+        assertEquals(2, folder.files.size)
+        val inbox = Path.of(dir.toString(), "invoer")
+        assertEquals(setOf("kaart.jpg", "foto.JPG"), Files.list(inbox).use { it.map { p -> p.fileName.toString() }.toList().filter { n -> n.endsWith("pg") || n.endsWith("JPG") }.toSet() })
+        // De png is nu echt een jpg, 40 × 30.
+        val converted = javax.imageio.ImageIO.read(inbox.resolve("kaart.jpg").toFile())
+        assertEquals(40 to 30, converted.width to converted.height)
+        assertEquals("Ria", s.origin("kaart.jpg")?.by)
+        // Een tweede keer kiezen slaat ze over.
+        assertEquals(listOf("kaart.png (staat al in de invoermap)", "foto.JPG (staat al in de invoermap)"), s.copy("Ria", "map58", listOf("kaart.png", "foto.JPG")).skipped)
     }
 
     @Test

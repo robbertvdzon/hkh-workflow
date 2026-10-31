@@ -225,6 +225,68 @@ class TestRunServiceTest {
     }
 
     @Test
+    fun `een afbeelding slaat pdf2zcbs en de upload over en gaat rechtstreeks naar images`() {
+        Files.writeString(inbox.resolve("xx03.jpg"), "oorspronkelijke jpg")
+        service.start("90000000")
+        assertEquals(listOf("90000000.pdf", "90000001.pdf", "90000002.jpg"), service.view()!!.rows.map { it.newName })
+        assertEquals(listOf("pdf2zcbs", "images", "server", "back-up"), service.view()!!.rows[0].checks.map { it.label })
+        assertEquals(listOf("images", "back-up"), service.view()!!.rows[2].checks.map { it.label }, "een afbeelding heeft geen tekst, pdf of upload")
+
+        runUntil("PDF2ZCBS")
+        assertEquals(listOf("90000000.pdf", "90000001.pdf", "90000002.jpg"), filesIn(inbox.resolve("werk")))
+        val pdf2zcbs = runNext()
+        assertEquals("DONE", pdf2zcbs.status)
+        assertTrue(pdf2zcbs.message!!.contains("1 afbeelding is overgeslagen"), pdf2zcbs.message)
+        assertEquals(listOf("90000000.txt", "90000001.txt"), filesIn(p2zDir.resolve("output/ocr")), "alleen voor de pdf's")
+        assertEquals(listOf("90000000.pdf", "90000001.pdf"), filesIn(p2zDir.resolve("output/pdf")))
+        assertFalse(filesIn(p2zDir).any { it.endsWith(".jpg") }, "de jpg is nooit naar pdf2zcbs gegaan")
+        assertEquals(8, service.producedFiles(StepType.PDF2ZCBS).size, "twee pdf's, vier bestanden elk")
+
+        assertEquals("DONE", runNext().status)
+        assertEquals(listOf("90000000.jpg", "90000001.jpg", "90000002.jpg"), filesIn(imgDir.resolve("images")))
+        assertEquals("oorspronkelijke jpg", Files.readString(imgDir.resolve("images/90000002.jpg")).trim(), "de afbeelding zelf gaat naar images.exe")
+        assertEquals("large 90000000", Files.readString(imgDir.resolve("images/90000000.jpg")).trim(), "een pdf geeft de large-jpg van pdf2zcbs door")
+        assertEquals(9, service.producedFiles(StepType.IMAGES).size)
+
+        val upload = runNext()
+        assertEquals("DONE", upload.status)
+        assertEquals(listOf("90000000.txt", "90000001.txt"), filesIn(remote("/public_html/archief/ocr")), "alleen voor de pdf's")
+        assertEquals(listOf("90000000.pdf", "90000001.pdf"), filesIn(remote("/public_html/archief/pdf")))
+
+        assertEquals("DONE", runNext().status)
+        assertEquals(listOf("90000000.jpg", "90000001.jpg", "90000002.jpg"), filesIn(backup))
+        assertEquals(listOf("90000000.pdf", "90000001.pdf"), filesIn(backupPdf), "een afbeelding heeft geen pdf om te bewaren")
+        assertEquals(listOf("notes.txt"), filesIn(inbox))
+        assertEquals(3, processed.all().size)
+        val summary = service.summary().map { it.kind to it.count }
+        assertEquals(listOf("small" to 3, "large" to 3, "100pct" to 3, "tekst (ocr)" to 2, "pdf" to 2, "100pct" to 3, "pdf" to 2), summary)
+    }
+
+    @Test
+    fun `alleen afbeeldingen, dan worden pdf2zcbs en de upload overgeslagen`() {
+        Files.delete(inbox.resolve("xx01.pdf"))
+        Files.delete(inbox.resolve("xx02.pdf"))
+        Files.writeString(inbox.resolve("a.jpg"), "plaatje a")
+        Files.writeString(inbox.resolve("b.jpeg"), "plaatje b")
+        service.start("90000000")
+        assertEquals(listOf("90000000.jpg", "90000001.jpg"), service.view()!!.rows.map { it.newName })
+        runUntil("PDF2ZCBS")
+        val skipped = runNext()
+        assertEquals("SKIPPED", skipped.status)
+        assertTrue(skipped.message!!.contains("alleen afbeeldingen"), skipped.message)
+        assertFalse(Files.exists(p2zDir.resolve("output")), "pdf2zcbs is niet gestart")
+        assertEquals("DONE", runNext().status)
+        assertEquals(listOf("90000000.jpg", "90000001.jpg"), filesIn(imgDir.resolve("images")))
+        assertEquals("plaatje b", Files.readString(imgDir.resolve("images/90000001.jpg")).trim())
+        assertEquals("SKIPPED", runNext().status, "geen tekst of pdf om te uploaden")
+        assertEquals(emptyList(), filesIn(remote("/public_html/archief/pdf")))
+        assertEquals("DONE", runNext().status)
+        assertEquals(listOf("90000000.jpg", "90000001.jpg"), filesIn(backup))
+        assertEquals(emptyList(), filesIn(backupPdf))
+        assertEquals(listOf("small" to 2, "large" to 2, "100pct" to 2, "100pct" to 2), service.summary().map { it.kind to it.count }, "geen regels voor tekst en pdf")
+    }
+
+    @Test
     fun `de chain zet de bestanden in het verwerkt-log`() {
         service.start("90000000")
         runUntil("CLEANUP")
@@ -660,7 +722,7 @@ class TestRunServiceTest {
     fun `bevestigen zonder bestanden in de invoermap kan niet`() {
         Files.list(inbox).use { it.toList() }.forEach { Files.delete(it) }
         service.acceptInput()
-        assertTrue(service.confirmFiles()!!.contains("geen pdf"))
+        assertTrue(service.confirmFiles()!!.contains("geen bestanden"))
         assertEquals(1, service.flowView().current)
     }
 
@@ -682,7 +744,7 @@ class TestRunServiceTest {
         val first = input.ensure()
         assertEquals(inbox.resolve("Test Beheerder"), first)
         Files.writeString(first.resolve("a.pdf"), "van de eerste")
-        assertEquals(listOf("a.pdf"), service.pdfsInTestFolder().map { it.name })
+        assertEquals(listOf("a.pdf"), service.filesInTestFolder().map { it.name })
         assertEquals(inbox.resolve("resten").resolve("Test Beheerder"), service.leftoversTarget())
         service.acceptInput()
         assertEquals(emptyList(), service.leftovers())
@@ -690,7 +752,7 @@ class TestRunServiceTest {
         items.logout()
         assertNull(items.login("Test Bewerker", "Bewerk1"))
         assertEquals(inbox.resolve("Test Bewerker"), input.path())
-        assertEquals(emptyList(), service.pdfsInTestFolder(), "de bestanden van de ander zijn niet de mijne")
+        assertEquals(emptyList(), service.filesInTestFolder(), "de bestanden van de ander zijn niet de mijne")
         assertTrue(Files.exists(first.resolve("a.pdf")))
     }
 

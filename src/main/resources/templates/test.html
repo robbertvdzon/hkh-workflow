@@ -29,9 +29,9 @@
             <h2>Nieuwe test starten</h2>
             <div>
                 <div class="hint">Invoermap: <span class="mono" th:text="${inputFolder != '' ? inputFolder : '(niet ingesteld)'}"></span></div>
-                <div th:if="${pdfs.isEmpty()}" class="warn" style="margin-top:6px">Er staan geen pdf's in de invoermap.</div>
-                <ul th:unless="${pdfs.isEmpty()}" style="margin:10px 0 0;padding-left:20px">
-                    <li th:each="p : ${pdfs}"><span th:text="${p.name}"></span><span class="hint" th:if="${p.by != ''}" th:text="' · gescand door ' + ${p.by}"></span></li>
+                <div th:if="${chosen.isEmpty()}" class="warn" style="margin-top:6px">Er staan geen bestanden in de invoermap.</div>
+                <ul th:unless="${chosen.isEmpty()}" style="margin:10px 0 0;padding-left:20px">
+                    <li th:each="p : ${chosen}"><span th:text="${p.name}"></span><span class="hint" th:if="${p.by != ''}" th:text="' · gescand door ' + ${p.by}"></span></li>
                 </ul>
             </div>
             <form method="post" th:action="@{/test/start}" style="display:flex;gap:12px;align-items:flex-end">
@@ -39,7 +39,7 @@
                     <label class="f" for="startNumber">Eerste volgnummer</label>
                     <input type="text" id="startNumber" name="startNumber" inputmode="numeric" pattern="\d+" required placeholder="bijv. 1711">
                 </div>
-                <button type="submit" class="btn btn-p" th:disabled="${pdfs.isEmpty()}">Start</button>
+                <button type="submit" class="btn btn-p" th:disabled="${chosen.isEmpty()}">Start</button>
             </form>
             <p class="hint" style="margin:0">Elk bestand krijgt een volgnummer (steeds één hoger, voorloopnullen blijven staan). Het origineel blijft staan; "hernoemen" maakt een kopie met het nieuwe nummer in de submap <span class="mono">werk</span>. Deze pagina controleert niet of de nummers vrij zijn in ZCBS; dat doet de pagina Nieuwe bestanden.</p>
         </section>

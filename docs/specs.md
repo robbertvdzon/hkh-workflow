@@ -419,6 +419,8 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 | Opruimen | Pas na de upload en met back-up van de 100pct; originelen pas in de laatste stap archiveren | Zo blijft de oude werkwijze altijd mogelijk |
 | Test van het echte images.exe | Op een aparte Windows-testlaptop (SSH vanaf de Mac), `hosts`-regel naar de lokale ZCBS, firewallregel per programmapad; nooit naar de echte server | Robbert, 30 oktober: niets naar productie; ook niet via Carla's pc |
 | Workflow-logboek | Elke inlogpoging en elke doorloop (nieuwe bestanden, records aanpassen) wordt met alle instellingen (zonder wachtwoorden), bestanden, stappen en logs van de exe's gemeld aan het beheerscherm van hkh (`/workflow-logboek`), met een sessie-uuid; elke stap stuurt de volledige stand opnieuw (`adminlog`-module, `hkh.workflow.admin-log-url`, leeg = uit). Het meldpunt vraagt geen inlog maar een vaste sleutel, met limieten tegen misbruik (zie `docs/workflow-logboek.md` in de repo hkh) | Robbert wil zien wie wanneer wat deed, ook op afstand (31 oktober); de gegevens zijn niet gevoelig |
+| Jpg's en png's als bron | Naast pdf's staan in de bronmappen ook jpg's en png's; ze zijn te kiezen en te bekijken. Een png wordt bij het kiezen een jpg. Een afbeelding krijgt een recordnummer uit dezelfde reeks, slaat pdf2zcbs.exe en de upload over (geen tekst of pdf) en gaat als `images\<nummer>.jpg` rechtstreeks naar images.exe; de 100pct-back-up is er wel, een pdf-back-up niet. Een run met alleen afbeeldingen slaat pdf2zcbs en de upload over | Robbert (31 oktober): Jelly en Ria leveren ook jpg's |
+| Meerdere gebruikers op de server (gepland) | De app draait straks op één server (nu macOS, met de scans en de werkmap via de localfileserver benaderbaar vanaf Windows); gebruikers openen hem in de browser. **Eén sessie per collectie** voor de flow Nieuwe bestanden, twee gebruikers op twee collecties tegelijk moet kunnen. Records aanpassen mag door meerdere mensen tegelijk (ZCBS vergrendelt per record). Werkmap per gebruiker en collectie: `<werkmap>\<gebruiker>\<collectie>\{invoer, werk, pdf2zcbs, images, resten}`, met een kopie van de programma's in de mappen `pdf2zcbs` en `images`. Een slot per collectie (bestand in de werkmap, met eigenaar en laatste activiteit) vervangt claims op nummers; het slot vervalt na 2 uur zonder activiteit of door de beheerder. ZCBS-login, doorloop en `ExeRunner` per browsersessie/collectie; de stand van een doorloop wordt in de eigen map bewaard zodat hij een herstart overleeft. Paden als UNC | Robbert (31 oktober): meerdere gebruikers, per collectie één sessie |
 
 ---
 
@@ -463,6 +465,14 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 10. Aanbevelingen uit §3 (OCR, recordnummers, mappingtabel, per-collectie-config, back-up).
 11. De testrun staat alleen in het geheugen. Na een herstart van de app midden in een run begint de test opnieuw; de controles
     vooraf (oude resultaten in `output\` en de map van images.exe) weigeren dan te starten, zodat er niets verloren gaat.
+12. **Meerdere gebruikers op de server** (besluit hierboven), in deze volgorde:
+    1. Fundament: de ZCBS-login per browsersessie in plaats van één in het geheugen (`ItemEditService`); een doorloop (`TestRunService`) en
+       een `ExeRunner` per collectie; de collectie in de adressen (`/collectie/{c}/nieuw` enz.) en per collectie de ftp-submappen, back-upmappen
+       en resolutie (de instellingen per collectie bestaan al); het slot per collectie met de naam van wie er werkt op de startpagina.
+    2. De werkmap per gebruiker en collectie met de kopie van de programma's (exe, ini, i_view32, plugins) en de controle op resten per map.
+       Eerst bevestigen of de exe's hun mappen in de huidige map of naast de exe zoeken; een kopie werkt in beide gevallen.
+    3. De stand van een doorloop bewaren in de eigen map (`sessie.json`), zodat hij een herstart overleeft.
+    4. De meldingen aan het workflow-logboek volgen dan meerdere doorlopen tegelijk (nu staat er één per type).
 
 ## 10. Toekomstideeën (niet gepland)
 

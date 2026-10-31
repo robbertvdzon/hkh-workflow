@@ -38,7 +38,7 @@ class NewFilesController(
     private val processedLog: ProcessedLog,
     private val ftpService: FtpService,
 ) {
-    /** Een pdf in de invoermap, met de bronmap waar hij vandaan kwam. */
+    /** Een gekozen bestand in de invoermap, met de bronmap waar het vandaan kwam. */
     data class PdfRow(val name: String, val by: String, val folder: String)
 
     /** Een vrije reeks uit ZCBS voor de tabel: [fits] is waar als alle bestanden erin passen. */
@@ -73,12 +73,12 @@ class NewFilesController(
             }
 
             2 -> {
-                val pdfs = testRunService.pdfsInTestFolder().map {
+                val chosen = testRunService.filesInTestFolder().map {
                     val origin = sourceFiles.origin(it.fileName.toString())
                     PdfRow(it.fileName.toString(), origin?.by.orEmpty(), origin?.folder.orEmpty())
                 }
                 model.addAttribute("roots", sourceFiles.roots())
-                model.addAttribute("pdfs", pdfs)
+                model.addAttribute("chosen", chosen)
                 if (rootName != null) {
                     try {
                         model.addAttribute("listing", sourceFiles.browse(rootName, path))
@@ -89,7 +89,7 @@ class NewFilesController(
             }
 
             3 -> {
-                val count = testRunService.pdfsInTestFolder().size
+                val count = testRunService.filesInTestFolder().size
                 val free = itemEditService.freeNumbers()
                 model.addAttribute("count", count)
                 model.addAttribute("free", free)
@@ -159,7 +159,7 @@ class NewFilesController(
             val result = if (files.isNullOrEmpty()) CopyResult(emptyList(), emptyList()) else sourceFiles.copy(rootName, path, files)
             testRunService.acceptInput()
             val skipped = if (result.skipped.isEmpty()) "" else " Overgeslagen: ${result.skipped.joinToString()}."
-            if (testRunService.pdfsInTestFolder().isEmpty()) return stay("Vink minstens één bestand aan.$skipped")
+            if (testRunService.filesInTestFolder().isEmpty()) return stay("Vink minstens één bestand aan.$skipped")
             testRunService.confirmFiles()?.let { return stay(it) }
             if (skipped.isNotEmpty()) redirect.addFlashAttribute("info", skipped.trim())
             "redirect:/nieuw"

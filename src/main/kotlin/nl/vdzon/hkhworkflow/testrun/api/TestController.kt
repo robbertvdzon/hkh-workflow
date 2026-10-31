@@ -36,7 +36,7 @@ class TestController(
         model.addAttribute("settings", settings)
         model.addAttribute("inputFolder", testRunService.inputFolder()?.toString().orEmpty())
         model.addAttribute("problems", settingsService.check(settings) + settingsService.checkExtras(settings))
-        model.addAttribute("pdfs", testRunService.pdfsInTestFolder().map { PdfRow(it.fileName.toString(), sourceFiles.origin(it.fileName.toString())?.by.orEmpty()) })
+        model.addAttribute("chosen", testRunService.filesInTestFolder().map { PdfRow(it.fileName.toString(), sourceFiles.origin(it.fileName.toString())?.by.orEmpty()) })
         model.addAttribute("run", testRunService.view())
         model.addAttribute("console", exeRunner.snapshot())
         model.addAttribute("runs", exeRunner.history())
