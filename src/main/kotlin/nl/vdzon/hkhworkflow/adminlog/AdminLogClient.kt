@@ -11,6 +11,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import org.slf4j.LoggerFactory
+import nl.vdzon.hkhworkflow.settings.SettingsService
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.EnableScheduling
@@ -49,10 +51,19 @@ data class SessionReport(
  * melding herstelt zich bij de volgende. Zonder adres (`hkh.workflow.admin-log-url` leeg) doet deze klasse niets.
  */
 @Component
-class AdminLogClient(
+class AdminLogClient internal constructor(
     private val mapper: ObjectMapper,
-    @param:Value("\${hkh.workflow.admin-log-url:}") baseUrl: String,
+    baseUrl: String,
+    /** De bron van deze installatie volgens de instellingen (macbook, windows-laptop, hkh, ...); leeg = de computernaam. */
+    private val sourceSetting: () -> String = { "" },
 ) {
+    @Autowired
+    constructor(
+        mapper: ObjectMapper,
+        @Value("\${hkh.workflow.admin-log-url:}") baseUrl: String,
+        settings: SettingsService,
+    ) : this(mapper, baseUrl, { settings.get().logSource })
+
     private val log = LoggerFactory.getLogger(javaClass)
     private val base = baseUrl.trim().trimEnd('/')
     val enabled: Boolean = base.isNotEmpty()
@@ -69,6 +80,9 @@ class AdminLogClient(
 
     val appVersion: String = AdminLogClient::class.java.`package`?.implementationVersion ?: "ontwikkel"
     private val computer: String by lazy { runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrDefault("onbekend") }
+
+    /** Waar deze melding vandaan komt: de ingestelde bron, anders de computernaam. */
+    private fun source(): String = runCatching { sourceSetting().trim() }.getOrDefault("").ifEmpty { computer }.take(80)
 
     /** Meldt de stand van een doorloop. Een oudere, nog niet verstuurde melding van dezelfde sessie vervalt. */
     fun session(report: SessionReport) {
@@ -94,6 +108,7 @@ class AdminLogClient(
             detail?.let { put("detail", it.take(300)) }
             put("appVersion", appVersion)
             put("computer", computer)
+            put("source", source())
         }
         synchronized(logins) { if (logins.size < MAX_QUEUED_LOGINS) logins.addLast(body) }
         schedule()
@@ -126,6 +141,7 @@ class AdminLogClient(
             put("collection", report.collection.orEmpty())
             put("appVersion", appVersion)
             put("computer", computer)
+            put("source", source())
             put("phase", report.phase)
             put("phaseCount", report.phaseCount)
             put("phaseLabel", report.phaseLabel.orEmpty())

@@ -33,6 +33,17 @@ class SnapshotSanitizerTest {
     }
 
     @Test
+    fun `een veld dat de beheerder bewust wil zien blijft leesbaar, de rest niet`() {
+        val settings = Settings(ftpHost = "h", ftpPassword = "ftp-geheim", answers = listOf(Rule("FTP wachtwoord", "antwoord-geheim", secret = true)))
+        val cleaned = sanitizer.clean(settings, keep = setOf("ftpPassword"))
+        assertEquals("ftp-geheim", cleaned.tree.path("ftpPassword").asString())
+        assertEquals(SnapshotSanitizer.REDACTED, cleaned.tree.path("answers").path(0).path("answer").asString())
+        // Het blijft dan ook in teksten staan; de uitvoer van een programma wordt er niet meer mee schoongemaakt.
+        assertEquals("ftp-geheim", cleaned.scrub("ftp-geheim"))
+        assertEquals("***", sanitizer.clean(settings).scrub("ftp-geheim"))
+    }
+
+    @Test
     fun `een geheim dat in de uitvoer van een programma staat, wordt eruit gehaald`() {
         val cleaned = sanitizer.clean(Settings(ftpPassword = "ftp-geheim"))
         assertEquals("FTP wachtwoord: *** gevraagd", cleaned.scrub("FTP wachtwoord: ftp-geheim gevraagd"))

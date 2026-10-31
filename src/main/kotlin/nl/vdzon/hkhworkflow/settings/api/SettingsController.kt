@@ -44,6 +44,8 @@ class SettingsController(private val settingsService: SettingsService) {
                 backup100pctFolder = param("backup100pctFolder"),
                 backupPdfFolder = param("backupPdfFolder"),
                 leftoversFolder = param("leftoversFolder"),
+                logSource = param("logSource"),
+                logFtpPassword = request.getParameter("logFtpPassword") != null,
                 zcbsBaseUrl = param("zcbsBaseUrl"),
                 sourceFolders = param("sourceFolders"),
                 ftpHost = param("ftpHost"),

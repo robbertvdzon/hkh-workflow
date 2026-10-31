@@ -62,6 +62,21 @@ class AdminLogClientTest {
     }
 
     @Test
+    fun `de bron uit de instellingen gaat mee, zonder bron is het de computernaam`() {
+        val client = AdminLogClient(mapper, url) { " windows-laptop " }
+        client.login("carla", true, "PASSWORD")
+        client.session(report())
+        waitFor(2)
+        received.forEach { assertEquals("windows-laptop", mapper.readTree(it.body).path("source").asString()) }
+
+        received.clear()
+        val unnamed = AdminLogClient(mapper, url)
+        unnamed.login("carla", true, "PASSWORD")
+        waitFor(1)
+        assertTrue(mapper.readTree(received.single().body).path("source").asString().isNotEmpty())
+    }
+
+    @Test
     fun `een inlogpoging wordt gemeld, dezelfde mislukte poging maar eens in de vijf minuten`() {
         val client = AdminLogClient(mapper, url)
         client.login("carla", true, "PASSWORD")

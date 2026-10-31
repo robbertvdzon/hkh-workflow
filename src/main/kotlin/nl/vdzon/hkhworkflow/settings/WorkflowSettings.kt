@@ -38,6 +38,10 @@ data class WorkflowSettings(
     val backupPdfFolder: String = "",
     /** Hierheen worden resten van een eerdere run verplaatst als Carla ze opruimt. Leeg = de submap `resten` van de invoermap. */
     val leftoversFolder: String = "",
+    /** Van welke bron de meldingen aan het workflow-logboek komen, bijvoorbeeld macbook, windows-laptop of hkh. Leeg = de computernaam. */
+    val logSource: String = "",
+    /** Het ftp-wachtwoord ook meesturen naar het workflow-logboek (om de instelling te kunnen controleren). Zet dit uit zodra dat niet meer nodig is. */
+    val logFtpPassword: Boolean = true,
     /** Adres van ZCBS, bijvoorbeeld http://localhost:8081 (lokale kopie om tegen te testen) of https://www.historischekringheemskerk.nl. */
     val zcbsBaseUrl: String = "",
     /** De mappen met scans waar Carla uit kiest: één per regel, `naam=pad`, bijvoorbeeld `Ria=K:\scans ria`. */

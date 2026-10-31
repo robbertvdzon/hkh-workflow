@@ -54,6 +54,8 @@ class SettingsService(
                     backup100pctFolder = node.path("backup100pctFolder").asText(""),
                     backupPdfFolder = node.path("backupPdfFolder").asText(""),
                     leftoversFolder = node.path("leftoversFolder").asText(""),
+                    logSource = node.path("logSource").asText(""),
+                    logFtpPassword = node.path("logFtpPassword").asBoolean(true),
                     zcbsBaseUrl = node.path("zcbsBaseUrl").asText(""),
                     sourceFolders = node.path("sourceFolders").asText(""),
                     // Een instellingenbestand uit de tijd van sftp gebruikt dezelfde gegevens voor ftp (behalve de poort en de vingerafdruk).
@@ -86,6 +88,7 @@ class SettingsService(
             backup100pctFolder = settings.backup100pctFolder.trim(),
             backupPdfFolder = settings.backupPdfFolder.trim(),
             leftoversFolder = settings.leftoversFolder.trim(),
+            logSource = settings.logSource.trim(),
             zcbsBaseUrl = settings.zcbsBaseUrl.trim().trimEnd('/'),
             sourceFolders = settings.sourceFolders.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n"),
             ftpHost = settings.ftpHost.trim(),

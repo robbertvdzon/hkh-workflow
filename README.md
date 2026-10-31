@@ -38,7 +38,8 @@ Instelbaar met omgevingsvariabelen:
 De app meldt elke inlogpoging en elke doorloop (nieuwe bestanden in ZCBS zetten, records aanpassen) aan het beheerscherm van hkh
 (`https://hkh-admin.vdzonsoftware.nl`, pagina Workflow-logboek): met een sessie-uuid, alle instellingen (zonder wachtwoorden), de
 gekozen bestanden, de stappen en de uitvoer en het log van pdf2zcbs.exe en images.exe. Bij elke stap wordt de volledige stand opnieuw
-gestuurd; een fout of onbereikbare server hindert de app niet. Stel `hkh.workflow.admin-log-url` (of `HKH_WORKFLOW_ADMIN_LOG_URL`) in
+gestuurd; een fout of onbereikbare server hindert de app niet. Bij Instellingen kies je de **bron** van de installatie (bijvoorbeeld `macbook`, `windows-laptop` of `hkh`); die staat bij elke melding en daarop is
+in het beheerscherm te filteren (leeg = de naam van de computer). Stel `hkh.workflow.admin-log-url` (of `HKH_WORKFLOW_ADMIN_LOG_URL`) in
 op een leeg adres om niets te melden, of op een lokale hkh-backend om te testen. De code staat in de module `adminlog` en de
 `FlowLogReporter` (testrun) en `EditLogReporter` (items).
 

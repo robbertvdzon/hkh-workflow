@@ -81,7 +81,7 @@ class FlowLogReporter(
             session = current
         }
         val s = settingsService.get()
-        val cleaned = sanitizer.clean(s)
+        val cleaned = sanitizer.clean(s, if (s.logFtpPassword) setOf("ftpPassword") else emptySet())
         recordConsole(current, cleaned)
 
         val run = view.run

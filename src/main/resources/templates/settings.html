@@ -75,6 +75,19 @@
                 </div>
             </fieldset>
             <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
+                <legend class="f" style="padding:0;margin-bottom:6px">Logboek</legend>
+                <div class="field">
+                    <label class="f" for="logSource">Bron van deze installatie</label>
+                    <input type="text" id="logSource" name="logSource" th:value="${settings.logSource}" placeholder="macbook, windows-laptop of hkh" maxlength="80">
+                    <span class="hint">Elke inlogpoging en doorloop wordt gemeld aan het workflow-logboek van hkh-admin. Met deze naam zie je daar van welke computer of omgeving een melding komt, en kun je erop filteren. Leeg = de naam van de computer.</span>
+                </div>
+                <label style="display:flex;gap:10px;align-items:flex-start">
+                    <input type="checkbox" name="logFtpPassword" th:checked="${settings.logFtpPassword}" style="margin-top:2px">
+                    <span>Het ftp-wachtwoord meesturen naar het logboek<br>
+                        <span class="hint">Alleen om in het begin te kunnen controleren wat er is ingesteld. Het wachtwoord staat dan leesbaar in het beheerscherm van hkh-admin en in de database. Zet dit uit zodra het niet meer nodig is; andere wachtwoorden gaan nooit mee.</span></span>
+                </label>
+            </fieldset>
+            <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px">
                 <legend class="f" style="padding:0;margin-bottom:6px">Ftp-server (tekst en pdf's)</legend>
                 <div style="display:flex;gap:16px;flex-wrap:wrap">
                     <div class="field" style="flex:1;min-width:260px"><label class="f" for="ftpHost">Host</label>

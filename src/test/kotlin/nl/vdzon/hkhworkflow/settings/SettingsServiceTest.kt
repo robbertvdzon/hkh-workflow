@@ -23,6 +23,18 @@ class SettingsServiceTest {
     }
 
     @Test
+    fun `de bron en de keuze voor het ftp-wachtwoord in het logboek blijven bewaard`() {
+        val file = dir.resolve("settings.json")
+        val service = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString()))
+        assertEquals("", service.get().logSource)
+        assertEquals(true, service.get().logFtpPassword)
+        service.save(WorkflowSettings(logSource = " windows-laptop ", logFtpPassword = false))
+        val reloaded = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString())).get()
+        assertEquals("windows-laptop", reloaded.logSource)
+        assertEquals(false, reloaded.logFtpPassword)
+    }
+
+    @Test
     fun `missing file gives empty settings and warnings`() {
         val service = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("none.json").toString()))
         val settings = service.get()
