@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- De console zoals Spring Boot die standaard heeft, plus een appender die de logregels van INFO en hoger in een wachtrij op schijf zet
+         voor het workflow-logboek van hkh-admin (zie AppLogAppender). -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <springProperty scope="context" name="ADMIN_LOG_URL" source="hkh.workflow.admin-log-url" defaultValue=""/>
+    <springProperty scope="context" name="APP_LOG_DIR" source="hkh.workflow.log-dir" defaultValue="logs"/>
+
+    <appender name="ADMIN_LOG" class="nl.vdzon.hkhworkflow.adminlog.AppLogAppender">
+        <adminLogUrl>${ADMIN_LOG_URL}</adminLogUrl>
+        <directory>${APP_LOG_DIR}/admin-spool</directory>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ADMIN_LOG"/>
+    </root>
+</configuration>

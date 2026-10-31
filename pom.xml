@@ -123,6 +123,17 @@
                 <configuration>
                     <mainClass>nl.vdzon.hkhworkflow.HkhWorkflowApplicationKt</mainClass>
                 </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                        <configuration>
+                            <!-- De bouwtijd van deze build (de parent zet hem anders op een vaste datum): hij maakt het versienummer uniek. -->
+                            <time>${maven.build.timestamp}</time>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>

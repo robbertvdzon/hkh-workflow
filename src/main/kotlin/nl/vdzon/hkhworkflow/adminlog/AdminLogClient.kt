@@ -68,6 +68,9 @@ class AdminLogClient internal constructor(
     private val base = baseUrl.trim().trimEnd('/')
     val enabled: Boolean = base.isNotEmpty()
 
+    /** Het adres van het workflow-logboek zonder slash aan het eind; leeg als het uit staat. */
+    val baseUrl: String get() = base
+
     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build()
     private val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "admin-log").apply { isDaemon = true } }
     private val pending = LinkedHashMap<UUID, SessionReport>()
@@ -78,11 +81,11 @@ class AdminLogClient internal constructor(
     private val blockedUntil = AtomicLong(0)
     private val lastFailure = HashMap<String, Long>()
 
-    val appVersion: String = AdminLogClient::class.java.`package`?.implementationVersion ?: "ontwikkel"
-    private val computer: String by lazy { runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrDefault("onbekend") }
+    val appVersion: String = AppVersion.current
+    val computer: String by lazy { runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrDefault("onbekend") }
 
     /** Waar deze melding vandaan komt: de ingestelde bron, anders de computernaam. */
-    private fun source(): String = runCatching { sourceSetting().trim() }.getOrDefault("").ifEmpty { computer }.take(80)
+    fun source(): String = runCatching { sourceSetting().trim() }.getOrDefault("").ifEmpty { computer }.take(80)
 
     /** Meldt de stand van een doorloop. Een oudere, nog niet verstuurde melding van dezelfde sessie vervalt. */
     fun session(report: SessionReport) {
