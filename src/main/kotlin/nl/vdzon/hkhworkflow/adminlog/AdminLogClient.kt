@@ -82,7 +82,12 @@ class AdminLogClient internal constructor(
     private val lastFailure = HashMap<String, Long>()
 
     val appVersion: String = AppVersion.current
-    val computer: String by lazy { runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrDefault("onbekend") }
+    /** De computernaam. Het opzoeken kan op een computer met een trage dns lang duren, dus dat gebeurt één keer op een eigen draad; wie niet kan wachten krijgt "onbekend". */
+    private val computerLookup = java.util.concurrent.CompletableFuture.supplyAsync {
+        System.getenv("COMPUTERNAME")?.takeIf { it.isNotBlank() }
+            ?: runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrDefault("onbekend")
+    }
+    val computer: String get() = runCatching { computerLookup.get(500, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrDefault("onbekend")
 
     /** Waar deze melding vandaan komt: de ingestelde bron, anders de computernaam. */
     fun source(): String = runCatching { sourceSetting().trim() }.getOrDefault("").ifEmpty { computer }.take(80)
@@ -90,13 +95,30 @@ class AdminLogClient internal constructor(
     /** Meldt de stand van een doorloop. Een oudere, nog niet verstuurde melding van dezelfde sessie vervalt. */
     fun session(report: SessionReport) {
         if (!enabled) return
-        synchronized(pending) { pending[report.id] = report }
-        schedule()
+        try {
+            synchronized(pending) {
+                pending[report.id] = report
+                // Bij een logboek dat dagen onbereikbaar is, groeit dit niet door: de oudste sessies vallen dan af.
+                while (pending.size > MAX_PENDING_SESSIONS) pending.remove(pending.keys.first())
+            }
+            schedule()
+        } catch (e: Exception) {
+            log.debug("Melding aan het workflow-logboek overgeslagen: {}", e.message)
+        }
     }
 
     /** Meldt een inlogpoging. Dezelfde mislukte poging binnen vijf minuten wordt maar één keer gemeld. */
     fun login(user: String?, success: Boolean, method: String, detail: String? = null) {
         if (!enabled) return
+        try {
+            enqueueLogin(user, success, method, detail)
+        } catch (e: Exception) {
+            // Een inlogpoging mag nooit mislukken omdat het logboek niet bereikbaar of stuk is.
+            log.debug("Melding aan het workflow-logboek overgeslagen: {}", e.message)
+        }
+    }
+
+    private fun enqueueLogin(user: String?, success: Boolean, method: String, detail: String?) {
         val key = "$user|$success|$method|$detail"
         val now = System.currentTimeMillis()
         if (!success) synchronized(lastFailure) {
@@ -209,5 +231,6 @@ class AdminLogClient internal constructor(
         private const val FAILURE_PAUSE_MILLIS = 30_000L
         private const val DUPLICATE_FAILURE_MILLIS = 5 * 60_000L
         private const val MAX_QUEUED_LOGINS = 50
+        private const val MAX_PENDING_SESSIONS = 200
     }
 }

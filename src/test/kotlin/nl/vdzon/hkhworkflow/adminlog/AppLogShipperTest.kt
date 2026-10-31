@@ -156,4 +156,14 @@ class AppLogShipperTest {
         assertEquals(2_000, received[0].body.path("lines").size())
         assertEquals(500, received[1].body.path("lines").size())
     }
+
+    @Test
+    fun `een onbereikbaar logboek geeft geen fout en laat de regels staan`() {
+        val closed = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { it.stop(0) }
+        spool.add(line("a"))
+
+        assertEquals(0, shipper("http://127.0.0.1:${closed.address.port}").sendPending())
+
+        assertEquals(1, spool.pending().size)
+    }
 }

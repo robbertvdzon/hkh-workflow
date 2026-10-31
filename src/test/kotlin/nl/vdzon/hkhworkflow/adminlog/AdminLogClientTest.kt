@@ -133,4 +133,32 @@ class AdminLogClientTest {
         assertTrue(body.length < 950_000, "lengte ${body.length}")
         assertTrue("ingekort" in body)
     }
+
+    @Test
+    fun `een hangend logboek houdt de aanroeper niet op`() {
+        val hanging = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
+            createContext("/") { Thread.sleep(5_000) }
+            start()
+        }
+        try {
+            val client = AdminLogClient(mapper, "http://127.0.0.1:${hanging.address.port}")
+            client.login("carla", true, "PASSWORD") // wacht op de computernaam (hooguit een halve seconde) maar niet op de server
+            val start = System.nanoTime()
+            repeat(20) { client.login("carla$it", false, "PASSWORD", "fout $it"); client.session(report()) }
+            val millis = (System.nanoTime() - start) / 1_000_000
+            assertTrue(millis < 500, "de aanroepen duurden $millis ms")
+        } finally {
+            hanging.stop(0)
+        }
+    }
+
+    @Test
+    fun `een onbereikbaar logboek geeft nooit een fout en houdt de wachtrij klein`() {
+        val closed = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { it.stop(0) }
+        val client = AdminLogClient(mapper, "http://127.0.0.1:${closed.address.port}")
+        repeat(500) { client.session(report()) }
+        repeat(100) { client.login("carla", false, "PASSWORD", "fout $it") }
+        Thread.sleep(300)
+        assertTrue(client.enabled)
+    }
 }

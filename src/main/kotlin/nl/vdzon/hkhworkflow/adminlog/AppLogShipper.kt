@@ -7,6 +7,8 @@ import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.scheduling.annotation.Scheduled
@@ -37,12 +39,21 @@ class AppLogShipper internal constructor(
 
     @Volatile private var blockedUntil = 0L
 
+    /** Een eigen draad, zodat een trage of hangende server de andere geplande taken van de app (die één draad delen) niet ophoudt. */
+    private val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "app-log-shipper").apply { isDaemon = true } }
+    private val running = AtomicBoolean(false)
+
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
     fun tick() {
-        try {
-            sendPending()
-        } catch (e: Exception) {
-            log.debug("Versturen van de logregels mislukt: {}", e.message)
+        if (!running.compareAndSet(false, true)) return
+        executor.execute {
+            try {
+                sendPending()
+            } catch (e: Exception) {
+                log.debug("Versturen van de logregels mislukt: {}", e.message)
+            } finally {
+                running.set(false)
+            }
         }
     }
 
