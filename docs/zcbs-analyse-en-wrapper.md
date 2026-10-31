@@ -500,7 +500,8 @@ De flow volgt het stappenplan van Carla. Elke stap wordt apart goedgekeurd.
 - Hoe de bewerkpagina precies werkt, en of openen de record vergrendelt.
 - Of ocr-tekst van een record dat niet op internet staat, extern zichtbaar kan zijn.
 - Of het sftp- en het FTP-wachtwoord gelijk zijn.
-- Wat images.exe vraagt bij het kiezen van een submap bij uploaden.
+- ~~Wat images.exe vraagt bij het kiezen van een submap bij uploaden.~~ Gemeten op 30 oktober 2026: "Geef een ENTER/RETURN of indien images naar een nieuwe submap moeten, de naam van deze submap" (zie [zcbs-achtergrond.md](zcbs-achtergrond.md)).
+- FTP-gebruiker van images.exe: ingebouwd `ZCBS@historischekringheemskerk.nl` op `ftp.historischekringheemskerk.nl`. Of het FTP-wachtwoord gelijk is aan het sftp-wachtwoord blijft onbekend.
 
 ---
 

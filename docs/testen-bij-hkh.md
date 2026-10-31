@@ -38,7 +38,7 @@ oude manier (zie onderaan); tot het opruimen is er niets weg, en bij het opruime
 | Back-upmap voor 100pct | `c:\zcbs\backup_100pct` |
 | Sftp | host, poort, gebruiker en wachtwoord zoals in Total Commander |
 | Basismap | `/domains/historischekringheemskerk.nl/public_html` |
-| Wachtwoord bij de regel "FTP wachtwoord" | alleen nodig als je met automatisch uitvoeren wilt uploaden |
+| FTP-wachtwoord | nodig om te uploaden; typ je het bij Handmatig uitvoeren van images.exe in, dan neemt de app het over |
 
 Klik **Test verbinding**. Controleer dat beide mappen (`archief/ocr` en `archief/pdf`) bestaan, vergelijk de vingerafdruk met die
 van Total Commander of de hostingprovider, en zet hem dan pas vast. Zonder vastgezette vingerafdruk wordt er niet geüpload.
@@ -81,3 +81,17 @@ archief beeldbank.docx`. De genummerde bestanden staan in `invoer\werk`.
 ## Meenemen terug
 
 De map `logs\` (een log per run) en eventuele meldingen uit de app, zodat de echte programma's in detail bekeken kunnen worden.
+
+## Wat al bekend is uit de test op een Windows-testlaptop (30 oktober 2026)
+
+Het echte `images.exe` 3.27 is thuis volledig doorlopen tegen een lokale ZCBS (zie `tools/windows-testlaptop/`), dus bij HKH hoef je
+niets te raden over de volgorde van de vragen:
+
+- Het FTP-account zit in images.exe (gebruiker `ZCBS@historischekringheemskerk.nl`); je hoeft alleen het wachtwoord in te vullen.
+- images.exe kan bij een volgende run extra vragen stellen die de app nog niet automatisch beantwoordt: "Toch de afgeleide images
+  ... opnieuw aanmaken?" (als `small`, `large` of `100pct` nog bestanden bevatten), de submapvraag, "VERWIJDEREN (tijdelijk)
+  PC-bestand ..." en "Geef een Return/Enter om dit DOS-window te verlaten". De app stopt dan en toont de vraag; antwoord zelf in het
+  veld onder de console (j, Enter, n en Enter).
+- Er komt bij het starten een webaanvraag naar `www.zcbs.nl` (versiecontrole). Dat is normaal.
+- Het FTP-wachtwoord staat niet in de documentatie of in de repo. Vraag het aan de beheerder. Of het gelijk is aan het sftp-wachtwoord is niet bekend.
+

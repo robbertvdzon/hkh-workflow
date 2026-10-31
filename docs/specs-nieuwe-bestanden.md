@@ -14,7 +14,7 @@ doet precies wat Jans stappenplan doet, zonder meer. Dit document is de bron voo
 | Een bronmap met een submap per persoon, en vinkjes in één lange lijst | **Twee mappen met scans** (`K:\scans jelly`, `K:\scans ria`) waar Carla zelf doorheen **bladert**, met vinkjes per map |
 | Beginnummer = hoogste nummer + 1 (`LAST`) | Een beginnummer uit **de vrije nummers van ZCBS**, aaneengesloten |
 | De originelen gaan naar een archived-map | De originelen **blijven staan** op K:. De **100pct en de pdf's** (met recordnummer) krijgen een **back-up op K:** |
-| Voor images.exe twee vinkjes (uploaden, records) | **Handmatig** typen, waarbij de app de antwoorden onthoudt en voorstelt, of **automatisch** met die onthouden antwoorden |
+| Voor images.exe twee vinkjes (uploaden, records) | **Handmatig** typen, waarbij de app de vaste antwoorden voorstelt, of **automatisch** met die vaste antwoorden (uploaden en records aanmaken: altijd ja) |
 | Geen beheerder; de instellingen stonden open | **Beheerderslogin**, wachtwoord in het configuratiebestand op de server |
 | Demoschermen | Verwijderd: ze toonden de oude flow |
 
@@ -76,12 +76,10 @@ geen vergrendeling; het werkt voor een gebruiker die records mag aanmaken). Geco
 
 ## 5. De antwoorden van images.exe
 
-- **Handmatig uitvoeren**: Carla typt de antwoorden in de console. De app herkent de vraag waar het programma op wacht, **vult het onthouden
-  antwoord alvast in** en onthoudt wat ze intypt (alleen als het programma goed eindigt). Een wachtwoord (het FTP-wachtwoord van images.exe) wordt niet voorgesteld maar **onthouden**: typ je het één keer in, dan geeft de app het de volgende keer zelf, één keer per run (vraagt
-  het programma er daarna nog eens om, dan klopte het niet en typ je het opnieuw). Het staat leesbaar in het instellingenbestand, dat niet in git komt; in de console en het log staat het nooit leesbaar,
-  ook niet als je het intypt. De vraag om een submap ("Geef een ENTER/RETURN of ... de naam van deze submap") krijgt standaard Enter: de images komen in de root van de collectie, zoals de bestaande.
-- **Automatisch uitvoeren**: de app geeft de onthouden antwoorden. Alleen de collectie (uit de instellingen), het overschrijven en het verwijderen van de
-  mappen van images.exe staan vast en gaan voor: altijd `n`, want de app ruimt zelf op, ná de back-up.
+- **Handmatig uitvoeren**: Carla typt de antwoorden in de console. De app herkent de vraag waar het programma op wacht en **vult het vaste antwoord alvast in** (de resolutie is die van de collectie). Wat ze intypt, wordt niet onthouden. Een ingesteld FTP-wachtwoord geeft de app zelf, één keer per run (vraagt
+  het programma er daarna nog eens om, dan klopte het niet en typ je het opnieuw); is het nog niet ingesteld, dan typ je het en neemt de app het over als instelling. In de console en het log staat het nooit leesbaar, ook niet als je het intypt.
+  De vraag om een submap ("Geef een ENTER/RETURN of ... de naam van deze submap") krijgt standaard Enter: de images komen in de root van de collectie, zoals de bestaande.
+- **Automatisch uitvoeren**: de app geeft de vaste antwoorden: bestandstype `a`, resolutie van de collectie, uploaden `j`, instelling `4`, FTP-wachtwoord uit de instellingen, collectie, records aanmaken `j`, en altijd `n` voor overschrijven en verwijderen van de mappen van images.exe (de app ruimt zelf op, ná de back-up). Zonder FTP-wachtwoord weigert de app te starten.
 - **Die vragen over overschrijven en verwijderen beantwoordt de app ook bij handmatig uitvoeren zelf met nee.** Zonder dat wist images.exe, net als het echte programma, de
   afbeeldingen als iemand "J" typt, en dan ontbreken ze bij de controle en de back-up (zo ging een eerdere run mis). In de console staan die antwoorden als "(auto) n".
 - Vragen worden herkend zonder te letten op het aantal spaties: het echte images.exe schrijft "Kies  1,2,3" met twee spaties.
@@ -105,7 +103,7 @@ seconde langer. De beheerder (een sessie in de browser) heeft toegang tot **Inst
 
 `testFolder` (de gemeenschappelijke invoermap, `c:\zcbs\invoer`; per gebruiker komt er een submap in), `leftoversFolder` (waar resten naartoe gaan; leeg = `resten` in de invoermap), `sourceFolders` (één regel per map met scans, `naam=pad`: `Jelly=K:\scans jelly`), `pdf2zcbsExe`, `imagesExe`,
 `backup100pctFolder` en `backupPdfFolder` (op K:), `collection`, `zcbsBaseUrl`, de ftp-instellingen (host, poort 21, gebruiker, wachtwoord, basismap; bij de account van images.exe is dat `/public_html`) en de lijsten met antwoorden. Een instellingenbestand uit de tijd van sftp wordt overgenomen (zonder poort en vingerafdruk). Vervallen: de vingerafdruk van sftp, `archivedFolder`,
-`sourceFolder`, `imagesFileType`, `imagesResolution`, `imagesInstitution` (die zitten nu in de onthouden antwoorden).
+`sourceFolder`, `imagesFileType`, `imagesResolution`, `imagesInstitution` (het bestandstype en de instelling zijn nu vast in de code, de resolutie staat per collectie bij Instellingen).
 
 ## 9. Wat nog niet kan of niet getest is
 

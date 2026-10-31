@@ -103,9 +103,50 @@ installatie door de auteur of aangewezen persoon; bronvermelding verplicht; geen
   100pct ongewijzigd / max 3000×2000 / max 4000×3000.
 - **Upload (C):** vraagt nummer/naam/plaats instelling (HKH: `4`), FTP-wachtwoord (gecontroleerd door te verbinden),
   toont de ZCBS-toepassingen op de server → kies collectie (= uploadmap), kies (sub)map of maak er een.
-  De handleiding noemt geen FTP-gebruikersnaam en vraagt er ook niet om; waar die vandaan komt (waarschijnlijk vast in het programma, per
-  instelling), staat nergens. Het is gewone FTP (`Net::FTP`), dus niet versleuteld. Eén FTP-wachtwoord voor de hele server: wie images.exe
+  De handleiding noemt geen FTP-gebruikersnaam en vraagt er ook niet om. **Gemeten op 30 oktober 2026** (echte `images.exe` 3.27 op een
+  testlaptop, tegen de lokale ZCBS-container, zie `tools/windows-testlaptop/`): de server en gebruiker zitten **ingebouwd**, per
+  instellingsnummer. Instelling `4` geeft `Welkom: ==== 004: Kring Heemskerk ====`, host `ftp.historischekringheemskerk.nl`, gebruiker
+  `ZCBS@historischekringheemskerk.nl` (een FTP-account van het hostingpaneel, niet `hkhadmin`), poort 21, gewone FTP (`Net::FTP`), dus
+  niet versleuteld, passieve modus. Een fout wachtwoord geeft `==ERROR== Onjuist wachtwoord opgegeven!` (= `530 Login incorrect`).
+  Bij het starten haalt het programma `http://www.zcbs.nl/cgi-bin/misc/downloads.txt` op (user agent `Mozilla/8.0`); dat bestand is de
+  lijst met actuele versies (zie de downloadlijst van de server). Het programma gaat ook door als die pagina niet antwoordt (404).
+  FTP-commando's bij een upload: `STOR /public_html/<app>/small|large/<nr>.jpg` en `STOR /public_html/cgi-bin/<app>/100pct/<nr>.jpg`;
+  daarna `RETR /public_html/cgi-bin/<app>/updates.txt`, `CWD /public_html/cgi-bin/<app>`, `APPE updates.txt` (de nieuwe lege records,
+  titel "Een nog niet beschreven record (<jjmmdd>)") en `APPE images.log` in `/public_html/cgi-bin/misc/`. Paden zijn absoluut vanaf
+  de FTP-root, dus de FTP-gebruiker heeft als thuismap de map boven `public_html`. De invoer leest het programma uit een pijp (stdin)
+  zodra de vraag getoond is; alle antwoorden in één keer uit een bestand gaat mis. Het hele traject draait met automatische antwoorden
+  (`tools/windows-testlaptop/drive-images.ps1`, zelfde idee als `ExeRunner`). Eén FTP-wachtwoord voor de hele server: wie images.exe
   kan gebruiken, kan alles op de server.
+- **De vragen van images.exe 3.27 in volgorde** (gemeten op 30 oktober 2026, één bron-jpg, collectie `archief`; twee volledige runs
+  met het antwoord `a`, `6`, `j`, `4`, wachtwoord, Enter, `j`, `n`, `n`, `n`, Enter; zie `tools/windows-testlaptop/drive-images.ps1`):
+
+  | # | Vraag (herkenbare tekst) | Antwoord in de test | Opmerking |
+  |---|---|---|---|
+  | 1 | `Type ENTER/RETURN indien OK -- of kies A, B of C` | `a` | na "Gevonden N bestanden in map (\images) van type: **** A ****" |
+  | 2 | `Toch de afgeleide images small/large/100pct opnieuw aanmaken? [J/N]` | `j` | alleen als die mappen al bestanden bevatten ("ATTENTIE: ... bevat reeds N .jpg") |
+  | 3 | `Kies 1,2,3 (objecten,boeken,etc), of kies 6,7,8 (foto's,etc)` | `6` | daarna "via Irfanview omgezet" per map |
+  | 4 | `UPLOADEN aangemaakte images ... naar webserver? [J/N]` | `j` | bij `n` volgt geen FTP-contact |
+  | 5 | `Nummer, naam of plaats instelling?` | `4` | antwoord: `Welkom: ==== 004: Kring Heemskerk ====` |
+  | 6 | `FTP wachtwoord van uw webserver?` | testwachtwoord | hier gebeurt de FTP-login; fout = "Onjuist wachtwoord opgegeven", daarna begint het opnieuw bij vraag 5 |
+  | 7 | `Beschikbare ZCBS-toepassingen:` | (geen vraag) | met één toepassing op de server wordt die zonder vraag gekozen; bij meer toepassingen komt `Kies de ZCBS-toepassing` |
+  | 8 | `Geef een ENTER/RETURN of ... de naam van deze submap` | Enter | na "De webserver map ==/public_html/archief/.../== bevat: n-n-n images" en "Er zijn geen submappen" |
+  | 9 | `AANMAKEN en UPLOADEN van de bijbehorende N nieuwe lege DATABASE RECORDS? [J/N]` | `j` | meldt aantal oude en nieuwe records in de update-database; schrijft `log-<jjmmdd>-<hhmm>.txt` |
+  | 10 | `VERWIJDEREN (tijdelijk) aangemaakte mappen [small], [large] en [100pct]? [J/N]` | `n` | |
+  | 11 | `VERWIJDEREN (tijdelijk) PC-bestand met nieuwe database records? [J/N]` | `n` | het bestand `updates-add.txt` in de images-map; blijft anders staan |
+  | 12 | `VERWIJDEREN inhoud van de map [images] met bron images? [J/N]` | `n` | |
+  | 13 | `Geef een Return/Enter om dit DOS-window te verlaten` | Enter | het programma sluit pas na deze Enter |
+
+  `OVERSCHRIJVEN` (oude images met dezelfde naam) is in deze runs niet gevraagd, omdat er geen bestand met die naam stond.
+  De vragen 2, 8, 11 en 13 zitten nog niet in de automatische antwoorden van de app (`TestRunService.imagesRules`); de app
+  stopt daar en toont de vraag (bij 8 is dat het bedoelde gedrag). Bij 11 en 13 zou "n" en Enter volstaan.
+- **Wat images.exe verder doet, gemeten:** het draait onder Windows 10 in een pijp zonder `PERLIO`-instelling; de vragen komen direct
+  door. Het schrijft in `images.log` op de server een regel
+  `jjjjmmdd-hh:mm|images.exe|<versie>|<datum>|<datum>|<app>|1|A|-init-iv1-iv2-iv3-B-ftp1-ftp2-C-up1-up2|<Windows-gebruiker>`.
+  Het laatste veld is de Windows-gebruikersnaam (in de test `ik`), dus de logregel zegt wie het uitvoerde.
+- **Testopstelling:** de omleiding naar een eigen server gaat met een regel in het `hosts`-bestand van de Windows-pc
+  (`<IP> ftp.historischekringheemskerk.nl`) en poort 21 op de eigen server; een eigen DNS-server is niet nodig. Een Windows-
+  firewallregel per programmapad (`tools/windows-testlaptop/firewall-blokkade.ps1`) houdt images.exe daarbij uit de buurt van de
+  echte server.
 - **Records (D):** maakt lege records ("Een nog niet beschreven record (datum)") en zet ze in de **update-database op de
   server**. Uitvoer: "Oude update database op webserver bevatte: 26 records / Nieuwe … bevat nu: 32". Afleiding: het haalt
   `updates.txt` via FTP op, voegt toe en zet het terug. Roept geen pl-script aan.

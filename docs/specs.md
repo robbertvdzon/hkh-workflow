@@ -235,7 +235,7 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 | GET | `/test` | Testpagina |
 | POST | `/test/start` (`startNumber`), `/test/reset` | Testrun starten / nieuwe test |
 | POST | `/instellingen/ftp-test` | Verbinding testen (logt in en controleert de mappen, schrijft niets) |
-| POST | `/test/steps/{id}/run` (`mode=IN_APP\|WINDOW`, `auto=true\|false`) | Stap uitvoeren; automatisch gebruikt de onthouden antwoorden |
+| POST | `/test/steps/{id}/run` (`mode=IN_APP\|WINDOW`, `auto=true\|false`) | Stap uitvoeren; automatisch geeft de vaste antwoorden |
 | POST | `/test/steps/{id}/skip`, `/done`, `/retry` | Overslaan / toch klaar / opnieuw |
 | GET | `/test/console` | htmx-fragment, elke seconde zolang er iets draait; stuurt `HX-Refresh` als het klaar is |
 | POST | `/test/console/input` (`line`), `/test/console/stop` | Invoer sturen / programma stoppen |
@@ -251,25 +251,13 @@ Opgeslagen in JSON; velden:
 - `pdf2zcbsExe`, `imagesExe` — volledige paden. Mag elk uitvoerbaar bestand zijn (op Mac/Linux een script met
   `chmod +x`); de pagina waarschuwt als een pad niet bestaat of niet uitvoerbaar is.
 - `sourceFolders` — de mappen met scans, één per regel `naam=pad` (`Jelly=K:\scans jelly`, `Ria=K:\scans ria`); Carla bladert erdoor en de naam laat zien wie het scande.
-- `zcbsBaseUrl` — het adres van ZCBS: `http://localhost:8081` (lokale kopie, zie `tools/docker/zcbs`) of de echte site. Het script is `/cgi-bin/<collectie>.pl`.
+- `useTestZcbs` (standaard **aan**; een checkbox in de UI) — de enige keuze voor de omgeving: aan = de test-ZCBS in Docker (`tools/docker/zcbs`), uit = het echte archief. Hieruit volgen `zcbsBaseUrl` (`http://localhost:8081` of `https://www.historischekringheemskerk.nl`; het script is `/cgi-bin/<collectie>.pl`) en `ftpHost`/`ftpPort` (`localhost:21` of `ftp.historischekringheemskerk.nl:21`); ze worden bij het laden ingevuld en niet apart ingesteld. Waar de test-ZCBS draait staat in `hkh.workflow.test-zcbs-url`, `test-ftp-host` en `test-ftp-port` (standaard localhost, op de testlaptop het IP van de Mac, zie `tools/windows-testlaptop`). Een oud bestand zonder deze keuze telt als test, tenzij het adres het echte archief is. Wisselt de omgeving, dan vervalt de inlog bij ZCBS.
 - `perlioUnbuffered` (standaard **aan**) — start de programma's met `PERLIO=:unix` (zie §6).
-- `collection` (standaard `archief`) — antwoord op "Kies de ZCBS-toepassing" en basis voor de sftp-mappen.
+- De collectie is altijd `archief` (niet instelbaar): het antwoord op "Kies de ZCBS-toepassing" en de basis voor de ftp-mappen. De startpagina toont alle zeven collecties van HKH; alleen het archief is te kiezen.
 - `backup100pctFolder` en `backupPdfFolder` — back-up van de 100pct en van de pdf's met recordnummer vóór het opruimen (op K:).
-- `ftpHost`, `ftpPort` (21), `ftpUser`, `ftpPassword` (verborgen in de UI, zoals de andere wachtwoorden), `ftpBaseDir`
-  (standaard `/public_html`, het pad bij de ftp-account van images.exe; voor het lokale Docker-account `/domains/historischekringheemskerk.nl/public_html`),
-  `ftpOcrDir` en `ftpPdfDir` (relatief aan de basismap; leeg = `<collectie>/ocr` en `<collectie>/pdf`). Gewone ftp is niet versleuteld.
-  Een oud bestand met `sftp…`-velden wordt overgenomen (zonder poort en vingerafdruk).
-- `pdf2zcbsAnswers`, `imagesAnswers` — lijsten `{pattern, answer, secret}`: de **onthouden antwoorden**. Handmatig uitvoeren past ze aan met wat Carla intypt
-  (niet de wachtwoorden); automatisch uitvoeren gebruikt ze. Alleen de collectie, overschrijven en het verwijderen van de mappen van images.exe staan vast en gaan voor.
-  Standaardregels zijn afgeleid uit de handleidingen (`WorkflowSettings.DEFAULT_*`), met veilige keuzes:
-  type `a`, resolutie `6`, uploaden `n`, records aanmaken `n`, overschrijven `n`, verwijderen `n`, FTP-wachtwoord leeg.
-- Het beheerderswachtwoord staat niet in deze instellingen maar in `application.properties` (`hkh.workflow.admin-password`); het verwerkt-log in
-  `hkh.workflow.processed-log`.
-- **Wachtwoorden** (`secret = true`): in de UI een `*`-veld; de waarde gaat nooit terug naar de browser
-  (placeholder "•••••••• (opgeslagen)"); leeg laten = behouden, vinkje "wissen" = leegmaken. Staan wél leesbaar in het
-  JSON-bestand.
-- Formulier: rijen heten `<prefix>Pattern-<i>`, `<prefix>Answer-<i>`, `<prefix>Secret-<i>`, `<prefix>Clear-<i>`,
-  plus `<prefix>Count`; steeds twee lege rijen extra; lege tekst = regel verwijderen.
+- `ftpPassword` (verborgen in de UI, zoals andere wachtwoorden) — één wachtwoord voor de hele server (alle collecties), voor images.exe en de ftp-upload van de app. De gebruiker is altijd `ZCBS@historischekringheemskerk.nl` en de basismap altijd `/public_html`; de mappen voor tekst en pdf zijn altijd `<collectie>/ocr` en `<collectie>/pdf`. Staat het wachtwoord er niet, dan neemt de app het over als iemand het bij Handmatig uitvoeren van images.exe typt. Gewone ftp is niet versleuteld.
+- `collections` — per collectie (alle zeven, ook die de app nog niet gebruikt) `imagesResolution` (het antwoord op "Kies 1,2,3 of 6,7,8"; standaard `6`, voor het archief ook `6`) en de back-upmappen `backup100pctFolder` en `backupPdfFolder`. Een oud bestand zonder `collections` geeft zijn back-upmappen en zijn antwoord op "Kies 1,2,3" aan het archief.
+- **Geen antwoordtabellen meer.** De vragen en antwoorden van pdf2zcbs.exe en images.exe staan vast in de code (`ExeAnswers`); alleen de resolutie (per collectie) en het ftp-wachtwoord komen uit de instellingen. pdf2zcbs.exe vraagt bij HKH niets (`pdf2zcbs.ini`). Een onbekende vraag beantwoordt de app niet: hij stopt en toont de vraag.
 
 ### 5.5 Testworkflow (pagina Test)
 
@@ -381,6 +369,21 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 - **19 oktober, eerste sessie bij HKH:** handmatig gedraaid, de app er nog niet mee getest. Het stappenplan en de logs
   staan in §2. Belangrijkste les: images.exe krijgt de large-jpg's van pdf2zcbs, niet de pdf's, en de tekst en pdf's gaan met
   sftp naar `.../archief/ocr` en `.../archief/pdf` (de handleiding noemt voorbeeldpaden).
+- **30 oktober 2026: echte images.exe 3.27 op een Windows-testlaptop, aangestuurd vanaf de Mac met pijpen** (niet via de app zelf, maar
+  met een PowerShell-script dat doet wat `ExeRunner` doet), tegen de lokale ZCBS in Docker. Zie `tools/windows-testlaptop/` en
+  [zcbs-achtergrond.md](zcbs-achtergrond.md). Wat het voor de app betekent:
+  - De hele keten werkt: afgeleide images, upload (FTP), lege records in `updates.txt`, regel in `images.log`. Twee runs gelukt.
+  - **Geen `PERLIO` nodig** met de echte exe: de vragen verschijnen direct in de pijp. Antwoorden in één keer uit een bestand
+    werken niet; ze moeten na de vraag komen (zoals `ExeRunner` doet). Invoer eindigt op `CRLF`, uitvoer is code page 850.
+  - **FTP-server en -gebruiker zitten ingebouwd** per instellingsnummer: `ftp.historischekringheemskerk.nl`, gebruiker
+    `ZCBS@historischekringheemskerk.nl`, poort 21, gewone FTP. De app hoeft die dus niet mee te geven, alleen het wachtwoord.
+  - **Vragen die de app nog niet automatisch beantwoordt:** "Toch de afgeleide images ... opnieuw aanmaken?" (als de mappen al
+    bestanden bevatten), de submapvraag ("Geef een ENTER/RETURN of ... de naam van de submap"), "VERWIJDEREN (tijdelijk)
+    PC-bestand met nieuwe database records?" en "Geef een Return/Enter om dit DOS-window te verlaten". Niet gebouwd; wacht op het sein van Robbert.
+  - Bij het starten haalt images.exe `http://www.zcbs.nl/cgi-bin/misc/downloads.txt` op (versiecontrole); het programma gaat ook door als
+    dat niet antwoordt.
+  - Niet getest: verborgen wachtwoordinvoer (`Echo : 1`), meer dan één toepassing op de server, "OVERSCHRIJVEN", tekens als ë in
+    bestandsnamen, en alles tegen de echte HKH-server.
 - **Nog niet getest met de echte exe's via de app** (perl2exe-programma's op Windows bij HKH). Onbekend: respecteert perl2exe
   `PERLIO`? Werkt verborgen wachtwoordinvoer van images.exe (`Echo : 1` in images.ini) zonder echte console? Komen
   tekens als ë goed door met IBM850?
@@ -414,7 +417,7 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
 | Succes van een stap | Aan de verwachte bestanden, niet aan de exitcode | Perl-programma's geven bijna altijd 0 |
 | Schrijven in productie | Upload en records standaard uit en per run te kiezen; ftp overschrijft en verwijdert nooit, controleert eerst alles | Voorzichtigheid bij de eerste echte run |
 | Opruimen | Pas na de upload en met back-up van de 100pct; originelen pas in de laatste stap archiveren | Zo blijft de oude werkwijze altijd mogelijk |
-| Ingelogd blijven | Naam en wachtwoord van ZCBS versleuteld (AES-GCM) in een cookie van 30 dagen; sleutel in `hkh-workflow-inloggen.key` naast het instellingenbestand; uitloggen wist het cookie | Carla heeft een eigen pc; opnieuw inloggen na elke herstart was vervelend (Robbert, 30 oktober) |
+| Test van het echte images.exe | Op een aparte Windows-testlaptop (SSH vanaf de Mac), `hosts`-regel naar de lokale ZCBS, firewallregel per programmapad; nooit naar de echte server | Robbert, 30 oktober: niets naar productie; ook niet via Carla's pc |
 | Workflow-logboek | Elke inlogpoging en elke doorloop (nieuwe bestanden, records aanpassen) wordt met alle instellingen (zonder wachtwoorden), bestanden, stappen en logs van de exe's gemeld aan het beheerscherm van hkh (`/workflow-logboek`), met een sessie-uuid; elke stap stuurt de volledige stand opnieuw (`adminlog`-module, `hkh.workflow.admin-log-url`, leeg = uit). Het meldpunt vraagt geen inlog maar een vaste sleutel, met limieten tegen misbruik (zie `docs/workflow-logboek.md` in de repo hkh) | Robbert wil zien wie wanneer wat deed, ook op afstand (31 oktober); de gegevens zijn niet gevoelig |
 
 ---
@@ -432,6 +435,9 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
   controle na pdf2zcbs en images.exe, back-up van 100pct en pdf's, verwerkt-log, opruimen van resten vóór de start, een invoermap per gebruiker, een eerste fase die de omgeving controleert, en een menu met alleen Start en Beheer), met een start (inloggen, collectie, twee knoppen), een beheerderslogin en onthouden antwoorden voor
   images.exe. De demoschermen en de modules ervoor zijn verwijderd. Doorgelopen in de browser tegen de lokale ZCBS, de lokale sftp en de nep-programma's; de tests slagen
   (`mvn test`, en `-Dzcbs.live=true` tegen de lokale ZCBS). Zie [specs-nieuwe-bestanden.md](specs-nieuwe-bestanden.md).
+- **30 oktober 2026, instellingen vereenvoudigd:** de omgeving is één checkbox ("Gebruik de test-ZCBS op localhost"), de ftp-gebruiker, -basismap en -mappen staan vast, het ftp-wachtwoord is het antwoord op "FTP wachtwoord" bij images.exe (het blok Ftp-server is weg), de collectie is geen instelling meer (alleen het archief) en de startpagina toont alle zeven collecties met alleen het archief aanzetbaar. Het menu is opgeruimd: Uitloggen is een knop onder Start, "Beheer" in plaats van "Beheerder inloggen" en de knop Test (technisch) is weg.
+- **30 oktober 2026, geen antwoordtabellen meer:** de vragen van images.exe 3.27 zijn bekend en bijna alle antwoorden vast (bestandstype `a`, uploaden `j`, instelling `4`, records `j`, nooit overschrijven of verwijderen), dus ze staan in de code in plaats van in de instellingen. Per collectie instelbaar zijn de resolutie en de back-upmappen; het ftp-wachtwoord is één instelling voor de hele server. Bij Handmatig uitvoeren stelt de console de vaste antwoorden voor en leert de app niets, op het ftp-wachtwoord na als dat nog niet is ingesteld. Automatisch uitvoeren uploadt voortaan altijd en maakt records aan (voorheen pas na één handmatige run); het vraagt wel het ftp-wachtwoord.
+- **30 oktober 2026, inloggen per collectie:** rechten gelden per collectie (`permit.lst` begint elke regel met de collectie), dus de login op de startpagina is niet aan het archief gebonden. De app probeert dezelfde naam en hetzelfde wachtwoord bij het script van alle zeven collecties (`/cgi-bin/<collectie>.pl`); je bent ingelogd als het bij minstens één lukt. Links in het menu staan "Rechten in ZCBS", en op de keuzepagina staat een collectie alleen aan als je er rechten hebt én de app er al mee werkt (nu alleen het archief; `WorkflowSettings.IMPLEMENTED_COLLECTIONS`). Een fout wachtwoord en een ontbrekend recht zijn voor ZCBS hetzelfde antwoord, dus de melding noemt beide. Iemand met alleen rechten bij een andere collectie kan inloggen, maar niet met het archief werken. Getest tegen de lokale test-ZCBS: `user1` heeft rechten bij het archief en bij de andere scripts niet; nog niet getest tegen een echte server met meerdere collecties.
 - **30 oktober 2026:** het echte `images.exe` 3.27 is op een Windows-testlaptop volledig doorlopen tegen de lokale ZCBS (upload, records, log); de ingebouwde FTP-server en -gebruiker zijn gevonden, en welke vragen de app nog niet automatisch beantwoordt. Zie §6 en `tools/windows-testlaptop/`. De app zelf is niet gewijzigd.
 - **25 oktober 2026:** er is een klikbare demo van de hele flow zoals Carla hem gaat doorlopen (menu *Hele flow*, `/demo-flow`): inloggen, nieuwe bestanden, voorbereiden, pdf2zcbs, images.exe (met een optionele mislukking), upload, records één voor één bewerken (voorbeeld, "later", vergrendeld, intussen gewijzigd, niet veilig) en afsluiten. Alleen nepdata in het geheugen (`ux`-module, `FlowDemo.kt`); nog geen koppeling met ZCBS.
 
@@ -465,4 +471,4 @@ uit). Net als de echte programma's **leegt pdf2zcbs.pl de map `output/` bij elke
   large (700×500) en 100pct (`cgi-bin/archief/100pct/`) maken met 40% compressie en per sftp uploaden, naast pdf en ocr. De pdf- en ocr-aanmaak van
   pdf2zcbs zou dan ook vervangen moeten worden. Eerst naast images.exe uitproberen en de resultaten vergelijken. Details en afwegingen:
   [zcbs-analyse-en-wrapper.md](zcbs-analyse-en-wrapper.md) en de uitleg bij `NEWRECORD` in `objecten.pl` (regel 1433). Voor een aparte, beperkte
-  sftp-account (alleen ocr, pdf en afbeeldingen) is een aparte FTP-account nodig; nu bestaat alleen `hkhadmin`.
+  sftp-account (alleen ocr, pdf en afbeeldingen) is een aparte FTP-account nodig; sftp gebeurt nu met `hkhadmin`, en images.exe gebruikt een eigen FTP-account `ZCBS@historischekringheemskerk.nl` (ingebouwd; gemeten). Of het FTP-wachtwoord gelijk is aan het sftp-wachtwoord is niet bekend.
