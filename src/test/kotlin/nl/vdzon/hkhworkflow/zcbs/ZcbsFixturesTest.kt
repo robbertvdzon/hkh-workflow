@@ -146,6 +146,17 @@ class ZcbsFixturesTest {
     }
 
     @Test
+    fun `de titel en de plaatsing op internet komen uit de gewone weergave`() {
+        assertEquals(RecordSummary("Testrecord & meer", false), ZcbsPages.recordSummary(Fixtures.page("weergave-bestaand.html")))
+        val online = """<table><tr><th align="left" nowrap>Titel</th>
+            <th align="center"> : </th>
+            <td align="left">Dorpsfeest <b>1962</b></td></tr>
+            <tr><th nowrap>Plaatsing op internet</th><th> : </th><td>ja, sinds 27-10-2026</td></tr></table>"""
+        assertEquals(RecordSummary("Dorpsfeest 1962", true), ZcbsPages.recordSummary(online))
+        assertNull(ZcbsPages.recordSummary(Fixtures.page("weergave-niet-bestaand.html")))
+    }
+
+    @Test
     fun `het hoogste nummer komt uit de LAST-pagina`() {
         assertEquals(11933, ZcbsPages.lastNumber(Fixtures.page("last.html")))
     }

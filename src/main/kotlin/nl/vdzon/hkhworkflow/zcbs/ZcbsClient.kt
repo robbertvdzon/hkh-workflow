@@ -19,6 +19,12 @@ sealed interface LoginOutcome {
     data class Failed(val message: String, val rateLimited: Boolean = false) : LoginOutcome
 }
 
+/** Het antwoord van de gewone weergave op de vraag of een record bestaat. */
+sealed interface RecordLookup {
+    data object Missing : RecordLookup
+    data class Found(val summary: RecordSummary) : RecordLookup
+}
+
 /**
  * De aanroepen naar ZCBS, zoals een browser ze doet: inloggen, het formulier ophalen (dat zet de vergrendeling van ZCBS),
  * en een formulier posten. Alle antwoorden worden als ISO-8859-1 gelezen. Er is geen sessie-object: de cookies blijven
@@ -94,6 +100,20 @@ class ZcbsClient(
         is Page.NotAvailable -> false
         is Page.Other, is Page.Form, is Page.LoginOk -> true
         else -> if (page is Page.Locked) true else null
+    }
+
+    /**
+     * Zoekt het record op in de gewone weergave (zet geen vergrendeling): bestaat het, wat is de titel en staat het op internet?
+     * @return null als ZCBS geen duidelijk antwoord gaf (niet ingelogd, te veel verzoeken); bij een record dat niet bestaat [RecordLookup.Missing].
+     */
+    fun lookup(number: String): RecordLookup? {
+        val html = get("ident=$number")
+        return when (val page = ZcbsPages.classify(html)) {
+            is Page.NotAvailable -> RecordLookup.Missing
+            is Page.Locked -> RecordLookup.Found(RecordSummary("", null))
+            is Page.Other, is Page.Form, is Page.LoginOk -> RecordLookup.Found(ZcbsPages.recordSummary(html) ?: RecordSummary("", null))
+            else -> null
+        }
     }
 
     /** Het adres van een bestand op de site van de collectie, bijvoorbeeld `archief/pdf/11934.pdf`. */

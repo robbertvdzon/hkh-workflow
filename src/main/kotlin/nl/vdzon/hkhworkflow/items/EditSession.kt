@@ -8,6 +8,7 @@ import nl.vdzon.hkhworkflow.zcbs.FreeNumbers
 import nl.vdzon.hkhworkflow.zcbs.ItemForm
 import nl.vdzon.hkhworkflow.zcbs.LoginOutcome
 import nl.vdzon.hkhworkflow.zcbs.Page
+import nl.vdzon.hkhworkflow.zcbs.RecordLookup
 import nl.vdzon.hkhworkflow.zcbs.ControlKind
 import nl.vdzon.hkhworkflow.zcbs.RecordRebuilder
 import nl.vdzon.hkhworkflow.zcbs.UnencodableException
@@ -94,7 +95,9 @@ class EditSession(private val settingsService: SettingsService) {
 
     @Synchronized
     fun startBatch(records: List<BatchRecord>) {
-        batch = records.map { EditRecord(it.number, it.fileName, it.by, it.folder) }
+        batch = records.map { b ->
+            EditRecord(b.number, b.fileName, b.by, b.folder).also { it.title = b.title; it.online = b.online; it.mediaUrl = b.mediaUrl; it.mediaKind = b.mediaKind }
+        }
     }
 
     fun records(): List<EditRecord> = batch
@@ -156,10 +159,26 @@ class EditSession(private val settingsService: SettingsService) {
         val width = freeNumbers()?.width ?: 5
         val numbers = try { parseNumbers(input, width) } catch (e: IllegalArgumentException) { return ChooseResult(0, emptyList(), e.message) }
         if (numbers.isEmpty()) return ChooseResult(0, emptyList(), "Vul een recordnummer of een reeks in, bijvoorbeeld 11934 of 11934-11945.")
-        val missing = try { missingInZcbs(numbers) } catch (e: Exception) { return ChooseResult(0, emptyList(), "Geen verbinding met ZCBS: ${e.message ?: e.javaClass.simpleName}") }
-        val existing = numbers.filter { it !in missing }
-        if (existing.isEmpty()) return ChooseResult(0, missing, "Deze records bestaan niet in ZCBS: ${missing.take(5).joinToString()}.")
-        startBatch(existing.map { BatchRecord(it) })
+        val c = client ?: return ChooseResult(0, emptyList(), "Log eerst in bij ZCBS.")
+        val missing = mutableListOf<String>()
+        val found = mutableListOf<BatchRecord>()
+        try {
+            for (number in numbers) {
+                when (val lookup = c.lookup(number)) {
+                    is RecordLookup.Missing -> missing += number
+                    // Geen duidelijk antwoord telt als "bestaat": het bewerken meldt het zelf als het record niet blijkt te kloppen.
+                    else -> {
+                        val summary = (lookup as? RecordLookup.Found)?.summary
+                        val pdf = pdfUrl(number)
+                        val image = if (pdf == null) imageUrl(number) else null
+                        found += BatchRecord(number, title = summary?.title.orEmpty(), online = summary?.online, mediaUrl = pdf ?: image, mediaKind = if (pdf != null) "pdf" else if (image != null) "image" else null)
+                    }
+                }
+            }
+        } catch (e: Exception) { return ChooseResult(0, emptyList(), "Geen verbinding met ZCBS: ${e.message ?: e.javaClass.simpleName}") }
+        if (found.isEmpty()) return ChooseResult(0, missing, "Deze records bestaan niet in ZCBS: ${missing.take(5).joinToString()}.")
+        startBatch(found)
+        val existing = found
         return ChooseResult(existing.size, missing, null)
     }
 
@@ -208,6 +227,7 @@ class EditSession(private val settingsService: SettingsService) {
                 r.baseline = form
                 r.fresh = null
                 r.title = form.control("a5")?.value.orEmpty()
+                form.control("a21")?.value?.let { r.online = it.isNotBlank() && it != "0" }
                 r.openedAt = LocalTime.now()
                 if (r.status != EditStatus.OPGESLAGEN) r.status = EditStatus.BEZIG
                 r.message = null
@@ -349,6 +369,7 @@ class EditSession(private val settingsService: SettingsService) {
         r.fresh = null
         r.draft = null
         r.title = after.control("a5")?.value.orEmpty()
+        after.control("a21")?.value?.let { r.online = it.isNotBlank() && it != "0" }
         r.status = EditStatus.OPGESLAGEN
         r.message = null
         return SaveOutcome.Saved
@@ -391,6 +412,6 @@ class EditSession(private val settingsService: SettingsService) {
     fun isMulti(number: String, name: String): Boolean = record(number)?.baseline?.control(name)?.kind == ControlKind.MULTI
 
     private companion object {
-        const val MAX_RECORDS = 500
+        const val MAX_RECORDS = 30
     }
 }

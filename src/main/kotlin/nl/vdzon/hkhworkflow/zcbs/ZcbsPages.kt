@@ -15,6 +15,9 @@ sealed interface Page {
     data class Other(val text: String) : Page
 }
 
+/** Wat de gewone weergave van een record laat zien: de titel en of het record op internet staat (null als de pagina dat niet zegt). */
+data class RecordSummary(val title: String, val online: Boolean?)
+
 object ZcbsPages {
     private val sorry = Regex("""==Sorry:(\d)==""")
     private val minutes = Regex("""nog voor\s+(\d+)\s+minuten""")
@@ -24,6 +27,23 @@ object ZcbsPages {
 
     /** Het hoogste nummer uit het antwoord op `search=LAST` (de regel `zcbs_archief = "0000 11933 0000"`). */
     fun lastNumber(html: String): Int? = lastList.find(html)?.groupValues?.get(1)?.split(' ')?.mapNotNull { it.toIntOrNull() }?.maxOrNull()
+
+    private fun cell(html: String, label: String): String? =
+        Regex("""<th[^>]*>\s*${Regex.escape(label)}\s*</th>\s*(?:<th[^>]*>.*?</th>\s*)?<td[^>]*>(.*?)</td>""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+            .find(html)?.groupValues?.get(1)?.let { plain(it) }
+
+    /**
+     * De titel en de plaatsing op internet uit de gewone weergave van een record (`ident=NNNNN`, alleen lezen, zet geen vergrendeling).
+     * "Plaatsing op internet" staat er als "nee" of als ja met een datum. Null als dit de weergave van een record niet is.
+     */
+    fun recordSummary(html: String): RecordSummary? {
+        val title = cell(html, "Titel") ?: return null
+        val internet = cell(html, "Plaatsing op internet")?.lowercase()
+        return RecordSummary(decode(title), internet?.let { it.isNotEmpty() && !it.startsWith("nee") && !it.startsWith("neen") })
+    }
+
+    private fun decode(text: String): String =
+        text.replace("&quot;", "\"").replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'").replace("&amp;", "&")
 
     private val freeCell = Regex("""<td>&nbsp;(\d+)(?:-(\d*))?&nbsp;</td>""")
 

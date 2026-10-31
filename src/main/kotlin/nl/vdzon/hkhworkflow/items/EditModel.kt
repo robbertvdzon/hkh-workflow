@@ -14,12 +14,28 @@ enum class EditStatus(val label: String, val kind: String) {
 }
 
 /** Een record dat bewerkt moet worden. */
-data class BatchRecord(val number: String, val fileName: String = "", val by: String = "", val folder: String = "")
+data class BatchRecord(
+    val number: String,
+    val fileName: String = "",
+    val by: String = "",
+    val folder: String = "",
+    /** De titel en de plaatsing op internet zoals ZCBS ze liet zien toen het record werd gekozen. */
+    val title: String = "",
+    val online: Boolean? = null,
+    /** Het bestand van het record op de site (pdf of anders de grote afbeelding), voor de popup. [mediaKind] is `pdf` of `image`. */
+    val mediaUrl: String? = null,
+    val mediaKind: String? = null,
+)
 
 /** Wat er van een gekozen nummer of reeks is gekomen: hoeveel records klaarstaan en welke niet bestaan. [error] is gezet als er niets klaarstaat. */
 data class ChooseResult(val count: Int, val missing: List<String>, val error: String?)
 
 class EditRecord(val number: String, val fileName: String, val by: String, val folder: String) {
+    /** Staat het record op internet? Null als dat (nog) niet bekend is. */
+    @Volatile var online: Boolean? = null
+    @Volatile var mediaUrl: String? = null
+    @Volatile var mediaKind: String? = null
+
     @Volatile var status: EditStatus = EditStatus.OPEN
     @Volatile var message: String? = null
 

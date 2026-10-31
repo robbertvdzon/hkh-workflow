@@ -328,11 +328,18 @@ class ItemEditServiceTest {
     }
 
     @Test
+    fun `bij het kiezen worden de titels en de plaatsing op internet meteen opgehaald`() {
+        service.chooseRecords("11902, 11905")
+        assertEquals(listOf("Testrecord & meer", "Testrecord & meer"), service.records().map { it.title })
+        assertEquals(listOf(false, false), service.records().map { it.online })
+    }
+
+    @Test
     fun `een ongeldige keuze geeft een duidelijke melding`() {
         assertTrue(service.chooseRecords("abc").error!!.contains("geen recordnummer"))
         assertTrue(service.chooseRecords("11905-11902").error!!.contains("eerste nummer hoger"))
         assertTrue(service.chooseRecords("").error!!.contains("Vul een recordnummer"))
-        assertTrue(service.chooseRecords("1-2000").error!!.contains("maximaal 500"))
+        assertTrue(service.chooseRecords("1-2000").error!!.contains("maximaal 30"))
         assertTrue(service.chooseRecords("00099998").error!!.contains("bestaan niet"))
         assertEquals(listOf("11905", "11902", "11999"), service.records().map { it.number }, "een mislukte keuze laat de lijst met rust")
     }
