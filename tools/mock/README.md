@@ -26,7 +26,7 @@ De scripts schrijven in hun eigen map (`output/`, `images/`, `small/` …); die 
 
 - `pdf2zcbs.pl` doet net als de echte pdf2zcbs.exe bij HKH **niets op het scherm** zolang `pdf2zcbs.ini` naast het programma staat (dat is hier zo):
   de vragen zijn dan al beantwoord, het programma toont niets en wacht nergens op. Haal `pdf2zcbs.ini` weg (of hernoem het) om de vragen en de
-  voortgang van de handleiding te zien; de automatische antwoorden bij Instellingen zijn alleen dan nodig.
+  voortgang van de handleiding te zien; de vaste antwoorden van de app zijn alleen dan nodig.
 - `pdf2zcbs.pl` maakt per pdf `output/pdf`, `output/ocr` (met `pdftotext`; een gescande pdf zonder tekstlaag krijgt een vaste mock-tekst, want de echte exe doet OCR), `output/small` en `output/large` (met `pdftoppm`,
   de eerste pagina) en wist `output/` bij elke start, zoals het echte programma. Zonder `pdftoppm` komen er kleine nep-jpg's.
 - `images.pl` maakt van de jpg's in `images/` een small (100 of 250 volgens de gekozen resolutie), large (700) en 100pct
@@ -65,4 +65,4 @@ Het programma doet dan, na J op de vragen:
   stempel `system`, 35 velden), zet het terug en meldt "Oude/Nieuwe update database ... bevat ... records". Het controleert niet of de records al bestaan, net als de echte (zie handleiding, stap D);
 - zet een regel in `cgi-bin/misc/images.log` op de server.
 
-Zet in de app bij Instellingen het automatische antwoord op "FTP wachtwoord" op `hkhtest`. De ftp-instellingen voor tekst en pdf's (host `127.0.0.1`, poort 2121, gebruiker `hkhadmin`, basismap `/domains/historischekringheemskerk.nl/public_html`) staan in `tools/docker/zcbs/README.md`.
+Zet in de app bij Instellingen het FTP-wachtwoord op `hkhtest` (of typ het één keer in bij Handmatig uitvoeren van images.exe). De ftp-instellingen voor tekst en pdf's (host `127.0.0.1`, poort 2121, gebruiker `hkhadmin`, basismap `/domains/historischekringheemskerk.nl/public_html`) staan in `tools/docker/zcbs/README.md`.

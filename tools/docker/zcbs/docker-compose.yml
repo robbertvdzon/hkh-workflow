@@ -8,12 +8,25 @@ services:
       - "${BIND_ADDRESS:-127.0.0.1}:8081:80"                    # ZCBS (web)
       - "${BIND_ADDRESS:-127.0.0.1}:2222:22"                    # sftp
       - "${BIND_ADDRESS:-127.0.0.1}:2121:21"                    # ftp
+      - "${BIND_ADDRESS:-127.0.0.1}:21:21"                      # ftp op de standaardpoort (voor het echte images.exe)
       - "${BIND_ADDRESS:-127.0.0.1}:30000-30009:30000-30009"    # ftp passief
     environment:
       PASV_ADDRESS: ${PASV_ADDRESS:-127.0.0.1}      # adres dat ftp aan clients doorgeeft (passieve modus)
     volumes:
       - ./files:/home/hkhadmin/domains/historischekringheemskerk.nl/public_html
       - sshkeys:/etc/ssh/keys                  # vaste sftp-sleutels
+
+  # Alleen met: docker compose --profile dns up -d
+  # DNS-server die elke naam naar de Mac laat wijzen, voor het echte images.exe op een testcomputer (zie README).
+  dns:
+    profiles: ["dns"]
+    build: ./dns
+    container_name: zcbs-dns
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:53:53/udp"
+      - "${BIND_ADDRESS:-127.0.0.1}:53:53/tcp"
+    environment:
+      DNS_ANSWER: ${PASV_ADDRESS:-127.0.0.1}
 
 volumes:
   sshkeys:

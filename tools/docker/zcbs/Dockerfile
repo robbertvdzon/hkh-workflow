@@ -7,6 +7,9 @@ RUN apt-get update \
  && echo /usr/sbin/nologin >> /etc/shells \
  && useradd -m -u 1001 -d /home/hkhadmin -s /usr/sbin/nologin hkhadmin \
  && echo 'hkhadmin:hkhtest' | chpasswd \
+ # De FTP-gebruiker die het echte images.exe gebruikt (ingebouwd; server ftp.historischekringheemskerk.nl). Zelfde uid, home een niveau boven public_html.
+ && useradd --badname -o -u 1001 -g hkhadmin -M -d /home/hkhadmin/domains/historischekringheemskerk.nl -s /usr/sbin/nologin 'ZCBS@historischekringheemskerk.nl' \
+ && echo 'ZCBS@historischekringheemskerk.nl:hkhtest' | chpasswd \
  && mkdir -p /home/hkhadmin/domains/historischekringheemskerk.nl/public_html /run/sshd /var/run/vsftpd/empty \
  && chown root:root /home/hkhadmin && chmod 755 /home/hkhadmin
 

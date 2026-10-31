@@ -1,139 +1,48 @@
-# Lokale ZCBS in Docker
-
-| Dienst | Wat | Adres |
-|---|---|---|
-| Apache + Perl | ZCBS | http://localhost:8081/cgi-bin/archief.pl |
-| sshd | sftp, zelfde mapindeling als de echte server | `127.0.0.1`, poort `2222` |
-| vsftpd | gewone ftp, zoals images.exe die gebruikt | `127.0.0.1`, poort `2121` (passief, `30000-30009`) |
+http://localhost:8081/cgi-bin/archief.pl
+http://localhost:8081/cgi-bin/archief.pl?user=reset
 
 
-## De mappen
+Deze files van de server:
+/cgi-bin                : archief.pl , objecten.pl
+/cgi-bin/misc           : cgi-lib.pl , httpbl.pm
+/cgi-bin/archief        : archief.txt, updates.txt
+/cgi-bin/archief/misc   : cfg-cbs.pl , layout.html
 
-| Map | Wat | 
-|---|---|
-| `initial-files/` | De **originele** bestanden van de server, ongewijzigd. Hier pas je nooit iets aan. | 
-| `stubs/` | Onze eigen nepbestanden: `permit.lst` (testgebruikers) en `sendmail.pm` (een lege versie; ZCBS start niet zonder dit bestand). | 
-| `files/` | De werkmap: een kopie van `initial-files/` plus de aanpassingen hieronder. Dit is de `public_html` die in de container wordt gemount. ZCBS, sftp en ftp werken er alle drie in. | 
+Deze files zelf uit de stubs naar cgi-bin/misc/ :
+stubs/stubs/permit.lst 
+stubs/sendmail.pm 
 
-## 1. Bestanden van de server halen
-Minimaal:
-| Files | Waarom |
-|---|---|
-| `/cgi-bin/archief.pl` | Startscript van archief |
-| `/cgi-bin/objecten.pl` | De ZCBS-applicatie zelf |
-| `/cgi-bin/misc/cgi-lib.pl` | Leest formulieren en cookies|
-| `/cgi-bin/misc/httpbl.pm` | Controle op spam-IP-adressen; ZCBS laadt het bij elke bezoeker zonder cookie |
-| `/cgi-bin/archief/misc/cfg-cbs.pl` | De instellingen van archief: veldnamen en keuzelijsten |
-| `/cgi-bin/archief/misc/layout.html` | De paginasjabloon |
-| `/cgi-bin/archief/archief.txt` | Het hoofdbestand met de records |
-| `/cgi-bin/archief/updates.txt` | De wijzigingen sinds de laatste merge. Zonder dit bestand mist je de recente stand. |
-
-Volledig:
-| Files | Waarom |
-|---|---|
-| `/cgi-bin/archief.pl` | Startscript van archief |
-| `/cgi-bin/objecten.pl` | De ZCBS-applicatie zelf |
-| `/cgi-bin/misc/*` | Leest formulieren en cookies|
-| `/cgi-bin/archief/misc/*` | De instellingen van archief: veldnamen en keuzelijsten |
-| `/cgi-bin/archief/archief.txt` | Het hoofdbestand met de records |
-| `/cgi-bin/archief/updates.txt` | De wijzigingen sinds de laatste merge. Zonder dit bestand mist je de recente stand. |
-
-
-
-## 2. Aanpassen: de werkmap `files/` maken
-
-`files/` is een kopie van `initial-files/` waarin je het volgende aanpast. Je hoeft dit maar één keer te doen (en opnieuw na een reset).
-
-1. **Kopieer de originelen:**
-
-   ```bash
-   cd tools/docker/zcbs
-   rm -rf files
-   cp -a initial-files files
-   ```
-
-2. **Zet de nepbestanden uit `stubs/` erbij:**
-
-   ```bash
-   cp stubs/permit.lst stubs/sendmail.pm files/cgi-bin/misc/
-   ```
-
-   `permit.lst` bevat de verzonnen testgebruikers (zie hieronder). `sendmail.pm` heeft ZCBS nodig om te starten; dit is een lege versie.
-
-3. **Zet de rechten goed.** De container draait als een andere gebruiker dan jij:
-
-   ```bash
-   chmod -R a+rwX files
-   chmod a+x files/cgi-bin/*.pl
-   ```
-
-## 3. Starten
-
-Vereist Docker (Docker Desktop of vergelijkbaar).
-
-```bash
-cd tools/docker/zcbs
-docker compose down
+Docker starten en stoppen:
 docker compose up --build -d
-```
+docker compose down
 
-Open daarna http://localhost:8081/cgi-bin/archief.pl?user=reset en log in. Stoppen: `docker compose down`. Logs van alle drie de diensten: `docker logs -f zcbs`.
+In de pod:
+/home/hkhadmin/domains/historischekringheemskerk.nl/public_html
+chmod -R a+rwX *
+chmod a+x cgi-bin/*.pl
 
-Poorten 8081, 2222 en 2121 mogen niet bezet zijn. Draait de oudere opzet met drie containers (`zcbs-local`) nog, stop die dan eerst.
+Gebruiker:
+user1 / abc
 
-## 4. Inloggen (verzonnen testgebruikers)
+FTP:
+host: 127.0.0.1
+poort: 2121
+username: hkhadmin
+passwd: hkhtest
 
-| Naam                  | Wachtwoord | Recht |
-|-----------------------|------------|---|
-| user1                 | `abc`      | 1+ (systeembeheer) |
-| user2                 | `abc`      | 1 (bewerken) |
-
-## 5. sftp en ftp
-
-| | sftp | ftp |
-|---|---|---|
-| Host | `127.0.0.1` (niet `localhost`; dat kan IPv6 worden) | `127.0.0.1` |
-| Poort | `2222` | `2121` |
-| Gebruiker | `hkhadmin` | `hkhadmin` |
-| Wachtwoord | `hkhtest` | `hkhtest` |
-| Basismap | `/domains/historischekringheemskerk.nl/public_html` | idem |
+SFT:
+host: 127.0.0.1
+poort: 2222
+username: hkhadmin
+passwd: hkhtest
 
 
-```bash
-mc . sftp://hkhadmin:hkhtest@127.0.0.1:2222/domains/historischekringheemskerk.nl/public_html
-```
-Of met `sftp -P 2222 hkhadmin@127.0.0.1`.
-
-## 6. Terug naar de beginstand
-
-```bash
-./reset.sh
-```
-
-## 7. Vanaf een andere computer (bijvoorbeeld Windows)
-
-Standaard luistert alles alleen op de Mac zelf (`127.0.0.1`). Om ZCBS, sftp en ftp vanaf een andere computer in je netwerk te gebruiken:
-
-1. Zoek het IP-adres van je Mac: `ipconfig getifaddr en0` (wifi) of `en1` (kabel).
-2. Maak het bestand `.env` (staat in `.gitignore`) uit het voorbeeld en vul daar je IP-adres in:
-
-   ```bash
-   cp .env.example .env
-   # zet in .env: PASV_ADDRESS=<het IP-adres van je Mac>
-   ```
-
-3. Start de container opnieuw: `docker compose up -d`.
-
-Daarna werkt op de andere computer (met het IP-adres van de Mac):
-
-| Wat | Adres |
-|---|---|
-| ZCBS | `http://<ip>:8081/cgi-bin/archief.pl` |
-| sftp | `<ip>`, poort `2222`, `hkhadmin` / `hkhtest` (bijvoorbeeld met WinSCP, FileZilla, of `sftp -P 2222 hkhadmin@<ip>`) |
-| ftp | `<ip>`, poort `2121`, `hkhadmin` / `hkhtest`, passieve modus |
-
-`PASV_ADDRESS` is het adres dat de ftp-server aan de client doorgeeft voor het bestandsverkeer. Staat daar `127.0.0.1`, dan probeert een andere computer verbinding te maken met zichzelf en mislukt een lijst of een upload.
-Verandert het IP-adres van je Mac, pas het dan aan in `.env` en start opnieuw.
-
-**Veiligheid:** met `BIND_ADDRESS=0.0.0.0` kan iedereen op het netwerk bij ZCBS, sftp en ftp, met de testgebruikers en wachtwoorden uit dit README. Via ftp en sftp kan iemand bestanden in `files/` schrijven, ook `objecten.pl`.
-Doe het alleen op een netwerk dat je vertrouwt, en haal `.env` weg (en start opnieuw) zodra je klaar bent.
+Echte images.exe op een testcomputer (zie ../../windows-testlaptop/README.md):
+FTP staat ook op de standaardpoort 21 (naast 2121), met de gebruiker die het echte images.exe gebruikt:
+username: ZCBS@historischekringheemskerk.nl
+passwd: hkhtest
+(thuismap een niveau boven public_html, want images.exe gebruikt paden als /public_html/archief/small/)
+Zet op de testcomputer in het hosts-bestand: <IP van deze Mac>  ftp.historischekringheemskerk.nl (en www.zcbs.nl).
+Alleen om een onbekende hostnaam te vinden is er een DNS-server die elke naam naar de Mac laat wijzen en alles logt:
+docker compose --profile dns up -d      # queries in: docker logs zcbs-dns
+docker stop zcbs-dns                    # weer uit (niet "docker compose down": dat stopt ook de zcbs-container)
