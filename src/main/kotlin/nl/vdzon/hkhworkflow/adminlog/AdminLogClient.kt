@@ -74,7 +74,10 @@ class AdminLogClient internal constructor(
     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build()
     private val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "admin-log").apply { isDaemon = true } }
     private val pending = LinkedHashMap<UUID, SessionReport>()
-    private val logins = ArrayDeque<ObjectNode>()
+    /** Een melding die los van een sessie wordt verstuurd (een inlogpoging, een wijziging van de instellingen), met hoe vaak het al is geprobeerd. */
+    private class Outgoing(val path: String, val body: ObjectNode, var attempts: Int = 0)
+
+    private val logins = ArrayDeque<Outgoing>()
     private val draining = AtomicBoolean(false)
 
     /** Tot dit tijdstip (ms) wordt er niets verstuurd, omdat de server te veel meldingen kreeg of niet reageerde. */
@@ -135,8 +138,25 @@ class AdminLogClient internal constructor(
             put("computer", computer)
             put("source", source())
         }
-        synchronized(logins) { if (logins.size < MAX_QUEUED_LOGINS) logins.addLast(body) }
+        synchronized(logins) { if (logins.size < MAX_QUEUED_LOGINS) logins.addLast(Outgoing("/api/workflow-log/logins", body)) }
         schedule()
+    }
+
+    /**
+     * Meldt dat de instellingen zijn gewijzigd ([body]: wie, waarom, de wijzigingen en de nieuwe instellingen). De app vult zelf de bron, de
+     * computer en de versie aan. Een melding die niet aankomt (server weg) wordt nog een paar keer opnieuw geprobeerd.
+     */
+    fun settingsChange(body: ObjectNode) {
+        if (!enabled) return
+        try {
+            body.put("appVersion", appVersion)
+            body.put("computer", computer)
+            body.put("source", source())
+            synchronized(logins) { if (logins.size < MAX_QUEUED_LOGINS) logins.addLast(Outgoing("/api/workflow-log/settings-changes", body)) }
+            schedule()
+        } catch (e: Exception) {
+            log.debug("Melding aan het workflow-logboek overgeslagen: {}", e.message)
+        }
     }
 
     private fun schedule() {
@@ -146,8 +166,12 @@ class AdminLogClient internal constructor(
     private fun drain() {
         try {
             while (System.currentTimeMillis() >= blockedUntil.get()) {
-                val login = synchronized(logins) { logins.removeFirstOrNull() }
-                if (login != null) { send("POST", "/api/workflow-log/logins", login); continue }
+                val item = synchronized(logins) { logins.removeFirstOrNull() }
+                if (item != null) {
+                    // Aangekomen of definitief geweigerd: klaar. Anders (server weg of druk) nog een paar keer, bij de volgende melding.
+                    if (!send("POST", item.path, item.body) && ++item.attempts < MAX_ATTEMPTS) synchronized(logins) { logins.addFirst(item) }
+                    continue
+                }
                 val report = synchronized(pending) { pending.entries.firstOrNull()?.also { pending.remove(it.key) }?.value } ?: break
                 send("PUT", "/api/workflow-log/sessions/${report.id}", body(report))
             }
@@ -193,8 +217,9 @@ class AdminLogClient internal constructor(
         else -> node
     }
 
-    private fun send(method: String, path: String, body: ObjectNode) {
-        try {
+    /** true als de melding is afgehandeld (aangekomen of definitief geweigerd), false als opnieuw proberen zin heeft. */
+    private fun send(method: String, path: String, body: ObjectNode): Boolean {
+        return try {
             val request = HttpRequest.newBuilder(URI.create(base + path))
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json")
@@ -204,21 +229,25 @@ class AdminLogClient internal constructor(
                 .build()
             val response = http.send(request, HttpResponse.BodyHandlers.ofString())
             when (val code = response.statusCode()) {
-                in 200..299 -> {}
+                in 200..299 -> true
                 429 -> {
                     val seconds = response.headers().firstValue("Retry-After").map { it.toLongOrNull() ?: 60L }.orElse(60L)
                     blockedUntil.set(System.currentTimeMillis() + seconds.coerceIn(5, 600) * 1000)
                     log.debug("Het workflow-logboek vraagt om te wachten ({} s)", seconds)
+                    false
                 }
                 else -> {
                     // Een weigering verandert niet door het opnieuw te proberen; de volgende melding probeert het weer.
                     blockedUntil.set(System.currentTimeMillis() + FAILURE_PAUSE_MILLIS)
                     log.warn("Het workflow-logboek weigerde de melding ({}): {}", code, response.body().take(200))
+                    // 404: een oudere hkh-admin die dit meldpunt nog niet kent; 5xx: een storing. Beide kunnen overgaan.
+                    code < 500 && code != 404
                 }
             }
         } catch (e: Exception) {
             blockedUntil.set(System.currentTimeMillis() + FAILURE_PAUSE_MILLIS)
             log.debug("Het workflow-logboek is niet bereikbaar: {}", e.message)
+            false
         }
     }
 
@@ -232,5 +261,6 @@ class AdminLogClient internal constructor(
         private const val DUPLICATE_FAILURE_MILLIS = 5 * 60_000L
         private const val MAX_QUEUED_LOGINS = 50
         private const val MAX_PENDING_SESSIONS = 200
+        private const val MAX_ATTEMPTS = 3
     }
 }

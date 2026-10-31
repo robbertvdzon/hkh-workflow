@@ -4,6 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import tools.jackson.databind.ObjectMapper
 
@@ -14,6 +15,8 @@ import tools.jackson.databind.ObjectMapper
 class SettingsService(
     private val objectMapper: ObjectMapper,
     private val properties: WorkflowProperties,
+    /** Meldt een wijziging van de instellingen aan wie dat wil weten (het workflow-logboek); zonder is er niemand die luistert. */
+    private val events: ApplicationEventPublisher? = null,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val file: Path = Path.of(properties.settingsFile).toAbsolutePath()
@@ -106,7 +109,8 @@ class SettingsService(
     )
 
     @Synchronized
-    fun save(settings: WorkflowSettings): WorkflowSettings {
+    fun save(settings: WorkflowSettings, reason: String = "Instellingen opgeslagen", by: String? = null, address: String? = null): WorkflowSettings {
+        val before = get()
         val cleaned = settings.copy(
             testFolder = settings.testFolder.trim(),
             imagesExe = settings.imagesExe.trim(),
@@ -127,6 +131,9 @@ class SettingsService(
         Files.writeString(tmp, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(cleaned))
         Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING)
         cached = cleaned
+        // Een melding die mislukt mag het opslaan niet tegenhouden.
+        if (cleaned != before) runCatching { events?.publishEvent(SettingsChanged(before, cleaned, reason, by, address)) }
+            .onFailure { log.warn("Melden van de gewijzigde instellingen mislukt: {}", it.message) }
         return cleaned
     }
 

@@ -213,4 +213,22 @@ class SettingsServiceTest {
         val problems = service.checkExtras(WorkflowSettings())
         assertEquals(setOf("archief.backup100pctFolder", "archief.backupPdfFolder", "sourceFolders", "ftpPassword"), problems.keys)
     }
+
+    @Test
+    fun `opslaan meldt een wijziging, maar een gelijke opslag en een fout bij het melden niet`() {
+        val events = mutableListOf<SettingsChanged>()
+        val publisher = org.springframework.context.ApplicationEventPublisher { e -> if (e is SettingsChanged) events += e }
+        val service = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()), publisher)
+
+        service.save(service.get().copy(testFolder = "C:\\invoer"), reason = "Test", by = "carla", address = "10.0.0.5")
+        service.save(service.get()) // niets veranderd
+
+        val event = events.single()
+        assertEquals("", event.before.testFolder)
+        assertEquals("C:\\invoer", event.after.testFolder)
+        assertEquals(Triple("Test", "carla", "10.0.0.5"), Triple(event.reason, event.by, event.address))
+
+        val failing = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("t.json").toString())) { error("stuk") }
+        assertEquals("C:\\x", failing.save(failing.get().copy(testFolder = "C:\\x")).testFolder, "een mislukte melding houdt het opslaan niet tegen")
+    }
 }

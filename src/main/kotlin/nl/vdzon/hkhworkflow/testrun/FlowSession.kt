@@ -709,7 +709,7 @@ class FlowSession(
         val typed = typedSecrets.entries.firstOrNull { it.key.contains(ExeAnswers.FTP_PASSWORD_QUESTION, ignoreCase = true) }?.value.orEmpty()
         val s = settingsService.get()
         if (typed.isEmpty() || s.ftpPassword.isNotEmpty()) return
-        settingsService.save(s.withFtpPassword(typed))
+        settingsService.save(s.withFtpPassword(typed), reason = "Het FTP-wachtwoord is overgenomen van het handmatig uitvoeren van images.exe", by = owner.ifEmpty { null })
         log.info("Het FTP-wachtwoord dat is getypt bij handmatig uitvoeren is overgenomen als instelling.")
     }
 

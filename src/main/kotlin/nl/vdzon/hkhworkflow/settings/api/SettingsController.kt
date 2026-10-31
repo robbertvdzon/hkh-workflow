@@ -40,7 +40,9 @@ class SettingsController(private val settingsService: SettingsService, private v
         val current = settingsService.get()
         fun param(name: String) = request.getParameter(name).orEmpty()
         settingsService.save(
-            settingsService.withEnvironment(current.copy(
+            by = request.session.getAttribute("zcbsUser") as? String, // de sleutel van de ZCBS-gebruiker in de sessie (de module settings kent de module ux niet)
+            address = request.remoteAddr,
+            settings = settingsService.withEnvironment(current.copy(
                 testFolder = param("testFolder"),
                 imagesExe = param("imagesExe"),
                 pdf2zcbsExe = param("pdf2zcbsExe"),
