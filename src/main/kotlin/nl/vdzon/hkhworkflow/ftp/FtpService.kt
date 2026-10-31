@@ -113,6 +113,10 @@ class FtpService(private val settingsService: SettingsService) {
 
     private fun tempPath(item: UploadItem) = item.remoteDir.trimEnd('/') + "/." + item.remoteName + ".uploading"
 
+    /** Welke van deze volledige paden op de ftp-server bestaan? null als de server niet te bereiken is. */
+    fun existing(paths: Collection<String>): Set<String>? =
+        runCatching { connect(settingsService.get(), 5_000) { ftp -> paths.filter { ftp.fileExists(it) }.toSet() } }.getOrNull()
+
     private fun configProblems(s: WorkflowSettings): List<String> = buildList {
         if (s.ftpHost.isBlank()) add("Ftp-host is niet ingesteld.")
         if (s.ftpUser.isBlank()) add("Ftp-gebruiker is niet ingesteld.")

@@ -90,21 +90,24 @@
                         <a class="dir" th:each="d : ${listing.dirs}" th:href="@{/nieuw(bron=${listing.root.name},pad=${d.relPath})}"><span class="ico">📁</span><span th:text="${d.name}">2024</span></a>
                     </div>
                     <div class="hint" th:if="${listing.files.isEmpty() and listing.dirs.isEmpty()}">Deze map is leeg.</div>
-                    <div class="hint" th:if="${listing.files.isEmpty() and !listing.dirs.isEmpty()}">Geen pdf's in deze map; open een submap.</div>
+                    <div class="hint" th:if="${listing.files.isEmpty() and !listing.dirs.isEmpty()}">Geen pdf's of afbeeldingen in deze map; open een submap.</div>
                     <form th:unless="${listing.files.isEmpty()}" method="post" th:action="@{/nieuw/kopieer}" class="stack" id="pick">
                         <input type="hidden" name="bron" th:value="${listing.root.name}">
                         <input type="hidden" name="pad" th:value="${listing.relPath}">
-                        <div class="table">
-                            <div class="tr th" style="grid-template-columns:28px minmax(170px,1fr) 70px 140px 150px">
-                                <input type="checkbox" id="all" title="Alles aanvinken" aria-label="Alles aanvinken"><span>Bestand</span><span>Grootte</span><span>Gescand</span><span>Status</span>
+                        <div class="table" th:attr="data-detail-url=@{/nieuw/bron/info(bron=${listing.root.name},pad=${listing.relPath})}">
+                            <div class="tr th" style="grid-template-columns:28px minmax(120px,1fr) 62px 110px 124px 130px 62px">
+                                <input type="checkbox" id="all" title="Alles aanvinken" aria-label="Alles aanvinken"><span>Bestand</span><span>Grootte</span><span>Afmeting / pagina's</span><span>Gescand</span><span>Status</span><span></span>
                             </div>
-                            <label class="tr pickrow" th:each="f : ${listing.files}" style="grid-template-columns:28px minmax(170px,1fr) 70px 140px 150px" th:classappend="${f.processed != null} ? 'done'">
-                                <input type="checkbox" name="files" th:value="${f.name}" th:disabled="${f.processed != null}">
-                                <span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="pdf">PDF</span><span class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.name}" th:title="${f.name}">scan.pdf</span></span>
+                            <label class="tr pickrow" th:each="f : ${listing.files}" style="grid-template-columns:28px minmax(120px,1fr) 62px 110px 124px 130px 62px" th:classappend="${f.processed != null} ? 'done'">
+                                <input type="checkbox" name="files" th:value="${f.name}" th:disabled="${f.processed != null or !f.selectable}">
+                                <span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="pdf" th:text="${f.kindLabel}">PDF</span><span class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${f.name}" th:title="${f.name}">scan.pdf</span></span>
                                 <span class="muted" th:text="${f.sizeKb} + ' kB'">12 kB</span>
+                                <span class="muted" th:attr="data-detail=${f.name}">…</span>
                                 <span class="muted" th:text="${f.modified}">gescand</span>
                                 <span th:if="${f.processed != null}"><span class="chip c-ok" th:title="'Verwerkt door ' + ${f.processed.user} + ' op ' + ${f.processed.dateText}" th:text="'Al verwerkt: ' + ${f.processed.number}">Al verwerkt</span></span>
-                                <span th:if="${f.processed == null}" class="muted">–</span>
+                                <span th:if="${f.processed == null and f.selectable}" class="muted">–</span>
+                                <span th:if="${f.processed == null and !f.selectable}" class="muted" title="Alleen pdf's kunnen worden verwerkt; deze afbeelding is om te bekijken.">geen pdf</span>
+                                <button type="button" class="btn btn-s btn-sm" data-viewer th:attr="data-url=@{/nieuw/bron/bestand(bron=${listing.root.name},pad=${listing.relPath},naam=${f.name})},data-title=${f.name},data-kind=${f.selectable} ? 'pdf' : 'image'">Open</button>
                             </label>
                         </div>
                         <p class="hint" style="margin:0">Tip: vink het eerste bestand aan, houd Shift ingedrukt en klik op het laatste: dan staat alles ertussen ook aan ("X t/m Y"). Bestanden die al verwerkt zijn, kun je niet aanvinken.
@@ -159,14 +162,15 @@
                 <h3 style="margin:0" th:text="${reviewType == 'PDF2ZCBS'} ? 'Dit heeft pdf2zcbs.exe gemaakt' : 'Dit heeft images.exe gemaakt'">Dit is gemaakt</h3>
                 <div class="alert alert-ok" th:if="${reviewType == 'IMAGES'}" th:text="${#strings.defaultString(run.rows[0].cells[2].message, '')}" style="white-space:pre-line"></div>
                 <div class="table">
-                    <div class="tr th" style="grid-template-columns:90px minmax(0,1fr) 80px 90px 150px 70px"><span>Nummer</span><span>Bestand</span><span>Soort</span><span>Grootte</span><span>Afmeting</span><span></span></div>
-                    <div class="tr" th:each="p, st : ${produced}" style="grid-template-columns:90px minmax(0,1fr) 80px 90px 150px 70px" th:classappend="${st.first or produced[st.index - 1].number != p.number} ? 'groupstart'">
+                    <div class="tr th" th:style="'grid-template-columns:76px minmax(40px,1fr) 62px 70px 124px ' + (${reviewType == 'IMAGES'} ? '84px ' : '') + '62px'"><span>Nummer</span><span>Bestand</span><span>Soort</span><span>Grootte</span><span>Afmeting</span><span th:if="${reviewType == 'IMAGES'}">Op de server</span><span></span></div>
+                    <div class="tr" th:each="p, st : ${produced}" th:style="'grid-template-columns:76px minmax(40px,1fr) 62px 70px 124px ' + (${reviewType == 'IMAGES'} ? '84px ' : '') + '62px'" th:classappend="${st.first or produced[st.index - 1].number != p.number} ? 'groupstart'">
                         <span class="mono" th:text="${st.first or produced[st.index - 1].number != p.number} ? ${p.number} : ''">11935</span>
                         <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" th:text="${st.first or produced[st.index - 1].number != p.number} ? ${names[p.number]} : ''" th:title="${names[p.number]}">scan.pdf</span>
                         <span th:text="${p.label}">small</span>
                         <span th:text="${p.size}">193 kB</span>
                         <span><span th:text="${p.resolution != ''} ? ${p.resolution} : '–'">250 × 177 px</span><span class="warn" th:if="${p.note != ''}" th:text="' ' + ${p.note}"></span></span>
-                        <a class="btn btn-s btn-sm" th:href="@{/nieuw/resultaat/{k}/{n}(k=${p.kind},n=${p.number})}" target="_blank">Open</a>
+                        <span th:if="${reviewType == 'IMAGES'}"><span th:if="${p.server == 'ja'}" class="chip c-ok">ja</span><span th:if="${p.server == 'nee'}" class="chip c-err">nee</span><span th:if="${p.server == ''}" class="muted">–</span></span>
+                        <button type="button" class="btn btn-s btn-sm" data-viewer th:attr="data-url=@{/nieuw/resultaat/{k}/{n}(k=${p.kind},n=${p.number})},data-title=${p.number + ' – ' + p.label},data-kind=${p.kind == 'pdf'} ? 'pdf' : (${p.kind == 'tekst'} ? 'text' : 'image')">Open</button>
                     </div>
                 </div>
                 <div class="row-actions">
@@ -219,6 +223,7 @@
 
     </main>
 </div>
+<div th:replace="~{fragments/viewer :: viewer}"></div>
 <script th:src="@{/js/console.js}"></script>
 <script>
     // Bestanden aanvinken: Shift-klik kiest alles tussen twee bestanden ("X t/m Y"), en de bovenste vink kiest alles.

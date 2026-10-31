@@ -42,6 +42,49 @@ class SourceFilesServiceTest {
     }
 
     @Test
+    fun `afbeeldingen staan in de lijst maar zijn niet te kiezen, pdfs wel`() {
+        val s = service()
+        val ria = Path.of(s.roots().first { it.name == "Ria" }.path)
+        javax.imageio.ImageIO.write(java.awt.image.BufferedImage(40, 30, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", ria.resolve("map58/kaart.png").toFile())
+        javax.imageio.ImageIO.write(java.awt.image.BufferedImage(20, 10, java.awt.image.BufferedImage.TYPE_INT_RGB), "jpg", ria.resolve("map58/foto.JPG").toFile())
+        Files.writeString(ria.resolve("map58/klad.docx"), "negeren")
+        val files = s.browse("Ria", "map58").files
+        assertEquals(listOf("foto.JPG", "kaart.png"), files.map { it.name })
+        assertEquals(listOf("JPG", "PNG"), files.map { it.kindLabel })
+        assertEquals(listOf(false, false), files.map { it.selectable })
+        assertTrue(s.browse("Ria", "map57").files.all { it.selectable })
+        assertFailsWith<IllegalArgumentException> { s.copy("Ria", "map58", listOf("kaart.png")) }
+    }
+
+    @Test
+    fun `het aantal pagina's en de afmeting komen uit de bestanden zelf`() {
+        val s = service()
+        val ria = Path.of(s.roots().first { it.name == "Ria" }.path)
+        org.apache.pdfbox.pdmodel.PDDocument().use { doc ->
+            repeat(3) { doc.addPage(org.apache.pdfbox.pdmodel.PDPage()) }
+            doc.save(ria.resolve("map58/drie.pdf").toFile())
+        }
+        org.apache.pdfbox.pdmodel.PDDocument().use { doc -> doc.addPage(org.apache.pdfbox.pdmodel.PDPage()); doc.save(ria.resolve("map58/een.pdf").toFile()) }
+        Files.writeString(ria.resolve("map58/kapot.pdf"), "dit is geen pdf")
+        javax.imageio.ImageIO.write(java.awt.image.BufferedImage(40, 30, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", ria.resolve("map58/kaart.png").toFile())
+        val details = s.details("Ria", "map58")
+        assertEquals("3 pagina's", details["drie.pdf"])
+        assertEquals("1 pagina", details["een.pdf"])
+        assertEquals("40 × 30 px", details["kaart.png"])
+        assertEquals("kan niet worden gelezen", details["kapot.pdf"])
+    }
+
+    @Test
+    fun `alleen pdfs en afbeeldingen uit de bronmap zijn te bekijken`() {
+        val s = service()
+        assertTrue(s.fileToView("Ria", "map57", "scan_1.pdf").toString().endsWith("scan_1.pdf"))
+        assertFailsWith<IllegalArgumentException> { s.fileToView("Ria", "map57", "notitie.txt") }
+        assertFailsWith<IllegalArgumentException> { s.fileToView("Ria", "map57", "../los.pdf") }
+        assertFailsWith<IllegalArgumentException> { s.fileToView("Ria", "../../k", "los.pdf") }
+        assertFailsWith<IllegalArgumentException> { s.fileToView("Ria", "map57", "bestaat-niet.pdf") }
+    }
+
+    @Test
     fun `de mappen met scans komen uit de instellingen`() {
         assertEquals(listOf("Jelly", "Ria"), service().roots().map { it.name })
     }

@@ -145,8 +145,11 @@ data class Leftover(val area: String, val label: String, val base: Path, val fil
  */
 data class EnvCheck(val id: String, val label: String, val ok: Boolean, val detail: String = "")
 
-/** Een bestand dat pdf2zcbs.exe of images.exe heeft gemaakt, om te controleren: wat het is, hoe groot en (bij een afbeelding) in welke afmeting. */
-data class ProducedFile(val number: String, val kind: String, val label: String, val size: String, val resolution: String, val note: String = "")
+/**
+ * Een bestand dat pdf2zcbs.exe of images.exe heeft gemaakt, om te controleren: wat het is, hoe groot en (bij een afbeelding) in welke afmeting.
+ * [server] zegt of het op de ftp-server staat: "ja", "nee", of leeg als dat niet is gecontroleerd.
+ */
+data class ProducedFile(val number: String, val kind: String, val label: String, val size: String, val resolution: String, val note: String = "", val server: String = "")
 
 /** Eén fase in de balk bovenaan de pagina Nieuwe bestanden. [state] is done, now of todo. */
 data class PhaseView(val nr: Int, val title: String, val state: String, val note: String?)

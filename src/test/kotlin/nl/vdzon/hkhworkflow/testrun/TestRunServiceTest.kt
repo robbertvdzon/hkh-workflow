@@ -267,8 +267,8 @@ class TestRunServiceTest {
         assertEquals(listOf("done", "done", "done", "now", "todo", "todo", "todo"), service.flowView().phases.map { it.state })
         assertEquals("90000012 t/m 90000013", service.flowView().phases[2].note)
 
-        // pdf2zcbs draait; daarna moet Carla controleren voordat images mag
-        assertEquals("DONE", runNext().status)
+        // pdf2zcbs draait (ook automatisch); daarna moet Carla controleren voordat images mag
+        assertEquals("DONE", runNext(auto = true).status)
         var flow = service.flowView()
         assertEquals(4, flow.current)
         assertTrue(flow.review, "de uitvoer van pdf2zcbs wacht op controle")

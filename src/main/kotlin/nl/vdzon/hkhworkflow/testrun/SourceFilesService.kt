@@ -14,8 +14,14 @@ import nl.vdzon.hkhworkflow.settings.SourceRoot
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
-/** Een pdf in een map met scans. [processed] staat gevuld als het bestand al op het archief is gezet. */
-data class SourceFile(val name: String, val sizeKb: Long, val modified: String, val processed: ProcessedFile?)
+/**
+ * Een pdf of afbeelding (jpg, png) in een map met scans. [processed] staat gevuld als het bestand al op het archief is gezet. Alleen een
+ * pdf kan worden gekozen om te verwerken; een afbeelding is er om te bekijken.
+ */
+data class SourceFile(val name: String, val sizeKb: Long, val modified: String, val processed: ProcessedFile?, val kind: String = "pdf") {
+    val selectable: Boolean get() = kind == "pdf"
+    val kindLabel: String get() = name.substringAfterLast('.', "").uppercase().replace("JPEG", "JPG")
+}
 
 /** Een submap, met zijn pad onder de bronmap (met `/` als scheiding). */
 data class SourceDir(val name: String, val relPath: String)
@@ -23,7 +29,7 @@ data class SourceDir(val name: String, val relPath: String)
 /** Eén stap in het pad naar de map waar Carla nu is, om terug omhoog te kunnen. */
 data class Crumb(val name: String, val relPath: String)
 
-/** De inhoud van één map met scans: submappen en pdf's, beide op natuurlijke volgorde (scan 2 voor scan 10). */
+/** De inhoud van één map met scans: submappen, pdf's en afbeeldingen, beide op natuurlijke volgorde (scan 2 voor scan 10). */
 data class Listing(val root: SourceRoot, val relPath: String, val crumbs: List<Crumb>, val dirs: List<SourceDir>, val files: List<SourceFile>) {
     val folderName: String get() = crumbs.lastOrNull()?.name ?: root.name
     val parent: String? get() = if (relPath.isEmpty()) null else relPath.substringBeforeLast('/', "")
@@ -69,17 +75,60 @@ class SourceFilesService(private val settingsService: SettingsService, private v
         val rel = dir.let { Path.of(root.path).toAbsolutePath().normalize().relativize(it).toString().replace('\\', '/').replace("//", "/") }.trim('/')
         val dirs = entries.filter { it.isDirectory() && !it.name.startsWith(".") }.sortedWith(compareBy(naturalOrder) { it.name })
             .map { SourceDir(it.name, if (rel.isEmpty()) it.name else "$rel/${it.name}") }
-        val files = entries.filter { it.isRegularFile() && it.extension.equals("pdf", ignoreCase = true) }.sortedWith(compareBy(naturalOrder) { it.name })
+        val files = entries.filter { it.isRegularFile() && it.extension.lowercase() in VIEWABLE }.sortedWith(compareBy(naturalOrder) { it.name })
             .map {
                 SourceFile(
                     it.name, (runCatching { Files.size(it) }.getOrDefault(0) + 1023) / 1024,
                     runCatching { dateFormat.format(Files.getLastModifiedTime(it).toInstant()) }.getOrDefault(""),
                     done[dir.toString() to it.name],
+                    if (it.extension.equals("pdf", ignoreCase = true)) "pdf" else "image",
                 )
             }
         val crumbs = rel.split('/').filter { it.isNotEmpty() }.runningFold(null as Crumb?) { acc, part -> Crumb(part, listOfNotNull(acc?.relPath, part).joinToString("/")) }.filterNotNull()
         return Listing(root, rel, crumbs, dirs, files)
     }
+
+    /** Het bestand [name] in de map [relPath] van bronmap [rootName], om te bekijken of te downloaden. Weigert alles wat geen pdf of afbeelding in die map is. */
+    fun fileToView(rootName: String, relPath: String, name: String): Path {
+        val dir = resolve(root(rootName), relPath)
+        require(name == Path.of(name).fileName.toString() && name.substringAfterLast('.', "").lowercase() in VIEWABLE) { "Dit bestand kan niet worden getoond: $name" }
+        val file = dir.resolve(name)
+        require(file.isRegularFile()) { "Dit bestand staat niet in de map: $name" }
+        return file
+    }
+
+    private val details = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /**
+     * Per bestand in de map: het aantal pagina's van een pdf of de afmeting van een afbeelding. Een pdf openen kost tijd op een netwerkschijf, dus
+     * dit komt los van de lijst en wordt onthouden zolang het bestand niet verandert.
+     */
+    fun details(rootName: String, relPath: String): Map<String, String> {
+        val dir = resolve(root(rootName), relPath)
+        require(dir.isDirectory()) { "De map bestaat niet of is niet bereikbaar: $dir." }
+        val files = runCatching { Files.list(dir).use { s -> s.filter { it.isRegularFile() && it.extension.lowercase() in VIEWABLE }.toList() } }.getOrDefault(emptyList())
+        return files.associate { file ->
+            val key = "$file|${runCatching { Files.size(file) }.getOrDefault(0)}|${runCatching { Files.getLastModifiedTime(file).toMillis() }.getOrDefault(0)}"
+            file.name to details.computeIfAbsent(key) { describe(file) }
+        }
+    }
+
+    private fun describe(file: Path): String = runCatching {
+        if (file.extension.equals("pdf", ignoreCase = true)) {
+            org.apache.pdfbox.Loader.loadPDF(org.apache.pdfbox.io.RandomAccessReadBufferedFile(file.toFile())).use { doc ->
+                val pages = doc.numberOfPages
+                if (pages == 1) "1 pagina" else "$pages pagina's"
+            }
+        } else {
+            javax.imageio.ImageIO.createImageInputStream(file.toFile()).use { stream ->
+                val reader = javax.imageio.ImageIO.getImageReaders(stream).takeIf { it.hasNext() }?.next() ?: return@runCatching "geen geldige afbeelding"
+                try {
+                    reader.input = stream
+                    "${reader.getWidth(0)} × ${reader.getHeight(0)} px"
+                } finally { reader.dispose() }
+            }
+        }
+    }.getOrElse { "kan niet worden gelezen" }
 
     /** Kopieert de gekozen pdf's (op naam) uit één map naar de invoermap. Al aanwezige bestanden worden overgeslagen. */
     @Synchronized
@@ -150,6 +199,9 @@ class SourceFilesService(private val settingsService: SettingsService, private v
     }
 
     companion object {
+        /** De soorten bestanden die in de lijst met scans staan en die te bekijken zijn. */
+        val VIEWABLE = setOf("pdf", "jpg", "jpeg", "png")
+
         /** Natuurlijke volgorde: cijfers als getal, zodat "scan 2" voor "scan 10" komt, en zonder onderscheid tussen hoofd- en kleine letters. */
         val naturalOrder: Comparator<String> = Comparator { a, b ->
             val x = Regex("\\d+|\\D+").findAll(a.lowercase()).map { it.value }.toList()

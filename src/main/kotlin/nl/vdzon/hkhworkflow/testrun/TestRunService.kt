@@ -654,8 +654,7 @@ class TestRunService(
                     } else if (missing.isEmpty()) {
                         step.status = StepStatus.DONE
                         step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt.$note"
-                        // Automatisch uitgevoerd en niets bijzonders: dan hoeft Carla de gemaakte bestanden niet eerst te bevestigen.
-                        if (autoAnswers != null && "Let op" !in note) current.reviewed += step.type
+                        // Ook na automatisch uitvoeren ziet Carla eerst wat er gemaakt is en gaat ze zelf verder (de controle in de flow).
                     } else {
                         step.status = StepStatus.FAILED
                         step.message = "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: " +

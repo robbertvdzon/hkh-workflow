@@ -2,13 +2,18 @@ package nl.vdzon.hkhworkflow.testrun.api
 
 import java.nio.file.Files
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
+import nl.vdzon.hkhworkflow.ftp.FtpService
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.testrun.ProcessedLog
+import nl.vdzon.hkhworkflow.testrun.ProducedFile
 import nl.vdzon.hkhworkflow.testrun.CopyResult
 import nl.vdzon.hkhworkflow.testrun.SourceFilesService
 import nl.vdzon.hkhworkflow.testrun.StepType
 import nl.vdzon.hkhworkflow.testrun.TestRunService
+import org.springframework.core.io.FileSystemResource
+import org.springframework.core.io.Resource
+import org.springframework.http.ContentDisposition
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -31,6 +36,7 @@ class NewFilesController(
     private val sourceFiles: SourceFilesService,
     private val itemEditService: ItemEditService,
     private val processedLog: ProcessedLog,
+    private val ftpService: FtpService,
 ) {
     /** Een pdf in de invoermap, met de bronmap waar hij vandaan kwam. */
     data class PdfRow(val name: String, val by: String, val folder: String)
@@ -99,11 +105,23 @@ class NewFilesController(
                 val type = if (flow.current == 4) StepType.PDF2ZCBS else StepType.IMAGES
                 model.addAttribute("reviewStepId", flow.run.rows.first().cells[StepType.entries.indexOf(type)].id)
                 model.addAttribute("reviewType", type.name)
-                model.addAttribute("produced", testRunService.producedFiles(type))
+                model.addAttribute("produced", withServerStatus(type, testRunService.producedFiles(type)))
                 model.addAttribute("names", flow.run.rows.associate { it.number to it.originalName })
             }
         }
         return "nieuw"
+    }
+
+    /**
+     * Bij images.exe: staat elk gemaakte bestand (small, large, 100pct) op de ftp-server? Het programma uploadt ze zelf; zo zie je of dat gelukt is.
+     * Lukt de verbinding niet, dan blijft de kolom leeg in plaats van "nee".
+     */
+    private fun withServerStatus(type: StepType, produced: List<ProducedFile>): List<ProducedFile> {
+        if (type != StepType.IMAGES) return produced
+        val s = settingsService.get()
+        fun path(p: ProducedFile) = "${s.remoteImagesDir(p.kind)}/${p.number}.jpg"
+        val existing = ftpService.existing(produced.filter { it.kind in setOf("small", "large", "100pct") }.map(::path)) ?: return produced
+        return produced.map { if (it.kind in setOf("small", "large", "100pct")) it.copy(server = if (path(it) in existing) "ja" else "nee") else it }
     }
 
     /** Alles is in orde en Carla gaat verder met het kiezen van bestanden. */
@@ -179,15 +197,44 @@ class NewFilesController(
 
     /** Een bestand uit de uitvoer van de programma's, om te controleren: de afbeelding, de pdf of de tekst. */
     @GetMapping("/nieuw/resultaat/{kind}/{number}")
-    fun result(@PathVariable("kind") kind: String, @PathVariable("number") number: String): ResponseEntity<ByteArray> {
+    fun result(
+        @PathVariable("kind") kind: String,
+        @PathVariable("number") number: String,
+        @RequestParam("download", required = false) download: String?,
+    ): ResponseEntity<ByteArray> {
         val file = testRunService.resultFile(kind, number) ?: return ResponseEntity.notFound().build()
-        val type = when (kind) {
+        val (type, extension) = when (kind) {
+            "pdf" -> "application/pdf" to "pdf"
+            "tekst" -> "text/plain;charset=UTF-8" to "txt"
+            else -> "image/jpeg" to "jpg"
+        }
+        val name = "$number-${kind.removePrefix("p2z-")}.$extension"
+        val disposition = (if (download != null) ContentDisposition.attachment() else ContentDisposition.inline()).filename(name, Charsets.UTF_8).build()
+        return ResponseEntity.ok().header("Content-Type", type).header("Content-Disposition", disposition.toString()).header("Cache-Control", "no-store").body(Files.readAllBytes(file))
+    }
+
+    /** Een pdf of afbeelding uit een map met scans, om te bekijken in de popup (of met `download` te bewaren). */
+    @GetMapping("/nieuw/bron/bestand")
+    fun sourceFile(
+        @RequestParam("bron") rootName: String,
+        @RequestParam("pad", defaultValue = "") path: String,
+        @RequestParam("naam") name: String,
+        @RequestParam("download", required = false) download: String?,
+    ): ResponseEntity<Resource> {
+        val file = try { sourceFiles.fileToView(rootName, path, name) } catch (e: IllegalArgumentException) { return ResponseEntity.notFound().build() }
+        val type = when (name.substringAfterLast('.').lowercase()) {
             "pdf" -> "application/pdf"
-            "tekst" -> "text/plain;charset=UTF-8"
+            "png" -> "image/png"
             else -> "image/jpeg"
         }
-        return ResponseEntity.ok().header("Content-Type", type).header("Cache-Control", "no-store").body(Files.readAllBytes(file))
+        val disposition = (if (download != null) ContentDisposition.attachment() else ContentDisposition.inline()).filename(name, Charsets.UTF_8).build()
+        return ResponseEntity.ok().header("Content-Type", type).header("Content-Disposition", disposition.toString()).header("Cache-Control", "no-store").body(FileSystemResource(file))
     }
+
+    /** Het aantal pagina's van elke pdf en de afmeting van elke afbeelding in de map, apart opgehaald zodat de lijst snel verschijnt. */
+    @GetMapping("/nieuw/bron/info")
+    fun sourceInfo(@RequestParam("bron") rootName: String, @RequestParam("pad", defaultValue = "") path: String): ResponseEntity<Map<String, String>> =
+        try { ResponseEntity.ok().header("Cache-Control", "no-store").body(sourceFiles.details(rootName, path)) } catch (e: IllegalArgumentException) { ResponseEntity.badRequest().build() }
 
     /** Wat er al op het archief is gezet, per keer verwerken. */
     @GetMapping("/verwerkt")
