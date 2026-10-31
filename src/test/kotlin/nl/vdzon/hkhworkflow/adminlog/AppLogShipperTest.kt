@@ -40,7 +40,7 @@ class AppLogShipperTest {
     fun stop() = server.stop(0)
 
     private fun shipper(address: String = url) =
-        AppLogShipper(mapper, AdminLogClient(mapper, address) { "windows-laptop" }, { spool }, { now }, Duration.ofMinutes(15))
+        AppLogShipper(mapper, AdminLogClient(mapper, address), { spool }, { now }, Duration.ofMinutes(15))
 
     private fun messages(body: JsonNode): List<String> = (0 until body.path("lines").size()).map { body.path("lines").get(it).path("message").asString() }
 
@@ -57,7 +57,7 @@ class AppLogShipperTest {
         val r = received.single()
         assertEquals("/api/workflow-log/app-logs", r.path)
         assertEquals(AdminLogClient.INGEST_KEY, r.key)
-        assertEquals("windows-laptop", r.body.path("source").asString())
+        assertEquals(AdminLogClient(mapper, url).computer, r.body.path("source").asString())
         assertEquals("1.0+a", r.body.path("appVersion").asString())
         assertTrue(r.body.path("chunkId").asString().startsWith("pending-"))
         assertEquals(listOf("eerste", "tweede"), messages(r.body))

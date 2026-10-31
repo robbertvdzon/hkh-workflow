@@ -74,7 +74,6 @@ class SettingsService(
                         perlioUnbuffered = node.path("perlioUnbuffered").asBoolean(true),
                         collections = loadedCollections,
                         leftoversFolder = node.path("leftoversFolder").asText(""),
-                    logSource = node.path("logSource").asText(""),
                     logFtpPassword = node.path("logFtpPassword").asBoolean(true),
                         // Een bestand van voor deze keuze: alles wat niet het echte archief is, geldt als test. Zo wijst een oude instelling nooit ineens naar het echte archief.
                         useTestZcbs = if (node.path("useTestZcbs").isBoolean) node.path("useTestZcbs").asBoolean(true) else !oldBaseUrl.contains("historischekringheemskerk.nl"),
@@ -123,7 +122,6 @@ class SettingsService(
                 )
             },
             leftoversFolder = settings.leftoversFolder.trim(),
-            logSource = settings.logSource.trim(),
             sourceFolders = settings.sourceFolders.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n"),
         )
         file.parent?.let { Files.createDirectories(it) }

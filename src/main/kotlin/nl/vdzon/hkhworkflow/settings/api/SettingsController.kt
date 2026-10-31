@@ -55,7 +55,6 @@ class SettingsController(private val settingsService: SettingsService, private v
                     )
                 },
                 leftoversFolder = param("leftoversFolder"),
-                logSource = param("logSource"),
                 logFtpPassword = request.getParameter("logFtpPassword") != null,
                 useTestZcbs = request.getParameter("useTestZcbs") != null,
                 sourceFolders = param("sourceFolders"),

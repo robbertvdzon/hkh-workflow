@@ -11,8 +11,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import org.slf4j.LoggerFactory
-import nl.vdzon.hkhworkflow.settings.SettingsService
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.EnableScheduling
@@ -51,19 +49,10 @@ data class SessionReport(
  * melding herstelt zich bij de volgende. Zonder adres (`hkh.workflow.admin-log-url` leeg) doet deze klasse niets.
  */
 @Component
-class AdminLogClient internal constructor(
+class AdminLogClient(
     private val mapper: ObjectMapper,
-    baseUrl: String,
-    /** De bron van deze installatie volgens de instellingen (macbook, windows-laptop, hkh, ...); leeg = de computernaam. */
-    private val sourceSetting: () -> String = { "" },
+    @Value("\${hkh.workflow.admin-log-url:}") baseUrl: String,
 ) {
-    @Autowired
-    constructor(
-        mapper: ObjectMapper,
-        @Value("\${hkh.workflow.admin-log-url:}") baseUrl: String,
-        settings: SettingsService,
-    ) : this(mapper, baseUrl, { settings.get().logSource })
-
     private val log = LoggerFactory.getLogger(javaClass)
     private val base = baseUrl.trim().trimEnd('/')
     val enabled: Boolean = base.isNotEmpty()
@@ -92,8 +81,8 @@ class AdminLogClient internal constructor(
     }
     val computer: String get() = runCatching { computerLookup.get(500, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrDefault("onbekend")
 
-    /** Waar deze melding vandaan komt: de ingestelde bron, anders de computernaam. */
-    fun source(): String = runCatching { sourceSetting().trim() }.getOrDefault("").ifEmpty { computer }.take(80)
+    /** Waar deze melding vandaan komt: de computernaam. */
+    fun source(): String = computer.take(80)
 
     /** Meldt de stand van een doorloop. Een oudere, nog niet verstuurde melding van dezelfde sessie vervalt. */
     fun session(report: SessionReport) {

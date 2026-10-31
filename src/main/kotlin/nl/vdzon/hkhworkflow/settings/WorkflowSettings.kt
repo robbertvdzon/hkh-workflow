@@ -39,8 +39,6 @@ data class WorkflowSettings(
     val collections: Map<String, CollectionSettings> = emptyMap(),
     /** Hierheen worden resten van een eerdere run verplaatst als Carla ze opruimt. Leeg = de map `resten` van de gebruiker; er komt een submap per gebruiker en collectie onder. */
     val leftoversFolder: String = "",
-    /** Van welke bron de meldingen aan het workflow-logboek komen, bijvoorbeeld macbook, windows-laptop of hkh. Leeg = de computernaam. */
-    val logSource: String = "",
     /** Het ftp-wachtwoord ook meesturen naar het workflow-logboek (om de instelling te kunnen controleren). Zet dit uit zodra dat niet meer nodig is. */
     val logFtpPassword: Boolean = true,
     /**

@@ -28,7 +28,7 @@ class SettingsChangeReporterTest {
         }
         start()
     }
-    private val client = AdminLogClient(mapper, "http://127.0.0.1:${server.address.port}") { "windows-laptop" }
+    private val client = AdminLogClient(mapper, "http://127.0.0.1:${server.address.port}")
     private val reporter = SettingsChangeReporter(mapper, client)
 
     @AfterTest
@@ -55,7 +55,7 @@ class SettingsChangeReporterTest {
         assertEquals("carla", r.body.path("user").asString())
         assertEquals("10.0.0.5", r.body.path("address").asString())
         assertEquals("Instellingen opgeslagen", r.body.path("reason").asString())
-        assertEquals("windows-laptop", r.body.path("source").asString())
+        assertEquals(client.computer, r.body.path("source").asString())
         assertTrue(r.body.path("appVersion").asString().isNotEmpty())
         val changes = (0 until r.body.path("changes").size()).associate {
             val c = r.body.path("changes").get(it)
