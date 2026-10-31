@@ -2,10 +2,13 @@ package nl.vdzon.hkhworkflow.ux.api
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpSession
+import nl.vdzon.hkhworkflow.items.Current
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
+import nl.vdzon.hkhworkflow.testrun.TestRunService
 import nl.vdzon.hkhworkflow.ux.AdminAccess
+import nl.vdzon.hkhworkflow.ux.CurrentContextFilter
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.ControllerAdvice
@@ -31,7 +34,7 @@ class ShellAdvice(private val items: ItemEditService, private val admin: AdminAc
     fun rights(): List<String> = items.rights()
 
     @ModelAttribute("collectionName")
-    fun collectionName(): String = WorkflowSettings.COLLECTION
+    fun collectionName(): String = Current.collection()
 
     @ModelAttribute("zcbsAddress")
     fun zcbsAddress(): String = settingsService.get().zcbsBaseUrl
@@ -45,7 +48,12 @@ data class CollectionChoice(val name: String, val enabled: Boolean, val hint: St
  * zetten, of ZCBS records aanpassen. Ook het inloggen van de beheerder staat hier.
  */
 @Controller
-class ShellController(private val items: ItemEditService, private val admin: AdminAccess, private val settingsService: SettingsService) {
+class ShellController(
+    private val items: ItemEditService,
+    private val admin: AdminAccess,
+    private val settingsService: SettingsService,
+    private val testRunService: TestRunService,
+) {
 
     @GetMapping("/")
     fun start(@RequestParam("inloggen", required = false) mustLogin: String?, model: Model): String {
@@ -74,8 +82,11 @@ class ShellController(private val items: ItemEditService, private val admin: Adm
     }
 
     @GetMapping("/collectie/{name}")
-    fun collection(@org.springframework.web.bind.annotation.PathVariable("name") name: String, model: Model): String {
+    fun collection(@org.springframework.web.bind.annotation.PathVariable("name") name: String, session: HttpSession, model: Model): String {
         if (!items.canUse(name)) return "redirect:/collectie"
+        // Vanaf hier werkt deze browsersessie in deze collectie.
+        session.setAttribute(CurrentContextFilter.COLLECTION, name)
+        model.addAttribute("lock", testRunService.lockedBy(name))
         model.addAttribute("active", "start")
         model.addAttribute("collection", name)
         return "collectie-acties"

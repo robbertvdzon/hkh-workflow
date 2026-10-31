@@ -8,7 +8,7 @@
 use strict; use warnings; use File::Copy; use File::Path qw(make_path remove_tree);
 $| = 1 if $ENV{MOCK_UNBUFFERED};
 use FindBin qw($RealBin);
-use lib "$RealBin/..";
+use lib $RealBin, "$RealBin/..";   # naast het programma (de kopie in de map van een gebruiker) of in de map erboven
 use MockImage qw(pdf_to_jpg find_tool);
 # Met pdf2zcbs.ini naast het programma: geen vragen en geen uitvoer (zoals de echte exe bij HKH).
 my $silent = -f "$RealBin/pdf2zcbs.ini";

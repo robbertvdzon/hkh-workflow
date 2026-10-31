@@ -95,7 +95,7 @@ data class RunLogEntry(
  * verstuurde invoer. Daarmee is te zien óf en wanneer een programma zijn vragen laat zien
  * (bijvoorbeeld door buffering pas na een antwoord).
  */
-@Service
+
 class ExeRunner(
     @Value("\${hkh.workflow.console-charset:IBM850}") charsetName: String,
     @Value("\${hkh.workflow.log-dir:logs}") logDir: String,

@@ -9,6 +9,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.adminlog.AdminLogClient
 import nl.vdzon.hkhworkflow.settings.SettingsService
@@ -32,15 +33,25 @@ class EditLogReporterTest {
     }
     private lateinit var items: ItemEditService
     private lateinit var reporter: EditLogReporter
+    private lateinit var zcbs: nl.vdzon.hkhworkflow.zcbs.FakeZcbs
 
     @BeforeTest
     fun setUp() {
-        items = ItemEditService(SettingsService(mapper, WorkflowProperties(settingsFile = dir.resolve("s.json").toString())))
+        Current.set(null)
+        zcbs = nl.vdzon.hkhworkflow.zcbs.FakeZcbs()
+        val settings = SettingsService(mapper, WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
+        settings.save(nl.vdzon.hkhworkflow.settings.WorkflowSettings(zcbsBaseUrl = zcbs.baseUrl, collection = "archief"))
+        items = ItemEditService(settings)
+        assertNull(items.login("Test Beheerder", "Beheer1"))
         reporter = EditLogReporter(items, AdminLogClient(mapper, "http://127.0.0.1:${server.address.port}"), mapper)
     }
 
     @AfterTest
-    fun tearDown() = server.stop(0)
+    fun tearDown() {
+        Current.set(null)
+        server.stop(0)
+        zcbs.close()
+    }
 
     private fun waitFor(count: Int) {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)

@@ -7,7 +7,7 @@
 # FTP-upload naar de (lokale) server en zet het de lege database records in updates.txt op de server (RETR, aanvullen, STOR).
 # Net als een gewoon Perl-programma zonder $| = 1 buffert het zijn uitvoer als het niet in een terminal draait. Zet MOCK_UNBUFFERED=1 om dat uit te zetten.
 use strict; use warnings; use File::Copy; use File::Path qw(make_path remove_tree); use FindBin qw($Bin); use Net::FTP; use File::Temp qw(tempfile); use Cwd qw(getcwd);
-use lib "$Bin/..";
+use lib $Bin, "$Bin/..";   # naast het programma (de kopie in de map van een gebruiker) of in de map erboven
 use MockImage qw(shrink_jpg);
 $| = 1 if $ENV{MOCK_UNBUFFERED};
 

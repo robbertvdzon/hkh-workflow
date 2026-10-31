@@ -13,6 +13,7 @@
         <div class="choices">
             <a class="choice" th:href="@{/nieuw}">
                 <b>Nieuwe bestanden in ZCBS zetten</b>
+                <span class="warn" th:if="${lock != null}" th:text="(${#strings.isEmpty(lock.owner)} ? 'De beheerder' : ${lock.owner}) + ' werkt hier nu; er kan maar één tegelijk.'">Jelly werkt hier nu.</span>
                 <span class="hint">Scans van K: kiezen, ze een recordnummer geven, pdf2zcbs.exe en images.exe draaien, uploaden en een back-up maken. De gegevens vul je later in.</span>
             </a>
             <a class="choice" th:href="@{/records}">

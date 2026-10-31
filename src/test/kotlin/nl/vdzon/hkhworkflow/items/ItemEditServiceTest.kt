@@ -34,17 +34,52 @@ class ItemEditServiceTest {
         zcbs.addRecord("edit-gevuld.html", "11902")
         settings = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         settings.save(WorkflowSettings(zcbsBaseUrl = zcbs.baseUrl, collection = "archief"))
+        Current.set(null)
         service = ItemEditService(settings)
+        assertNull(service.login("Test Beheerder", "Beheer1"))
         service.startBatch(
             listOf(BatchRecord("11905", "scan_0412.pdf", "Ria", "K:\\scabslelly\\Ria\\map57"), BatchRecord("11902", "scan_0413.pdf", "Ria", "K:\\scabslelly\\Ria\\map57"), BatchRecord("11999", "scan_0414.pdf")),
         )
-        assertNull(service.login("Test Beheerder", "Beheer1"))
     }
 
     @AfterTest
-    fun tearDown() = zcbs.close()
+    fun tearDown() {
+        Current.set(null)
+        zcbs.close()
+    }
 
     private fun opened(number: String) = assertIs<OpenOutcome.Ready>(service.open(number))
+
+    @Test
+    fun `twee gebruikers hebben elk hun eigen ZCBS-sessie en gekozen records`() {
+        assertEquals("Test Beheerder", service.user)
+        assertEquals(3, service.records().size)
+
+        // Zonder gebruiker aan het woord is er niemand ingelogd.
+        Current.set(null)
+        assertNull(service.user)
+        assertFalse(service.loggedIn())
+        assertEquals(emptyList(), service.records())
+
+        // Een tweede gebruiker logt in: dat logt de eerste niet uit en ze delen geen records.
+        assertNull(service.login("Test Bewerker", "Bewerk1"))
+        assertEquals("Test Bewerker", service.user)
+        assertEquals(emptyList(), service.records())
+        service.startBatch(listOf(BatchRecord("11905")))
+        assertEquals(listOf("11905"), service.records().map { it.number })
+        Current.runAs("Test Beheerder", "archief") {
+            assertTrue(service.loggedIn())
+            assertEquals(3, service.records().size)
+        }
+        assertEquals(listOf("Test Beheerder", "Test Bewerker"), service.users())
+
+        // Uitloggen geldt alleen voor wie aan het woord is.
+        service.logout()
+        assertFalse(service.loggedIn())
+        Current.runAs("Test Beheerder", "archief") { assertTrue(service.loggedIn()) }
+        assertFalse(service.hasSession("Test Bewerker"))
+        assertTrue(service.hasSession("Test Beheerder"))
+    }
 
     @Test
     fun `inloggen controleert naam en wachtwoord en het adres van ZCBS`() {

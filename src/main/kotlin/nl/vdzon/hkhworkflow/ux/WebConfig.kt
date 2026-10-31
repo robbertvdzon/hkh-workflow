@@ -35,7 +35,8 @@ class WebConfig(
         val (name, password) = remember.read(request) ?: return
         val error = items.login(name, password)
         adminLog.login(name, error == null, "COOKIE", error)
-        if (error != null && error.startsWith("Naam of wachtwoord")) remember.forget(response)
+        if (error == null) request.session.setAttribute(CurrentContextFilter.USER, items.user)
+        else if (error.startsWith("Naam of wachtwoord")) remember.forget(response)
     }
 
     override fun addInterceptors(registry: InterceptorRegistry) {

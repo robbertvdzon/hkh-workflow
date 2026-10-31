@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Nieuwe bestanden')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <a class="back" th:href="@{/collectie}">← Collecties</a>
+        <div class="head">
+            <div>
+                <h1>Nieuwe bestanden in ZCBS zetten</h1>
+                <p class="sub">Collectie <b th:text="${lock.collection}">archief</b></p>
+            </div>
+        </div>
+        <section class="card pad stack" style="max-width:640px">
+            <h2 style="margin:0">Deze collectie is nu in gebruik</h2>
+            <p style="margin:0"><b th:text="${#strings.isEmpty(lock.owner)} ? 'De beheerder' : ${lock.owner}">Jelly</b> werkt hier sinds
+                <span th:text="${sinceText}">10:12</span> (laatst actief om <span th:text="${activeText}">10:40</span>).
+                Per collectie kan er maar één tegelijk nieuwe bestanden in ZCBS zetten, zodat jullie niet dezelfde nummers en mappen gebruiken.</p>
+            <p class="hint" style="margin:0">Probeer het later opnieuw. Is die ander er niet meer, dan komt de collectie na twee uur zonder activiteit vanzelf vrij,
+                of vraagt de beheerder om hem vrij te geven (Beheer, Sessies). Je kunt ondertussen wel
+                <a th:href="@{/records}">ZCBS records aanpassen</a>.</p>
+            <div><a class="btn btn-p" th:href="@{/nieuw}">Opnieuw proberen</a></div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

@@ -33,12 +33,13 @@ class SourceFilesServiceTest {
         Files.writeString(ria.resolve("map57/notitie.txt"), "geen pdf")
         Files.writeString(jelly.resolve("raadhuis/voorgevel.pdf"), "jelly")
         Files.writeString(ria.resolve("los.pdf"), "direct in de bronmap")
-        val inbox = Files.createDirectories(dir.resolve("invoer"))
+        val inbox = Files.createDirectories(dir.resolve("werkmap"))
+        Files.createDirectories(dir.resolve("werkmap/Test/archief/invoer"))
         val props = WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString())
         val settings = SettingsService(ObjectMapper(), props)
         settings.save(WorkflowSettings(testFolder = inbox.toString(), sourceFolders = "Jelly=$jelly\nRia=$ria"))
         processed = ProcessedLog(settings, props)
-        return SourceFilesService(settings, processed, InputFolder(settings, ItemEditService(settings)))
+        return SourceFilesService(settings, processed, WorkFolders(settings, "Test", "archief"))
     }
 
     @Test
@@ -55,7 +56,7 @@ class SourceFilesServiceTest {
         assertEquals(listOf("kaart.png", "foto.JPG"), result.copied)
         val folder = s.browse("Ria", "map58") // de lijst blijft hetzelfde
         assertEquals(2, folder.files.size)
-        val inbox = Path.of(dir.toString(), "invoer")
+        val inbox = dir.resolve("werkmap/Test/archief/invoer")
         assertEquals(setOf("kaart.jpg", "foto.JPG"), Files.list(inbox).use { it.map { p -> p.fileName.toString() }.toList().filter { n -> n.endsWith("pg") || n.endsWith("JPG") }.toSet() })
         // De png is nu echt een jpg, 40 × 30.
         val converted = javax.imageio.ImageIO.read(inbox.resolve("kaart.jpg").toFile())
@@ -129,7 +130,7 @@ class SourceFilesServiceTest {
         val result = s.copy("Ria", "map57", listOf("scan_1.pdf", "scan_2.pdf"))
         assertEquals(listOf("scan_1.pdf", "scan_2.pdf"), result.copied)
         assertEquals(emptyList(), result.skipped)
-        assertEquals(listOf("herkomst.tsv", "scan_1.pdf", "scan_2.pdf"), Files.list(dir.resolve("invoer")).use { it.map { p -> p.fileName.toString() }.sorted().toList() })
+        assertEquals(listOf("herkomst.tsv", "scan_1.pdf", "scan_2.pdf"), Files.list(dir.resolve("werkmap/Test/archief/invoer")).use { it.map { p -> p.fileName.toString() }.sorted().toList() })
         assertEquals("Ria", s.origin("scan_1.pdf")?.by)
         assertTrue(s.origin("scan_1.pdf")!!.folder.endsWith("map57"))
         assertTrue(Files.exists(dir.resolve("k/scans ria/map57/scan_1.pdf")))
@@ -139,11 +140,11 @@ class SourceFilesServiceTest {
     @Test
     fun `een bestand dat al in de invoermap staat wordt nooit overschreven`() {
         val s = service()
-        Files.writeString(dir.resolve("invoer/scan_1.pdf"), "EIGEN VERSIE")
+        Files.writeString(dir.resolve("werkmap/Test/archief/invoer/scan_1.pdf"), "EIGEN VERSIE")
         val result = s.copy("Ria", "map57", listOf("scan_1.pdf"))
         assertEquals(emptyList(), result.copied)
         assertEquals(1, result.skipped.size)
-        assertEquals("EIGEN VERSIE", Files.readString(dir.resolve("invoer/scan_1.pdf")))
+        assertEquals("EIGEN VERSIE", Files.readString(dir.resolve("werkmap/Test/archief/invoer/scan_1.pdf")))
     }
 
     @Test
@@ -177,11 +178,11 @@ class SourceFilesServiceTest {
     fun `de gekozen kopieën weghalen laat de originelen en eigen bestanden staan`() {
         val s = service()
         s.copy("Ria", "map57", listOf("scan_1.pdf", "scan_2.pdf"))
-        Files.writeString(dir.resolve("invoer/zelf.pdf"), "door Carla zelf neergezet")
+        Files.writeString(dir.resolve("werkmap/Test/archief/invoer/zelf.pdf"), "door Carla zelf neergezet")
         assertEquals(2, s.removeAllCopies())
-        assertFalse(Files.exists(dir.resolve("invoer/scan_1.pdf")))
+        assertFalse(Files.exists(dir.resolve("werkmap/Test/archief/invoer/scan_1.pdf")))
         assertTrue(Files.exists(dir.resolve("k/scans ria/map57/scan_1.pdf")))
-        assertTrue(Files.exists(dir.resolve("invoer/zelf.pdf")), "wat de app niet zelf kopieerde, blijft staan")
+        assertTrue(Files.exists(dir.resolve("werkmap/Test/archief/invoer/zelf.pdf")), "wat de app niet zelf kopieerde, blijft staan")
         assertNull(s.origin("scan_1.pdf"))
         assertFalse(Files.exists(dir.resolve("invoer/herkomst.tsv")), "zonder kopieën geen herkomstlijst")
         assertEquals(0, s.removeAllCopies())

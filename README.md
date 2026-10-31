@@ -31,7 +31,18 @@ Instelbaar met omgevingsvariabelen:
 | `HKH_WORKFLOW_SETTINGS_FILE` | `hkh-workflow-settings.json` | Instellingenbestand (relatief = t.o.v. de map waaruit je de jar start) |
 | `HKH_WORKFLOW_PROCESSED_LOG` | `hkh-workflow-verwerkt.tsv` | Het log van wat er verwerkt is (zonder pad: naast het instellingenbestand) |
 | `HKH_WORKFLOW_CONSOLE_CHARSET` | `IBM850` | Codepagina van de DOS-uitvoer van de exe's |
+| `HKH_WORKFLOW_SESSION_TIMEOUT_MINUTES` | `120` | Na zoveel minuten zonder activiteit komt een in gebruik zijnde collectie vrij |
 | `HKH_WORKFLOW_ADMIN_LOG_URL` | `https://hkh-admin.vdzonsoftware.nl` | Waar het workflow-logboek naartoe gaat; leeg = niets melden |
+
+## Meerdere gebruikers
+
+De app draait op één server; gebruikers werken vanaf hun eigen pc in de browser. Elke gebruiker heeft een eigen ZCBS-sessie en eigen mappen
+(`<werkmap>\<ZCBS-naam>\<collectie>\` met `invoer`, `werk`, `pdf2zcbs`, `images` en `resten`; de programma's staan daarin als kopie, zodat
+de gebruiker kan meekijken). Per collectie kan er hooguit één gebruiker tegelijk nieuwe bestanden in ZCBS zetten; twee gebruikers in twee
+collecties kunnen tegelijk werken. Wie de collectie heeft, staat op de startpagina; na `hkh.workflow.session-timeout-minutes` (standaard 120)
+zonder activiteit komt ze vrij, en de beheerder kan haar vrijgeven bij Instellingen, Sessies. De stand van een doorloop wordt in `sessie.json`
+in de map van de gebruiker bewaard en na een herstart van de app teruggezet. Zet de werkmap en de mappen met scans als UNC-pad
+(`\\server\...`) als de app als Windows-service draait: gekoppelde schijven zijn er niet.
 
 ## Workflow-logboek
 

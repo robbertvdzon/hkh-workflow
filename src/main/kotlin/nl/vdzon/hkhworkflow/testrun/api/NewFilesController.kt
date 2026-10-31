@@ -1,14 +1,12 @@
 package nl.vdzon.hkhworkflow.testrun.api
 
 import java.nio.file.Files
-import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.ftp.FtpService
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.testrun.ProcessedLog
 import nl.vdzon.hkhworkflow.testrun.ProducedFile
 import nl.vdzon.hkhworkflow.testrun.CopyResult
-import nl.vdzon.hkhworkflow.testrun.SourceFilesService
 import nl.vdzon.hkhworkflow.testrun.StepType
 import nl.vdzon.hkhworkflow.testrun.TestRunService
 import org.springframework.core.io.FileSystemResource
@@ -31,9 +29,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 @Controller
 class NewFilesController(
     private val testRunService: TestRunService,
-    private val exeRunner: ExeRunner,
     private val settingsService: SettingsService,
-    private val sourceFiles: SourceFilesService,
     private val itemEditService: ItemEditService,
     private val processedLog: ProcessedLog,
     private val ftpService: FtpService,
@@ -50,18 +46,26 @@ class NewFilesController(
         @RequestParam("pad", defaultValue = "") path: String,
         model: Model,
     ): String {
+        // Heeft een andere gebruiker deze collectie in gebruik, dan is er maar één ding te zien: wie en sinds wanneer.
+        testRunService.lockedBy()?.let { lock ->
+            model.addAttribute("active", "nieuw")
+            model.addAttribute("lock", lock)
+            model.addAttribute("sinceText", java.time.LocalTime.ofInstant(lock.since, java.time.ZoneId.systemDefault()).toString().take(5))
+            model.addAttribute("activeText", java.time.LocalTime.ofInstant(lock.lastActive, java.time.ZoneId.systemDefault()).toString().take(5))
+            return "nieuw-bezet"
+        }
         val settings = settingsService.get()
         // Klaar is één keer te zien; opent Carla de pagina daarna weer, dan begint ze weer bij het begin.
         val (flow, summary) = testRunService.pageState()
         if (summary != null) model.addAttribute("summary", summary)
         // Standaard de eerste map met scans uit de instellingen, zodat Carla meteen bestanden ziet.
-        val rootName = rootName?.takeIf { it.isNotBlank() } ?: sourceFiles.roots().firstOrNull()?.name.takeIf { flow.current == 2 }
+        val rootName = rootName?.takeIf { it.isNotBlank() } ?: testRunService.sources().roots().firstOrNull()?.name.takeIf { flow.current == 2 }
         model.addAttribute("active", "nieuw")
         model.addAttribute("returnTo", "/nieuw")
         model.addAttribute("settings", settings)
         model.addAttribute("flow", flow)
         model.addAttribute("run", flow.run)
-        model.addAttribute("console", exeRunner.snapshot())
+        model.addAttribute("console", testRunService.exe().snapshot())
         when (flow.current) {
             1 -> {
                 val checks = testRunService.environment()
@@ -74,14 +78,14 @@ class NewFilesController(
 
             2 -> {
                 val chosen = testRunService.filesInTestFolder().map {
-                    val origin = sourceFiles.origin(it.fileName.toString())
+                    val origin = testRunService.sources().origin(it.fileName.toString())
                     PdfRow(it.fileName.toString(), origin?.by.orEmpty(), origin?.folder.orEmpty())
                 }
-                model.addAttribute("roots", sourceFiles.roots())
+                model.addAttribute("roots", testRunService.sources().roots())
                 model.addAttribute("chosen", chosen)
                 if (rootName != null) {
                     try {
-                        model.addAttribute("listing", sourceFiles.browse(rootName, path))
+                        model.addAttribute("listing", testRunService.sources().browse(rootName, path))
                     } catch (e: IllegalArgumentException) {
                         model.addAttribute("browseError", e.message)
                     }
@@ -156,7 +160,7 @@ class NewFilesController(
             return "redirect:/nieuw"
         }
         return try {
-            val result = if (files.isNullOrEmpty()) CopyResult(emptyList(), emptyList()) else sourceFiles.copy(rootName, path, files)
+            val result = if (files.isNullOrEmpty()) CopyResult(emptyList(), emptyList()) else testRunService.sources().copy(rootName, path, files)
             testRunService.acceptInput()
             val skipped = if (result.skipped.isEmpty()) "" else " Overgeslagen: ${result.skipped.joinToString()}."
             if (testRunService.filesInTestFolder().isEmpty()) return stay("Vink minstens één bestand aan.$skipped")
@@ -170,7 +174,7 @@ class NewFilesController(
 
     /** Haalt de gekozen bestanden weer weg (alleen de kopieën; de originelen blijven staan). */
     @PostMapping("/nieuw/bestanden/leeg")
-    fun clearChosen(redirect: RedirectAttributes): String = attempt(redirect) { sourceFiles.removeAllCopies(); null }
+    fun clearChosen(redirect: RedirectAttributes): String = attempt(redirect) { testRunService.sources().removeAllCopies(); null }
 
     /** Resten van een eerdere run uit de mappen van de programma's halen: verplaatsen of verwijderen. */
     @PostMapping("/nieuw/resten")
@@ -221,7 +225,7 @@ class NewFilesController(
         @RequestParam("naam") name: String,
         @RequestParam("download", required = false) download: String?,
     ): ResponseEntity<Resource> {
-        val file = try { sourceFiles.fileToView(rootName, path, name) } catch (e: IllegalArgumentException) { return ResponseEntity.notFound().build() }
+        val file = try { testRunService.sources().fileToView(rootName, path, name) } catch (e: IllegalArgumentException) { return ResponseEntity.notFound().build() }
         val type = when (name.substringAfterLast('.').lowercase()) {
             "pdf" -> "application/pdf"
             "png" -> "image/png"
@@ -234,7 +238,7 @@ class NewFilesController(
     /** Het aantal pagina's van elke pdf en de afmeting van elke afbeelding in de map, apart opgehaald zodat de lijst snel verschijnt. */
     @GetMapping("/nieuw/bron/info")
     fun sourceInfo(@RequestParam("bron") rootName: String, @RequestParam("pad", defaultValue = "") path: String): ResponseEntity<Map<String, String>> =
-        try { ResponseEntity.ok().header("Cache-Control", "no-store").body(sourceFiles.details(rootName, path)) } catch (e: IllegalArgumentException) { ResponseEntity.badRequest().build() }
+        try { ResponseEntity.ok().header("Cache-Control", "no-store").body(testRunService.sources().details(rootName, path)) } catch (e: IllegalArgumentException) { ResponseEntity.badRequest().build() }
 
     /** Wat er al op het archief is gezet, per keer verwerken. */
     @GetMapping("/verwerkt")

@@ -4,6 +4,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import nl.vdzon.hkhworkflow.adminlog.AdminLogClient
 import nl.vdzon.hkhworkflow.adminlog.SessionReport
+import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -30,7 +31,8 @@ class EditLogReporter(private val items: ItemEditService, private val client: Ad
         val pendingEvents = mutableListOf<String>()
     }
 
-    private var session: Session? = null
+    /** Per ingelogde gebruiker de sessie in het logboek; er kunnen er meer tegelijk zijn. */
+    private val sessions = HashMap<String, Session>()
 
     /** Wat er is gewijzigd bij een record dat nu wordt opgeslagen; de melding van het opslaan neemt het mee. */
     private val upcoming = ConcurrentHashMap<String, List<Change>>()
@@ -43,19 +45,23 @@ class EditLogReporter(private val items: ItemEditService, private val client: Ad
     @Scheduled(initialDelay = 6_000, fixedDelay = 3_000)
     fun tick() {
         if (!client.enabled) return
-        try {
-            report()
-        } catch (e: Exception) {
-            log.debug("Melding aan het workflow-logboek overgeslagen: {}", e.message)
+        val users = items.users()
+        for (user in users) {
+            try {
+                Current.runAs(user, WorkflowSettings.COLLECTION) { report(user) }
+            } catch (e: Exception) {
+                log.debug("Melding aan het workflow-logboek overgeslagen: {}", e.message)
+            }
         }
+        synchronized(this) { sessions.keys.retainAll(users.toSet()) }
     }
 
     @Synchronized
-    private fun report() {
+    private fun report(user: String) {
         val batch = items.records()
-        if (batch.isEmpty()) { session = null; return }
-        var current = session
-        if (current == null || current.batch !== batch) { current = Session(batch); session = current }
+        if (batch.isEmpty()) { sessions.remove(user); return }
+        var current = sessions[user]
+        if (current == null || current.batch !== batch) { current = Session(batch); sessions[user] = current }
 
         val events = current.pendingEvents
         if (!current.started && events.none { it.startsWith("Gestart") }) events += "Gestart: ${batch.size} ${if (batch.size == 1) "record" else "records"} gekozen"

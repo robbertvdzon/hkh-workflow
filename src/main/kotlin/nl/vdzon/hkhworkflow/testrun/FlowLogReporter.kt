@@ -6,6 +6,7 @@ import nl.vdzon.hkhworkflow.adminlog.AdminLogClient
 import nl.vdzon.hkhworkflow.adminlog.SessionReport
 import nl.vdzon.hkhworkflow.adminlog.SnapshotSanitizer
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
+import nl.vdzon.hkhworkflow.items.Current
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import org.slf4j.LoggerFactory
@@ -24,8 +25,7 @@ import tools.jackson.databind.node.ObjectNode
  */
 @Component
 class FlowLogReporter(
-    private val flow: TestRunService,
-    private val exeRunner: ExeRunner,
+    private val flows: TestRunService,
     private val settingsService: SettingsService,
     private val items: ItemEditService,
     private val processed: ProcessedLog,
@@ -54,39 +54,47 @@ class FlowLogReporter(
         val pendingEvents = mutableListOf<String>()
     }
 
-    private var session: Session? = null
+    /** Per doorloop de sessie in het logboek. Er zijn meer doorlopen tegelijk: één per collectie. */
+    private val sessions = java.util.IdentityHashMap<FlowSession, Session>()
 
     @Scheduled(initialDelay = 5_000, fixedDelay = 3_000)
     fun tick() {
         if (!client.enabled) return
-        try {
-            report()
-        } catch (e: Exception) {
-            log.debug("Melding aan het workflow-logboek overgeslagen: {}", e.message)
+        val active = flows.sessions()
+        for (f in active) {
+            try {
+                Current.runAs(f.owner.ifEmpty { null }, f.collection) { report(f) }
+            } catch (e: Exception) {
+                log.debug("Melding aan het workflow-logboek overgeslagen: {}", e.message)
+            }
+        }
+        // Een doorloop die uit beeld is (vrijgegeven of overgenomen): de sessie in het logboek is afgelopen.
+        synchronized(this) {
+            sessions.keys.filter { f -> active.none { it === f } }.forEach { f -> sessions.remove(f)?.takeIf { !it.finished }?.let { endSession(it) } }
         }
     }
 
     @Synchronized
-    private fun report() {
-        val view = flow.flowView()
-        var current = session
+    private fun report(f: FlowSession) {
+        val view = f.flowView()
+        var current = sessions[f]
         if (view.current <= 1) {
             // De gebruiker is opnieuw begonnen (of heeft nog niets gedaan). Een doorloop die niet klaar was, krijgt nog één regel in de tijdlijn.
             current?.takeIf { !it.finished }?.let { endSession(it) }
-            session = null
+            sessions.remove(f)
             return
         }
         if (current == null || current.finished && !view.finished) {
             current = Session()
-            session = current
+            sessions[f] = current
         }
-        val s = settingsService.get()
+        val s = settingsService.get().copy(collection = f.collection)
         val cleaned = sanitizer.clean(s, if (s.logFtpPassword) setOf("ftpPassword") else emptySet())
-        recordConsole(current, cleaned)
+        recordConsole(current, f.exeRunner, cleaned)
 
         val run = view.run
         run?.rows?.forEach { current.numbers += it.number }
-        val chosen = if (run == null) flow.filesInTestFolder().map { it.fileName.toString() } else emptyList()
+        val chosen = if (run == null) f.filesInTestFolder().map { it.fileName.toString() } else emptyList()
         val fileCount = run?.fileCount ?: chosen.size
         val titles = view.phases.map { it.title }
         val phaseLabel = if (view.finished) "Klaar" else titles.getOrNull(view.current - 1).orEmpty()
@@ -109,11 +117,11 @@ class FlowLogReporter(
         current.review = view.review
         if (view.finished) {
             current.finished = true
-            if (current.summary == null) current.summary = runCatching { flow.summary() }.getOrNull()
+            if (current.summary == null) current.summary = runCatching { f.summary() }.getOrNull()
         }
         StepType.entries.filter { it.usesExe }.forEach { type ->
             val done = stepViews.firstOrNull { it.type == type.name }?.status == "DONE"
-            if (done && type.name !in current.produced) current.produced[type.name] = runCatching { flow.producedFiles(type) }.getOrDefault(emptyList())
+            if (done && type.name !in current.produced) current.produced[type.name] = runCatching { f.producedFiles(type) }.getOrDefault(emptyList())
         }
 
         val core = mapper.createObjectNode()
@@ -125,7 +133,7 @@ class FlowLogReporter(
             put("startnummer", run?.startNumber.orEmpty())
             put("aantalBestanden", fileCount)
             put("gebruiker", items.user.orEmpty())
-            put("invoermap", run?.testFolder ?: flow.inputFolder()?.toString().orEmpty())
+            put("invoermap", run?.testFolder ?: f.inputFolder()?.toString().orEmpty())
             put("werkmap", run?.workDir.orEmpty())
             put("sessieGestart", current.startedAt.toString())
         })
@@ -209,8 +217,8 @@ class FlowLogReporter(
     }
 
     /** Bewaart de uitvoer en het log van het programma dat nu (of als laatste) draaide, per programma, zodat het later nog te lezen is. */
-    private fun recordConsole(current: Session, cleaned: SnapshotSanitizer.Cleaned) {
-        finishUnseen(current, cleaned, exeRunner.snapshot()?.takeIf { it.running }?.id)
+    private fun recordConsole(current: Session, exeRunner: ExeRunner, cleaned: SnapshotSanitizer.Cleaned) {
+        finishUnseen(current, exeRunner, cleaned, exeRunner.snapshot()?.takeIf { it.running }?.id)
         val snap = exeRunner.snapshot() ?: return
         if (snap.startedAt.isBefore(current.startedAt.minusSeconds(2))) return
         // Een afgerond programma verandert niet meer: één keer vastleggen is genoeg.
@@ -239,7 +247,7 @@ class FlowLogReporter(
      * Een programma dat als lopend is vastgelegd maar intussen klaar is zonder dat het eindigen is gezien (het volgende programma
      * was al gestart): de uitkomst komt dan uit het logbestand van die run.
      */
-    private fun finishUnseen(current: Session, cleaned: SnapshotSanitizer.Cleaned, runningId: Long?) {
+    private fun finishUnseen(current: Session, exeRunner: ExeRunner, cleaned: SnapshotSanitizer.Cleaned, runningId: Long?) {
         current.consoles.values.filter { it.path("loopt").asBoolean(false) && it.path("runId").asLong(-1) != runningId }.forEach { node ->
             val text = exeRunner.logText(node.path("logbestand").asString("")) ?: return@forEach
             val exit = Regex("""EXIT code=(-?\d+)""").find(text)?.groupValues?.get(1)?.toIntOrNull()

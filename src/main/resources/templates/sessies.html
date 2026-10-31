@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sessies')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <a class="back" th:href="@{/instellingen}">← Instellingen</a>
+        <div class="head">
+            <div>
+                <h1>Sessies</h1>
+                <p class="sub">Wie er nu is ingelogd en welke collecties in gebruik zijn voor Nieuwe bestanden. Per collectie kan er één tegelijk werken.</p>
+            </div>
+        </div>
+        <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
+        <div class="alert alert-info" th:if="${info}" th:text="${info}"></div>
+        <section class="card pad stack">
+            <h2 style="margin:0">Collecties in gebruik</h2>
+            <p class="muted" th:if="${locks.isEmpty()}" style="margin:0">Er werkt nu niemand aan nieuwe bestanden.</p>
+            <section class="table" th:unless="${locks.isEmpty()}">
+                <div class="tr th" style="grid-template-columns:140px minmax(120px,1fr) 100px 110px 110px 120px"><span>Collectie</span><span>Gebruiker</span><span>Fase</span><span>Sinds</span><span>Laatst actief</span><span></span></div>
+                <div class="tr" th:each="l : ${locks}" style="grid-template-columns:140px minmax(120px,1fr) 100px 110px 110px 120px">
+                    <span th:text="${l.collection}">archief</span>
+                    <span th:text="${#strings.isEmpty(l.owner)} ? '(beheerder)' : ${l.owner}">Jelly</span>
+                    <span th:text="${l.phase} + ' van 7'">4 van 7</span>
+                    <span class="muted" th:text="${times[l.collection + '/since']}">10:12</span>
+                    <span class="muted" th:text="${times[l.collection + '/active']}">10:40</span>
+                    <form method="post" th:action="@{/instellingen/sessies/{c}/vrijgeven(c=${l.collection})}" onsubmit="return confirm('Deze collectie vrijgeven? Wat de gebruiker hier doet wordt gestopt.')">
+                        <button class="btn btn-s btn-sm" type="submit">Vrijgeven</button></form>
+                </div>
+            </section>
+        </section>
+        <section class="card pad stack">
+            <h2 style="margin:0">Ingelogd bij ZCBS</h2>
+            <p class="muted" th:if="${users.isEmpty()}" style="margin:0">Niemand.</p>
+            <p th:unless="${users.isEmpty()}" style="margin:0" th:text="${#strings.listJoin(users, ', ')}">Carla, Jelly</p>
+        </section>
+    </main>
+</div>
+</body>
+</html>

@@ -25,7 +25,7 @@ data class SourceRoot(val name: String, val path: String)
  * Instellingen van de workflow. Alle paden zijn absolute paden op de machine waar de jar draait.
  */
 data class WorkflowSettings(
-    /** De invoermap (`c:\zcbs\invoer`): hier komen de gekozen pdf's te staan voordat ze verwerkt worden. */
+    /** De werkmap: daarin heeft elke gebruiker per collectie eigen mappen (invoer, werk, pdf2zcbs, images, resten); zie `WorkFolders`. De naam testFolder is uit het opslagbestand overgenomen. */
     val testFolder: String = "",
     /** Volledig pad naar images.exe. */
     val imagesExe: String = "",
@@ -37,7 +37,7 @@ data class WorkflowSettings(
     val collection: String = COLLECTION,
     /** De instellingen per collectie (zie [CollectionSettings]), op de naam van de collectie. Wat ontbreekt, krijgt de standaardwaarden. */
     val collections: Map<String, CollectionSettings> = emptyMap(),
-    /** Hierheen worden resten van een eerdere run verplaatst als Carla ze opruimt. Leeg = de submap `resten` van de invoermap. */
+    /** Hierheen worden resten van een eerdere run verplaatst als Carla ze opruimt. Leeg = de map `resten` van de gebruiker; er komt een submap per gebruiker en collectie onder. */
     val leftoversFolder: String = "",
     /** Van welke bron de meldingen aan het workflow-logboek komen, bijvoorbeeld macbook, windows-laptop of hkh. Leeg = de computernaam. */
     val logSource: String = "",

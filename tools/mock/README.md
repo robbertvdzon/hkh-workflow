@@ -66,3 +66,6 @@ Het programma doet dan, na J op de vragen:
 - zet een regel in `cgi-bin/misc/images.log` op de server.
 
 Zet in de app bij Instellingen het FTP-wachtwoord op `hkhtest` (of typ het één keer in bij Handmatig uitvoeren van images.exe). De ftp-instellingen voor tekst en pdf's (host `127.0.0.1`, poort 2121, gebruiker `hkhadmin`, basismap `/domains/historischekringheemskerk.nl/public_html`) staan in `tools/docker/zcbs/README.md`.
+
+De app draait een kopie van elk programma in de map van de gebruiker (`<werkmap>/<gebruiker>/<collectie>/pdf2zcbs` en `images`). Daarom staat
+`MockImage.pm` ook (als symbolische verwijzing) naast elk script: de scripts zoeken hem naast zichzelf en in de map erboven.

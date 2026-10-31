@@ -1,0 +1,396 @@
+package nl.vdzon.hkhworkflow.items
+
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import nl.vdzon.hkhworkflow.settings.SettingsService
+import nl.vdzon.hkhworkflow.settings.WorkflowSettings
+import nl.vdzon.hkhworkflow.zcbs.FreeNumbers
+import nl.vdzon.hkhworkflow.zcbs.ItemForm
+import nl.vdzon.hkhworkflow.zcbs.LoginOutcome
+import nl.vdzon.hkhworkflow.zcbs.Page
+import nl.vdzon.hkhworkflow.zcbs.ControlKind
+import nl.vdzon.hkhworkflow.zcbs.RecordRebuilder
+import nl.vdzon.hkhworkflow.zcbs.UnencodableException
+import nl.vdzon.hkhworkflow.zcbs.ZcbsClient
+import nl.vdzon.hkhworkflow.zcbs.ZcbsText
+import org.slf4j.LoggerFactory
+
+/**
+ * De ZCBS-sessie van één gebruiker: de inlog, de gekozen records en het bewerken ervan via het ZCBS-formulier. [ItemEditService] kiest de sessie
+ * van de gebruiker die nu aan het woord is. Het bewerken van records via het ZCBS-formulier. De ZCBS-naam en het wachtwoord staan alleen in het
+ * geheugen. Elke opslag volgt dezelfde stappen: opnieuw inloggen, het formulier opnieuw ophalen (dat zet de vergrendeling),
+ * controleren of iemand anders het record intussen heeft gewijzigd, posten en teruglezen.
+ */
+class EditSession(private val settingsService: SettingsService) {
+    private val log = LoggerFactory.getLogger(javaClass)
+    private val time = DateTimeFormatter.ofPattern("HH:mm")
+
+    /** Per collectie waar de gebruiker rechten heeft (de inlog slaagde bij het script van die collectie) de ingelogde client. */
+    @Volatile private var clients: Map<String, ZcbsClient> = emptyMap()
+    /** De client van de collectie waarmee nu wordt gewerkt (zie [Current]). Leeg als de gebruiker daar geen rechten heeft. */
+    private val client: ZcbsClient? get() = clients[Current.collection()]
+    @Volatile private var userName: String? = null
+    val user: String? get() = userName
+    private var password: String = ""
+    /** Het ZCBS-adres waarbij is ingelogd. Wisselt de app naar een andere ZCBS (de test of het echte archief), dan geldt de inlog niet meer. */
+    @Volatile private var loginBase: String = ""
+    @Volatile private var batch: List<EditRecord> = emptyList()
+
+    /** Ingelogd: de naam en het wachtwoord zijn bij minstens één collectie herkend. Zie [rights] voor welke. */
+    fun loggedIn(): Boolean {
+        if (userName != null && clients.isNotEmpty() && loginBase != settingsService.get().zcbsBaseUrl) logout()
+        return userName != null && clients.isNotEmpty()
+    }
+
+    /** De collecties waar de gebruiker rechten heeft, in de volgorde van [WorkflowSettings.ALL_COLLECTIONS]. */
+    fun rights(): List<String> = if (loggedIn()) WorkflowSettings.ALL_COLLECTIONS.filter { it in clients } else emptyList()
+
+    /** Mag de gebruiker met deze collectie werken? Rechten hebben en door de app ondersteund. */
+    fun canUse(collection: String): Boolean = collection in WorkflowSettings.IMPLEMENTED_COLLECTIONS && collection in rights()
+
+    /**
+     * Logt in bij ZCBS. Rechten gelden per collectie, dus dezelfde naam en hetzelfde wachtwoord worden bij het script van elke
+     * collectie geprobeerd. Je bent ingelogd als het bij minstens één lukt. ZCBS geeft bij een fout wachtwoord en bij een
+     * ontbrekend recht hetzelfde antwoord (een externe gebruiker), dus die twee zijn niet te onderscheiden.
+     * @return een foutmelding, of null als de inlog gelukt is.
+     */
+    @Synchronized
+    fun login(name: String, pw: String): String? {
+        val s = settingsService.get()
+        if (s.zcbsBaseUrl.isBlank()) return "Stel eerst het adres van ZCBS in bij Instellingen."
+        if (name.isBlank() || pw.isEmpty()) return "Vul je naam en je wachtwoord in."
+        val granted = linkedMapOf<String, ZcbsClient>()
+        var rateLimited: String? = null
+        for ((i, collection) in WorkflowSettings.ALL_COLLECTIONS.withIndex()) {
+            val candidate = ZcbsClient(s.zcbsBaseUrl, "/cgi-bin/$collection.pl")
+            try {
+                when (val result = candidate.login(name.trim(), pw)) {
+                    is LoginOutcome.Ok -> granted[collection] = candidate
+                    is LoginOutcome.Failed -> if (result.rateLimited) rateLimited = result.message
+                }
+            } catch (e: Exception) {
+                // Geen verbinding met ZCBS zelf: stoppen in plaats van elke collectie te laten verlopen. Later mislukt = geen recht daar.
+                if (i == 0) {
+                    log.warn("Inloggen bij ZCBS mislukt: {}", e.message)
+                    return "Geen verbinding met ZCBS (${s.zcbsBaseUrl}): ${e.message ?: e.javaClass.simpleName}"
+                }
+                log.info("Inloggen bij collectie {} mislukt: {}", collection, e.message)
+            }
+        }
+        if (granted.isEmpty()) return rateLimited ?: "Naam of wachtwoord niet herkend, of je hebt nergens rechten."
+        clients = granted; userName = name.trim(); password = pw; loginBase = s.zcbsBaseUrl
+        log.info("{} ingelogd bij ZCBS, rechten: {}", userName, granted.keys.joinToString())
+        return null
+    }
+
+    @Synchronized
+    fun logout() { clients = emptyMap(); userName = null; password = ""; loginBase = "" }
+
+    /** Opnieuw inloggen met de bewaarde gegevens, bijvoorbeeld omdat de sessie bij ZCBS verlopen is. */
+    private fun relogin(): Boolean {
+        val c = client ?: return false
+        return runCatching { c.login(userName.orEmpty(), password) is LoginOutcome.Ok }.getOrDefault(false)
+    }
+
+    @Synchronized
+    fun startBatch(records: List<BatchRecord>) {
+        batch = records.map { EditRecord(it.number, it.fileName, it.by, it.folder) }
+    }
+
+    fun records(): List<EditRecord> = batch
+    fun record(number: String): EditRecord? = batch.firstOrNull { it.number == number }
+    fun statusOf(number: String): EditStatus? = record(number)?.status
+    fun handledCount(): Int = batch.count { it.status == EditStatus.OPGESLAGEN }
+    fun laterCount(): Int = batch.count { it.status == EditStatus.LATER }
+    fun allHandled(): Boolean = batch.isNotEmpty() && batch.all { it.status == EditStatus.OPGESLAGEN || it.status == EditStatus.LATER }
+
+    fun recordUrl(number: String, edit: Boolean = true): String? = client?.recordUrl(number, edit) ?: settingsService.get().let {
+        if (it.zcbsBaseUrl.isBlank()) null else ZcbsClient(it.zcbsBaseUrl, "/cgi-bin/${Current.collection()}.pl").recordUrl(number, edit)
+    }
+
+    fun pdfUrl(number: String): String? = client?.let { c ->
+        val path = "${Current.collection()}/pdf/$number.pdf"
+        if (c.fileExists(path)) c.fileUrl(path) else null
+    }
+
+    /** De grote afbeelding van het record op de site (zoals ZCBS die zelf toont), als hij er staat. */
+    fun imageUrl(number: String): String? = client?.let { c ->
+        val path = "${Current.collection()}/large/$number.jpg"
+        if (c.fileExists(path)) c.fileUrl(path) else null
+    }
+
+    /** Het volgende record in de lijst na [number] dat nog niet is opgeslagen, of null als er geen meer is. */
+    fun nextNumber(number: String): String? {
+        val i = batch.indexOfFirst { it.number == number }
+        if (i < 0) return null
+        return batch.drop(i + 1).firstOrNull { it.status != EditStatus.OPGESLAGEN }?.number
+    }
+
+    fun ocrText(number: String): String? = client?.fetchText("${Current.collection()}/ocr/$number.txt")
+
+    /**
+     * De vrije recordnummers uit ZCBS (zoals bij een nieuw record), met het hoogste bestaande nummer. Null als ZCBS de lijst
+     * niet geeft: niet ingelogd, geen recht om records aan te maken, of ZCBS is niet bereikbaar.
+     */
+    @Synchronized
+    fun freeNumbers(): FreeNumbers? {
+        val c = client ?: return null
+        fun fetch() = runCatching { c.freeNumbers() }.getOrNull()
+        return fetch() ?: if (relogin()) fetch() else null
+    }
+
+    /** @return de nummers die nog niet in ZCBS bestaan (gewone weergave, zet geen vergrendeling). */
+    @Synchronized
+    fun missingInZcbs(numbers: List<String>): List<String> {
+        val c = client ?: return numbers
+        return numbers.filter { c.exists(it) == false }
+    }
+
+    /**
+     * Zet de records die [input] noemt klaar om te bewerken. [input] is een nummer, een reeks ("11934-11945") of meer
+     * daarvan gescheiden door komma's of spaties. Records die niet bestaan, komen er niet bij en staan in [ChooseResult.missing].
+     */
+    @Synchronized
+    fun chooseRecords(input: String): ChooseResult {
+        if (!loggedIn()) return ChooseResult(0, emptyList(), "Log eerst in bij ZCBS.")
+        val width = freeNumbers()?.width ?: 5
+        val numbers = try { parseNumbers(input, width) } catch (e: IllegalArgumentException) { return ChooseResult(0, emptyList(), e.message) }
+        if (numbers.isEmpty()) return ChooseResult(0, emptyList(), "Vul een recordnummer of een reeks in, bijvoorbeeld 11934 of 11934-11945.")
+        val missing = try { missingInZcbs(numbers) } catch (e: Exception) { return ChooseResult(0, emptyList(), "Geen verbinding met ZCBS: ${e.message ?: e.javaClass.simpleName}") }
+        val existing = numbers.filter { it !in missing }
+        if (existing.isEmpty()) return ChooseResult(0, missing, "Deze records bestaan niet in ZCBS: ${missing.take(5).joinToString()}.")
+        startBatch(existing.map { BatchRecord(it) })
+        return ChooseResult(existing.size, missing, null)
+    }
+
+    private fun parseNumbers(input: String, width: Int): List<String> {
+        val result = linkedSetOf<String>()
+        for (token in input.split(Regex("[,;\\s]+")).filter { it.isNotBlank() }) {
+            val parts = token.split('-', '–')
+            require(parts.size in 1..2 && parts.all { it.matches(Regex("\\d+")) }) { "\"$token\" is geen recordnummer of reeks. Gebruik bijvoorbeeld 11934 of 11934-11945." }
+            val from = parts.first().toLong()
+            val to = parts.last().toLong()
+            require(to >= from) { "In \"$token\" is het eerste nummer hoger dan het laatste." }
+            require(to - from < MAX_RECORDS && result.size + (to - from + 1) <= MAX_RECORDS) { "Kies maximaal $MAX_RECORDS records tegelijk." }
+            (from..to).forEach { result += it.toString().padStart(width, '0') }
+        }
+        return result.toList()
+    }
+
+    // ---- Openen ----
+
+    private fun openPage(number: String): Page {
+        val c = client ?: return Page.NotLoggedIn
+        var page = c.openForm(number)
+        if (page is Page.SessionExpired || page is Page.NotLoggedIn) {
+            if (relogin()) page = c.openForm(number)
+        }
+        return page
+    }
+
+    private fun labelOf(form: ItemForm, index: Int): String = form.control("a$index")?.label ?: "veld $index"
+
+    /** Opent het record: haalt het formulier op (dit zet de vergrendeling bij ZCBS) en controleert of de app het begrijpt. */
+    @Synchronized
+    fun open(number: String): OpenOutcome {
+        val r = record(number) ?: error("Onbekend record $number.")
+        if (!loggedIn()) return OpenOutcome.NeedsLogin
+        return when (val page = try { openPage(number) } catch (e: Exception) { return fail(r, EditStatus.FOUT, "Geen verbinding met ZCBS: ${e.message}") }) {
+            is Page.Form -> {
+                val form = page.form.withMissingFields()
+                val diffs = RecordRebuilder.differences(form)
+                if (diffs.isNotEmpty()) {
+                    return fail(
+                        r, EditStatus.ONVEILIG,
+                        "De app begrijpt dit record niet goed genoeg om het veilig op te slaan (verschil in: ${diffs.joinToString { labelOf(form, it) }}). Er is niets gewijzigd. Open het record in ZCBS.",
+                    )
+                }
+                r.baseline = form
+                r.fresh = null
+                r.title = form.control("a5")?.value.orEmpty()
+                r.openedAt = LocalTime.now()
+                if (r.status != EditStatus.OPGESLAGEN) r.status = EditStatus.BEZIG
+                r.message = null
+                OpenOutcome.Ready(r, form)
+            }
+            is Page.Locked -> fail(r, EditStatus.GEBLOKKEERD, lockedMessage(number, page))
+            is Page.NotAvailable -> fail(r, EditStatus.FOUT, "Record $number bestaat niet in ZCBS.")
+            is Page.Refused -> fail(r, EditStatus.FOUT, "ZCBS weigert dit verzoek (==Sorry:${page.code}==).")
+            is Page.RateLimited -> fail(r, EditStatus.FOUT, "ZCBS vindt dat er te veel verzoeken zijn. Wacht even.")
+            is Page.SessionExpired, is Page.NotLoggedIn, is Page.LoginFailed, is Page.RouterQuestion -> OpenOutcome.NeedsLogin
+            else -> fail(r, EditStatus.FOUT, "Onverwacht antwoord van ZCBS: ${(page as? Page.Other)?.text ?: page}")
+        }
+    }
+
+    private fun fail(r: EditRecord, status: EditStatus, message: String): OpenOutcome.Blocked {
+        if (r.status != EditStatus.OPGESLAGEN) r.status = status
+        r.message = message
+        return OpenOutcome.Blocked(r, message)
+    }
+
+    private fun lockedMessage(number: String, page: Page.Locked): String =
+        "Record $number is nog ${page.minutes?.let { "ongeveer $it minuten" } ?: "even"} in gebruik" + (page.by?.let { " bij $it" } ?: "") + ". Je invoer blijft bewaard."
+
+    // ---- Wijzigingen ----
+
+    /** De invoer opgeschoond: tekens uit Word vervangen en regeleinden gelijkgetrokken. */
+    private fun cleaned(values: Map<String, List<String>>): Map<String, List<String>> =
+        values.mapValues { (_, list) -> list.map { ZcbsText.clean(it).replace("\r\n", "\n").replace("\r", "\n") } }
+
+    private fun same(a: List<String>, b: List<String>): Boolean = a.map { it.replace("\r\n", "\n") } == b.map { it.replace("\r\n", "\n") }
+
+    private fun changesFor(base: ItemForm, values: Map<String, List<String>>): List<Change> =
+        base.controls.mapNotNull { c ->
+            val new = values[c.name] ?: return@mapNotNull null
+            if (same(c.values, new)) null
+            else Change(c.name, c.label, c.values.joinToString("; ").replace("\r\n", "\n"), new.joinToString("; "))
+        }.filterNot { it.name == "a21" && it.old == "0" && it.new == "0" }
+
+    private fun blockers(base: ItemForm, changes: List<Change>, values: Map<String, List<String>>): List<String> = buildList {
+        for (change in changes) {
+            for (value in values[change.name].orEmpty()) {
+                ZcbsText.unencodable(value).takeIf { it.isNotEmpty() }?.let {
+                    add("In \"${change.label}\" staat ${it.joinToString(" en ") { c -> "het teken '$c'" }}. ZCBS kan dat niet opslaan; haal het weg of vervang het.")
+                }
+                ZcbsText.refusedWord(value)?.let { add("In \"${change.label}\" staat het woord \"$it\". ZCBS weigert dat in een veld; gebruik een ander woord.") }
+            }
+        }
+    }
+
+    @Synchronized
+    fun preview(number: String, values: Map<String, List<String>>): PreviewOutcome {
+        val r = record(number) ?: return PreviewOutcome.Failed("Onbekend record $number.")
+        val base = r.baseline ?: return PreviewOutcome.Failed("Open het record eerst.")
+        val clean = cleaned(values)
+        r.draft = clean
+        val changes = changesFor(base, clean)
+        return PreviewOutcome.Ok(changes, blockers(base, changes, clean))
+    }
+
+    @Synchronized
+    fun later(number: String) {
+        val r = record(number) ?: return
+        if (r.status != EditStatus.OPGESLAGEN) r.status = EditStatus.LATER
+    }
+
+    /** Wat de gebruiker op het scherm ziet: de velden met de invoer die nog niet is opgeslagen. */
+    fun controlsFor(number: String): List<nl.vdzon.hkhworkflow.zcbs.Control> {
+        val r = record(number) ?: return emptyList()
+        val base = r.baseline ?: return emptyList()
+        val draft = r.draft ?: return base.controls
+        return base.controls.map { c -> draft[c.name]?.let { c.copy(values = it) } ?: c }
+    }
+
+    // ---- Opslaan ----
+
+    @Synchronized
+    fun save(number: String, values: Map<String, List<String>>, force: Boolean = false): SaveOutcome {
+        val r = record(number) ?: return SaveOutcome.Failed("Onbekend record $number.")
+        val base = r.baseline ?: return SaveOutcome.Failed("Open het record eerst.")
+        val clean = cleaned(values)
+        r.draft = clean
+        val changes = changesFor(base, clean)
+        if (changes.isEmpty()) return SaveOutcome.NoChanges
+        val blocked = blockers(base, changes, clean)
+        if (blocked.isNotEmpty()) return SaveOutcome.Blocked(blocked)
+        val c = client ?: return SaveOutcome.NeedsLogin
+        return try {
+            if (!relogin()) return SaveOutcome.NeedsLogin
+            val fresh = when (val page = c.openForm(number)) {
+                is Page.Form -> page.form.withMissingFields()
+                is Page.Locked -> { r.status = EditStatus.GEBLOKKEERD; r.message = lockedMessage(number, page); return SaveOutcome.Locked(r.message!!) }
+                is Page.NotAvailable -> return SaveOutcome.Failed("Record $number bestaat niet (meer) in ZCBS.")
+                else -> return SaveOutcome.Failed("Onverwacht antwoord van ZCBS bij het ophalen van het formulier: ${(page as? Page.Other)?.text ?: page}")
+            }
+            if (RecordRebuilder.differences(fresh).isNotEmpty()) {
+                return SaveOutcome.Failed("Het formulier van ZCBS wijkt nu af van wat de app begrijpt; er is niets opgeslagen. Open het record in ZCBS.")
+            }
+            if (!force && fresh.a0 != base.a0) {
+                val rows = changes.mapNotNull { ch ->
+                    val theirs = fresh.control(ch.name)?.values.orEmpty()
+                    val before = base.control(ch.name)?.values.orEmpty()
+                    if (same(theirs, before)) null else ConflictRow(ch.name, ch.label, clean[ch.name].orEmpty().joinToString("; "), theirs.joinToString("; "))
+                }
+                if (rows.isNotEmpty()) { r.fresh = fresh; return SaveOutcome.Conflict(rows) }
+            }
+            val target = fresh.withChanges(changes.associate { it.name to clean.getValue(it.name) })
+            when (val answer = c.save(target)) {
+                is Page.Locked -> { r.status = EditStatus.GEBLOKKEERD; r.message = lockedMessage(number, answer); return SaveOutcome.Locked(r.message!!) }
+                is Page.Refused -> return SaveOutcome.Failed("ZCBS weigerde het opslaan (==Sorry:${answer.code}==). Er is niets opgeslagen.")
+                is Page.SessionExpired, is Page.NotLoggedIn -> return SaveOutcome.NeedsLogin
+                is Page.RateLimited -> return SaveOutcome.Failed("ZCBS vindt dat er te veel verzoeken zijn. Wacht even en probeer het opnieuw.")
+                else -> {}
+            }
+            verify(r, c, target)
+        } catch (e: UnencodableException) {
+            SaveOutcome.Blocked(listOf("In veld ${e.field} staat ${e.chars.joinToString(" en ") { "het teken '$it'" }}. ZCBS kan dat niet opslaan."))
+        } catch (e: Exception) {
+            log.warn("Opslaan van {} mislukt: {}", number, e.message)
+            SaveOutcome.Failed("Geen verbinding met ZCBS of onverwachte fout: ${e.message ?: e.javaClass.simpleName}. Controleer in ZCBS of het record is opgeslagen.")
+        }
+    }
+
+    /** Leest het record terug en vergelijkt het met wat er is gepost. Pas dan geldt het als opgeslagen. */
+    private fun verify(r: EditRecord, c: ZcbsClient, posted: ItemForm): SaveOutcome {
+        val after = when (val page = c.openForm(r.number)) {
+            is Page.Form -> page.form.withMissingFields()
+            else -> return failRead(r, "Het record kon niet teruggelezen worden (${(page as? Page.Other)?.text ?: page}). Controleer in ZCBS of het is opgeslagen.")
+        }
+        val expected = RecordRebuilder.rebuild(posted)
+        val actual = after.a0Fields.take(33)
+        val wrong = (0..31).filter { i -> norm(i, expected[i]) != norm(i, actual.getOrElse(i) { "" }) }
+        if (wrong.isNotEmpty()) {
+            return failRead(
+                r,
+                "Opgeslagen, maar ${wrong.joinToString("; ") { "\"${labelOf(after, it)}\" is nu \"${actual.getOrElse(it) { "" }.take(60)}\" in plaats van \"${expected[it].take(60)}\"" }}. Controleer het record in ZCBS.",
+            )
+        }
+        r.baseline = after
+        r.fresh = null
+        r.draft = null
+        r.title = after.control("a5")?.value.orEmpty()
+        r.status = EditStatus.OPGESLAGEN
+        r.message = null
+        return SaveOutcome.Saved
+    }
+
+    private fun failRead(r: EditRecord, message: String): SaveOutcome.Failed {
+        r.status = EditStatus.FOUT
+        r.message = message
+        return SaveOutcome.Failed(message)
+    }
+
+    private fun norm(index: Int, value: String): String {
+        val v = value.replace(Regex(" *<br> *"), "<br>")
+        return if (index == 21 && v == "0") "" else v
+    }
+
+    /** De keuze bij een conflict: de eigen versie bewaren, of de nieuwe versie uit ZCBS gebruiken voor de velden die botsen. */
+    @Synchronized
+    fun resolveConflict(number: String, keepMine: Boolean, values: Map<String, List<String>>): SaveOutcome {
+        val r = record(number) ?: return SaveOutcome.Failed("Onbekend record $number.")
+        if (keepMine) return save(number, values, force = true)
+        val fresh = r.fresh ?: return SaveOutcome.Failed("Er is geen conflict meer.")
+        val base = r.baseline ?: return SaveOutcome.Failed("Open het record eerst.")
+        val mine = cleaned(values)
+        val merged = mine.toMutableMap()
+        changesFor(base, mine).forEach { ch ->
+            val theirs = fresh.control(ch.name)?.values.orEmpty()
+            if (!same(theirs, base.control(ch.name)?.values.orEmpty())) merged[ch.name] = theirs
+        }
+        r.baseline = fresh
+        r.fresh = null
+        r.draft = merged
+        return SaveOutcome.NoChanges
+    }
+
+    fun openedUntil(number: String): String? = record(number)?.openedAt?.plusMinutes(10)?.format(time)
+    fun openedAt(number: String): String? = record(number)?.openedAt?.format(time)
+
+    /** Of de vorm van een veld meerkeuze is; de controller leest dan alle gekozen waarden. */
+    fun isMulti(number: String, name: String): Boolean = record(number)?.baseline?.control(name)?.kind == ControlKind.MULTI
+
+    private companion object {
+        const val MAX_RECORDS = 500
+    }
+}

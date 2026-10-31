@@ -12,21 +12,21 @@
         <div class="alert alert-ok" th:if="${saved}">Instellingen opgeslagen.</div>
         <form class="card pad" method="post" th:action="@{/instellingen}" style="display:flex;flex-direction:column;gap:22px;max-width:980px">
             <div class="field">
-                <label class="f" for="testFolder">Invoermap</label>
-                <input type="text" id="testFolder" name="testFolder" th:value="${settings.testFolder}" placeholder="C:\zcbs\invoer">
-                <span class="hint">Hier komen de pdf's te staan die een gebruiker op de pagina Nieuwe bestanden kiest, voordat ze verwerkt worden (<span class="mono">c:\zcbs\invoer</span>). Elke gebruiker krijgt hierin een eigen submap met zijn of haar ZCBS-naam. Na afloop ruimt de app de kopieën op.</span>
+                <label class="f" for="testFolder">Werkmap</label>
+                <input type="text" id="testFolder" name="testFolder" th:value="${settings.testFolder}" placeholder="\\server\werk (of C:\zcbs\werk)">
+                <span class="hint">Hier werkt elke gebruiker in een eigen map per collectie: <span class="mono">&lt;werkmap&gt;\&lt;ZCBS-naam&gt;\&lt;collectie&gt;\</span> met daarin <span class="mono">invoer</span> (de gekozen bestanden), <span class="mono">werk</span> (de kopieën met recordnummer), <span class="mono">pdf2zcbs</span> en <span class="mono">images</span> (een kopie van de programma's met alleen hun bestanden, zodat de gebruiker kan meekijken) en <span class="mono">resten</span>. Zet hem op een netwerkmap als gebruikers mee willen kijken. Op een server met Windows liever een UNC-pad (<span class="mono">\\server\werk</span>) dan een gekoppelde schijf. Na afloop ruimt de app de kopieën op; de originelen op K: blijven staan.</span>
                 <span class="warn" th:if="${problems['testFolder']}" th:text="${problems['testFolder']}"></span>
             </div>
             <div class="field">
-                <label class="f" for="pdf2zcbsExe">pdf2zcbs.exe</label>
+                <label class="f" for="pdf2zcbsExe">pdf2zcbs.exe (hoofdmap)</label>
                 <input type="text" id="pdf2zcbsExe" name="pdf2zcbsExe" th:value="${settings.pdf2zcbsExe}" placeholder="C:\zcbs\pdf2zcbs\pdf2zcbs.exe">
-                <span class="hint">De pdf wordt in dezelfde map als pdf2zcbs.exe gezet; de uitvoer komt in de submap <span class="mono">output</span>.</span>
+                <span class="hint">Het programma zoals het is geïnstalleerd (met zijn ini). De app zet een kopie in de map <span class="mono">pdf2zcbs</span> van de gebruiker en draait die; de pdf wordt daar naast gezet en de uitvoer komt in de submap <span class="mono">output</span>. Wijzig je hier iets aan de ini, dan nemen gebruikers dat bij de volgende start over.</span>
                 <span class="warn" th:if="${problems['pdf2zcbsExe']}" th:text="${problems['pdf2zcbsExe']}"></span>
             </div>
             <div class="field">
-                <label class="f" for="imagesExe">images.exe</label>
+                <label class="f" for="imagesExe">images.exe (hoofdmap)</label>
                 <input type="text" id="imagesExe" name="imagesExe" th:value="${settings.imagesExe}" placeholder="C:\zcbs\images-werk\images.exe">
-                <span class="hint">De large-jpg's van pdf2zcbs worden in de submap <span class="mono">images</span> naast images.exe gezet.</span>
+                <span class="hint">Het programma zoals het is geïnstalleerd (met images.ini, i_view32 en plugins). De app zet een kopie in de map <span class="mono">images</span> van de gebruiker en draait die; de large-jpg's van pdf2zcbs (en gekozen afbeeldingen) komen in de submap <span class="mono">images</span> daarvan.</span>
                 <span class="warn" th:if="${problems['imagesExe']}" th:text="${problems['imagesExe']}"></span>
             </div>
             <label style="display:flex;gap:10px;align-items:flex-start">
@@ -54,7 +54,7 @@
                 <legend class="f" style="padding:0;margin-bottom:6px">Resten van een eerdere run</legend>
                 <div class="field">
                     <label class="f" for="leftoversFolder">Map voor resten van een eerdere run</label>
-                    <input type="text" id="leftoversFolder" name="leftoversFolder" th:value="${settings.leftoversFolder}" placeholder="K:\resten (leeg = submap resten van de invoermap)">
+                    <input type="text" id="leftoversFolder" name="leftoversFolder" th:value="${settings.leftoversFolder}" placeholder="K:\resten (leeg = de map resten van de gebruiker)">
                     <span class="hint">Staan er bij het begin nog bestanden in de mappen van pdf2zcbs.exe en images.exe, dan kunnen die hierheen verplaatst (of verwijderd) worden voordat de gebruiker begint.</span>
                 </div>
             </fieldset>

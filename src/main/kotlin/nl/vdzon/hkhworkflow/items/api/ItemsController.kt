@@ -11,6 +11,7 @@ import nl.vdzon.hkhworkflow.items.PreviewOutcome
 import nl.vdzon.hkhworkflow.items.SaveOutcome
 import nl.vdzon.hkhworkflow.zcbs.ControlKind
 import jakarta.servlet.http.HttpServletResponse
+import jakarta.servlet.http.HttpSession
 import nl.vdzon.hkhworkflow.items.RememberLogin
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -39,16 +40,22 @@ class ItemsController(
         @RequestParam("terug", defaultValue = "/") target: String,
         redirect: RedirectAttributes,
         response: HttpServletResponse,
+        session: HttpSession,
     ): String {
         val error = items.login(name, password)
         adminLog.login(name.trim(), error == null, "PASSWORD", error)
-        if (error != null) redirect.addFlashAttribute("error", error) else remember.remember(response, name, password)
+        if (error != null) redirect.addFlashAttribute("error", error)
+        else {
+            session.setAttribute(USER_ATTRIBUTE, items.user)
+            remember.remember(response, name, password)
+        }
         return back(target)
     }
 
     @PostMapping("/zcbs/logout")
-    fun logout(@RequestParam("terug", defaultValue = "/") target: String, response: HttpServletResponse): String {
+    fun logout(@RequestParam("terug", defaultValue = "/") target: String, response: HttpServletResponse, session: HttpSession): String {
         items.logout()
+        session.removeAttribute(USER_ATTRIBUTE)
         remember.forget(response)
         return back(target)
     }
@@ -222,5 +229,10 @@ class ItemsController(
         val nextNumber = items.nextNumber(number)
         items.later(number)
         return if (next != null && nextNumber != null) "redirect:/records/$nextNumber" else "redirect:/records"
+    }
+
+    private companion object {
+        /** De naam van het sessiekenmerk waarin staat wie is ingelogd; zie `CurrentContextFilter` (die staat in een andere module). */
+        const val USER_ATTRIBUTE = "zcbsUser"
     }
 }

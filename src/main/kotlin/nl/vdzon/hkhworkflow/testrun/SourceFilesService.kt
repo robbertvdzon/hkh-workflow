@@ -12,7 +12,6 @@ import kotlin.io.path.name
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.SourceRoot
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 
 /**
  * Een pdf of afbeelding (jpg, png) in een map met scans. [processed] staat gevuld als het bestand al op het archief is gezet. Alle drie
@@ -45,14 +44,13 @@ data class CopyResult(val copied: List<String>, val skipped: List<String>)
  * invoermap. De originelen blijven staan en er wordt nooit iets overschreven. Wie het gescand heeft, is niet in de pdf te
  * vinden maar blijkt uit de bronmap: die wordt per bestand onthouden.
  */
-@Service
-class SourceFilesService(private val settingsService: SettingsService, private val processed: ProcessedLog, private val input: InputFolder) {
+class SourceFilesService(private val settingsService: SettingsService, private val processed: ProcessedLog, private val input: WorkFolders) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val dateFormat = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm").withZone(ZoneId.systemDefault())
 
     fun roots(): List<SourceRoot> = settingsService.get().sourceRoots()
 
-    private fun originsFile(): Path? = input.path()?.resolve("herkomst.tsv")
+    private fun originsFile(): Path? = input.invoer()?.resolve("herkomst.tsv")
 
     /** De map onder de bronmap [rootName], op [relPath] (met `/`). Weigert paden die buiten de bronmap uitkomen. */
     private fun resolve(root: SourceRoot, relPath: String): Path {
@@ -183,7 +181,7 @@ class SourceFilesService(private val settingsService: SettingsService, private v
     /** Haalt alle kopieën weg die de app zelf in de invoermap heeft gezet (wat Carla zelf neerzette, blijft staan). @return hoeveel. */
     @Synchronized
     fun removeAllCopies(): Int {
-        val folder = input.path() ?: return 0
+        val folder = input.invoer() ?: return 0
         val names = readOrigins().keys.toList()
         val removed = names.count { Files.deleteIfExists(folder.resolve(it)) }
         forget(names)
