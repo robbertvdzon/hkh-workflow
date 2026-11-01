@@ -20,6 +20,8 @@
         Start</a>
     <form th:if="${zcbsUser != null}" method="post" th:action="@{/zcbs/logout}" style="padding:8px 0 0">
         <input type="hidden" name="terug" value="/"><button class="btn btn-s" type="submit" style="width:100%">Uitloggen</button></form>
+    <!-- Alles hieronder staat helemaal onderin: de rechten, het beheer en de waarschuwing voor het echte archief. -->
+    <div style="flex-grow:1"></div>
     <div class="hint" th:if="${zcbsUser != null}" style="padding:14px 12px 0">
         <b>Rechten in ZCBS</b><br>
         <span th:if="${zcbsRights.isEmpty()}">geen</span>
@@ -34,7 +36,6 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
         Beheer</a>
     <form th:if="${isAdmin}" method="post" th:action="@{/beheer/uitloggen}" style="padding:0 12px"><button class="linkbtn" type="submit">Uitloggen als beheerder</button></form>
-    <div style="flex-grow:1"></div>
     <div class="hint" style="padding:16px 12px 0;border-top:1px solid #e0d8c6;color:var(--err);font-weight:600" th:if="${zcbsUser != null and zcbsRealArchive}">Het echte archief</div>
 </nav>
 </body>
