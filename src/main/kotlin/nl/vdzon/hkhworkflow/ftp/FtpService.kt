@@ -120,7 +120,7 @@ class FtpService(private val settingsService: SettingsService) {
     private fun configProblems(s: WorkflowSettings): List<String> = buildList {
         if (s.ftpHost.isBlank()) add("Ftp-host is niet ingesteld.")
         if (s.ftpUser.isBlank()) add("Ftp-gebruiker is niet ingesteld.")
-        if (s.ftpPassword.isEmpty()) add("Ftp-wachtwoord is niet ingesteld (Instellingen, bij de antwoorden voor images.exe).")
+        if (s.ftpPassword.isEmpty()) add("Ftp-wachtwoord is niet ingesteld (Instellingen, bij FTP-wachtwoord).")
         if (s.collection.isBlank()) add("Collectie is niet ingesteld.")
     }
 

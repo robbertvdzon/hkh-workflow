@@ -107,10 +107,8 @@ seconde langer. De beheerder (een sessie in de browser) heeft toegang tot **Inst
 
 ## 9. Wat nog niet kan of niet getest is
 
-- **Eén ZCBS-login voor de hele app.** Er is geen eigen login per gebruiker; de ingelogde ZCBS-gebruiker geldt voor iedereen die de app opent. De invoermap is wel per gebruiker, maar de
-  stand van de flow, de mappen van de programma's en de login zijn gedeeld: twee mensen tegelijk is dus niet bedoeld.
-- **De stand van een doorloop zit in het geheugen.** Na een herstart van de app staan de bestanden nog op schijf (invoermap, `werk`, map van de
-  programma's), maar de app weet niet meer waar hij was; dan eerst met de hand opruimen of "Opnieuw beginnen".
+- **Meer gebruikers tegelijk** (sinds 31 oktober 2026, zie [specs.md](specs.md)): elke gebruiker heeft een eigen ZCBS-login en een eigen doorloop met eigen mappen en een eigen kopie van de
+  programma's; er is geen slot per collectie. De stand staat per doorloop in `sessie.json` en overleeft een herstart (een stap die liep staat dan op mislukt).
 - Niets is getest tegen de echte HKH-server of op Windows met `K:\`-paden; alleen op de Mac met de nep-programma's, de lokale ZCBS in Docker en een ftp-server
   in Docker.
 - Het invoeren van gegevens (wie wat nog moet invullen) houden de vrijwilligers zelf bij; de app biedt alleen "kies een nummer of reeks".

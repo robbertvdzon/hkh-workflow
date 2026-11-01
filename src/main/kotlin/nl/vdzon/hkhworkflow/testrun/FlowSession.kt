@@ -21,8 +21,8 @@ import nl.vdzon.hkhworkflow.ftp.UploadItem
 import org.slf4j.LoggerFactory
 
 /**
- * De doorloop van "Nieuwe bestanden" van één gebruiker in één collectie: de stand (bestanden, stappen, controles) en alles wat er uit volgt. Per
- * collectie is er hooguit één doorloop tegelijk ([TestRunService] houdt dat bij en geeft elke gebruiker de zijne); elke doorloop heeft zijn eigen
+ * De doorloop van "Nieuwe bestanden" van één gebruiker in één collectie: de stand (bestanden, stappen, controles) en alles wat er uit volgt. Er is
+ * geen slot per collectie: elke gebruiker heeft zijn eigen doorloop ([TestRunService] houdt ze bij); elke doorloop heeft zijn eigen
  * mappen ([WorkFolders]), zijn eigen programma's ([ExeRunner]) en kijkt via [Current] naar de ZCBS-sessie van zijn eigenaar.
  */
 class FlowSession(
@@ -641,7 +641,7 @@ class FlowSession(
                 if (current.gated && StepType.IMAGES !in current.reviewed) add("Controleer eerst de bestanden van images.exe en bevestig dat ze goed zijn.")
                 if (s.ftpHost.isBlank()) add("Ftp-host is niet ingesteld (Instellingen).")
                 if (s.ftpUser.isBlank()) add("Ftp-gebruiker is niet ingesteld (Instellingen).")
-                if (s.ftpPassword.isEmpty()) add("Ftp-wachtwoord is niet ingesteld (Instellingen, bij de antwoorden voor images.exe).")
+                if (s.ftpPassword.isEmpty()) add("Ftp-wachtwoord is niet ingesteld (Instellingen, bij FTP-wachtwoord).")
                 if (s.collection.isBlank()) add("Collectie is niet ingesteld (Instellingen).")
                 step.activeFiles.forEach {
                     if (!l.ocr(it).present(allowEmpty = true)) add("Tekstbestand ontbreekt: ${l.ocr(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")

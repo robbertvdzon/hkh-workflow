@@ -54,7 +54,7 @@ class FlowLogReporter(
         val pendingEvents = mutableListOf<String>()
     }
 
-    /** Per doorloop de sessie in het logboek. Er zijn meer doorlopen tegelijk: één per collectie. */
+    /** Per doorloop de sessie in het logboek. Er zijn meer doorlopen tegelijk: één per gebruiker en collectie. */
     private val sessions = java.util.IdentityHashMap<FlowSession, Session>()
 
     @Scheduled(initialDelay = 5_000, fixedDelay = 3_000)

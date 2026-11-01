@@ -137,8 +137,8 @@ installatie door de auteur of aangewezen persoon; bronvermelding verplicht; geen
   | 13 | `Geef een Return/Enter om dit DOS-window te verlaten` | Enter | het programma sluit pas na deze Enter |
 
   `OVERSCHRIJVEN` (oude images met dezelfde naam) is in deze runs niet gevraagd, omdat er geen bestand met die naam stond.
-  De vragen 2, 8, 11 en 13 zitten nog niet in de automatische antwoorden van de app (`TestRunService.imagesRules`); de app
-  stopt daar en toont de vraag (bij 8 is dat het bedoelde gedrag). Bij 11 en 13 zou "n" en Enter volstaan.
+  Stand 1 november 2026: de vaste antwoorden staan in `ExeAnswers`; de vragen 2, 8 en 13 zitten er inmiddels in, en vraag 11 krijgt `j`
+  (het tijdelijke PC-bestand met nieuwe records wordt verwijderd). Een onbekende vraag beantwoordt de app niet: hij stopt en toont de vraag.
 - **Wat images.exe verder doet, gemeten:** het draait onder Windows 10 in een pijp zonder `PERLIO`-instelling; de vragen komen direct
   door. Het schrijft in `images.log` op de server een regel
   `jjjjmmdd-hh:mm|images.exe|<versie>|<datum>|<datum>|<app>|1|A|-init-iv1-iv2-iv3-B-ftp1-ftp2-C-up1-up2|<Windows-gebruiker>`.

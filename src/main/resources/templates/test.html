@@ -116,8 +116,7 @@
                             <a th:href="@{/test/log}" target="_blank">Volledig log</a>
                         </div>
                         <div class="alert alert-err" style="margin-bottom:8px" th:if="${console.autoStuck}">
-                            Automatisch: deze vraag wordt door geen enkele regel herkend. Beantwoord hem hieronder handmatig,
-                            of voeg een regel toe bij <a th:href="@{/instellingen}">Instellingen</a>.
+                            Automatisch: deze vraag wordt door geen enkele regel herkend. Beantwoord hem hieronder handmatig.
                         </div>
                         <div class="alert alert-info" style="margin-bottom:8px" th:if="${console.mode.name() == 'IN_APP' and console.suspiciousSilence}">
                             <span th:if="${console.label.contains('pdf2zcbs')}"><b>Bij pdf2zcbs.exe is dat normaal</b> als pdf2zcbs.ini de vragen al beantwoordt: het programma toont dan niets en klaar is klaar. </span>Er komt geen uitvoer (meer) terwijl het programma draait. Wacht het op een antwoord op een vraag die je niet ziet?
