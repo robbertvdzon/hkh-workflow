@@ -1,7 +1,6 @@
 package nl.vdzon.hkhworkflow.testrun
 
 import java.nio.file.Path
-import java.time.Duration
 import java.time.Instant
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
@@ -15,22 +14,14 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tools.jackson.databind.ObjectMapper
 
-/** Wie een collectie nu in gebruik heeft voor "Nieuwe bestanden", sinds wanneer en hoe lang het al stil is. */
-data class FlowLock(val collection: String, val owner: String, val since: Instant, val lastActive: Instant, val phase: Int)
-
-/** Een andere gebruiker heeft de collectie in gebruik: er is hooguit één doorloop per collectie. */
-class FlowLockedException(val lock: FlowLock) : IllegalStateException(
-    "In ${lock.collection} werkt ${lock.owner.ifEmpty { "de beheerder" }} al" +
-        " (sinds ${java.time.LocalTime.ofInstant(lock.since, java.time.ZoneId.systemDefault()).withNano(0).toString().take(5)}," +
-        " laatst actief ${java.time.LocalTime.ofInstant(lock.lastActive, java.time.ZoneId.systemDefault()).toString().take(5)}). " +
-        "Wacht tot die klaar is, of vraag de beheerder om de collectie vrij te geven.",
-)
+/** Een doorloop die nu loopt, voor het overzicht van de beheerder. */
+data class ActiveFlow(val collection: String, val owner: String, val since: Instant, val lastActive: Instant, val phase: Int)
 
 /**
- * De doorlopen van "Nieuwe bestanden": per collectie hooguit één, van de gebruiker die ermee begon ([FlowSession]); twee gebruikers kunnen wel
- * tegelijk in twee verschillende collecties werken. Elke aanroep gaat naar de doorloop van de gebruiker en collectie die nu aan het woord zijn
- * ([Current]). Een doorloop die een tijd niets meer heeft gedaan (standaard 2 uur) komt vrij voor een ander; de beheerder kan hem ook vrijgeven.
- * Heeft iemand anders de collectie in gebruik, dan geven de aanroepen een [FlowLockedException].
+ * De doorlopen van "Nieuwe bestanden": één per gebruiker en collectie ([FlowSession]), elk in zijn eigen mappen. Er is geen slot per collectie:
+ * meer gebruikers kunnen tegelijk in dezelfde collectie werken. Het enige dat ze kunnen delen zijn de recordnummers; daarom controleert de
+ * doorloop vlak voor images.exe nog eens of de nummers vrij zijn in ZCBS. Elke aanroep gaat naar de doorloop van de gebruiker en collectie die
+ * nu aan het woord zijn ([Current]).
  */
 @Service
 class TestRunService(
@@ -40,12 +31,12 @@ class TestRunService(
     private val processed: ProcessedLog,
     @Value("\${hkh.workflow.console-charset:IBM850}") private val charsetName: String,
     @Value("\${hkh.workflow.log-dir:logs}") private val logDir: String,
-    @Value("\${hkh.workflow.session-timeout-minutes:120}") timeoutMinutes: Long,
     private val mapper: ObjectMapper,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val timeout: Duration = Duration.ofMinutes(timeoutMinutes)
     private val flows = LinkedHashMap<String, FlowSession>()
+
+    private fun key(user: String, collection: String) = "${user.trim().lowercase()}/$collection"
 
     private fun create(user: String, collection: String): FlowSession {
         val folders = WorkFolders(settingsService, user, collection)
@@ -53,43 +44,23 @@ class TestRunService(
         return FlowSession(settingsService, runner, ftpService, itemEditService, SourceFilesService(settingsService, processed, folders), processed, folders, collection)
     }
 
-    private fun expired(f: FlowSession, now: Instant = Instant.now()) = f.claimed && Duration.between(f.lastActivity, now) > timeout
-
-    private fun lockOf(f: FlowSession) = FlowLock(f.collection, f.owner, f.claimedSince ?: f.lastActivity, f.lastActivity, f.flowViewQuietly())
-
-    /** De doorloop van de gebruiker die nu aan het woord is, in zijn collectie. Gooit [FlowLockedException] als een ander de collectie heeft. */
+    /** De doorloop van de gebruiker die nu aan het woord is, in zijn collectie; een nieuwe als hij er nog geen heeft. */
     fun current(): FlowSession = synchronized(flows) {
         val user = Current.user().orEmpty()
         val collection = Current.collection()
-        val existing = flows[collection]
-        val flow = when {
-            existing == null -> create(user, collection).also { flows[collection] = it }
-            existing.owner.equals(user, ignoreCase = true) -> existing
-            !existing.claimed || expired(existing) -> {
-                // Een ander die niets gestart heeft, of te lang stil is: de collectie komt vrij voor deze gebruiker.
-                if (existing.claimed) existing.release()
-                create(user, collection).also { flows[collection] = it }
-            }
-            else -> throw FlowLockedException(lockOf(existing))
-        }
-        flow.touch()
-        flow
-    }
-
-    /** Wie de collectie van de gebruiker die nu aan het woord is, in gebruik heeft, als dat een ander is; anders null. */
-    fun lockedBy(collection: String = Current.collection()): FlowLock? = synchronized(flows) {
-        val existing = flows[collection] ?: return null
-        if (existing.owner.equals(Current.user().orEmpty(), ignoreCase = true) || !existing.claimed || expired(existing)) null else lockOf(existing)
+        flows.getOrPut(key(user, collection)) { create(user, collection) }.also { it.touch() }
     }
 
     /** Alle doorlopen die er nu zijn (ook zonder iets gestart te hebben), met hun eigenaar. */
     fun sessions(): List<FlowSession> = synchronized(flows) { flows.values.toList() }
 
-    /** De doorlopen die een gebruiker in gebruik heeft, voor de beheerder. */
-    fun locks(): List<FlowLock> = synchronized(flows) { flows.values.filter { it.claimed }.map { lockOf(it) } }
+    /** De doorlopen waar iemand mee bezig is, voor de beheerder. */
+    fun active(): List<ActiveFlow> = synchronized(flows) {
+        flows.values.filter { it.claimed }.map { ActiveFlow(it.collection, it.owner, it.claimedSince ?: it.lastActivity, it.lastActivity, it.flowViewQuietly()) }
+    }
 
-    /** Geeft een collectie vrij (de beheerder): de doorloop wordt gestopt en de gebruiker moet opnieuw beginnen. */
-    fun release(collection: String): Boolean = synchronized(flows) { flows.remove(collection)?.also { it.release() } != null }
+    /** Stopt de doorloop van [user] in [collection] (de beheerder): wat loopt wordt gestopt en de gebruiker moet opnieuw beginnen. */
+    fun stop(user: String, collection: String): Boolean = synchronized(flows) { flows.remove(key(user, collection))?.also { it.release() } != null }
 
     private val lastSaved = java.util.IdentityHashMap<FlowSession, String>()
 
@@ -129,10 +100,10 @@ class TestRunService(
                     runCatching {
                         val state = mapper.readValue(java.nio.file.Files.readString(file), FlowState::class.java)
                         synchronized(flows) {
-                            if (state.collection !in flows) {
+                            if (key(state.owner, state.collection) !in flows) {
                                 val flow = create(state.owner, state.collection)
                                 flow.restore(state)
-                                flows[state.collection] = flow
+                                flows[key(state.owner, state.collection)] = flow
                                 log.info("Doorloop van {} in {} teruggezet (fase {})", state.owner, state.collection, flow.flowViewQuietly())
                             }
                         }

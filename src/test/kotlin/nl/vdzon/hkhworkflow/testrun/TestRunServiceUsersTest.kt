@@ -20,8 +20,8 @@ import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
-/** Per collectie hooguit één doorloop; twee gebruikers in twee collecties tegelijk werken elk in hun eigen mappen. */
-class TestRunServiceLockTest {
+/** Elke gebruiker heeft per collectie een eigen doorloop in eigen mappen, zonder slot: ook twee gebruikers in dezelfde collectie werken tegelijk. */
+class TestRunServiceUsersTest {
     @TempDir
     lateinit var dir: Path
 
@@ -40,10 +40,10 @@ class TestRunServiceLockTest {
     @AfterTest
     fun tearDown() = Current.set(null)
 
-    private fun service(timeoutMinutes: Long = 120): TestRunService {
+    private fun service(): TestRunService {
         val mapper = ObjectMapper()
         val processed = ProcessedLog(settings, WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString()))
-        return TestRunService(settings, FtpService(settings), ItemEditService(settings), processed, "UTF-8", dir.resolve("logs").toString(), timeoutMinutes, mapper)
+        return TestRunService(settings, FtpService(settings), ItemEditService(settings), processed, "UTF-8", dir.resolve("logs").toString(), mapper)
     }
 
     /** Zet een pdf in de invoermap van [user] in [collection], zoals het kiezen van bestanden dat doet. */
@@ -55,16 +55,19 @@ class TestRunServiceLockTest {
     private fun <T> asUser(user: String, collection: String, block: () -> T): T = Current.runAs(user, collection, block)
 
     @Test
-    fun `een tweede gebruiker kan de collectie niet gebruiken zolang de eerste bezig is`() {
+    fun `twee gebruikers in dezelfde collectie werken tegelijk, elk met eigen bestanden en een eigen stand`() {
         val svc = service()
-        choose("Jelly", "archief")
+        choose("Jelly", "archief", "jelly.pdf")
+        choose("Ria", "archief", "ria.pdf")
         asUser("Jelly", "archief") { svc.start("100") }
-        assertEquals("Jelly", asUser("Ria", "archief") { svc.lockedBy() }?.owner)
-        val locked = assertFailsWith<FlowLockedException> { asUser("Ria", "archief") { svc.view() } }
-        assertTrue(locked.message!!.contains("In archief werkt Jelly al"), locked.message)
-        // Jelly zelf merkt er niets van.
-        assertEquals(1, asUser("Jelly", "archief") { svc.view() }!!.fileCount)
-        assertNull(asUser("Jelly", "archief") { svc.lockedBy() })
+        asUser("Ria", "archief") { svc.start("500") }
+        assertEquals(listOf("jelly.pdf"), asUser("Jelly", "archief") { svc.view() }!!.rows.map { it.originalName })
+        assertEquals(listOf("ria.pdf"), asUser("Ria", "archief") { svc.view() }!!.rows.map { it.originalName })
+        assertEquals("100", asUser("Jelly", "archief") { svc.view() }!!.startNumber)
+        assertEquals("500", asUser("Ria", "archief") { svc.view() }!!.startNumber)
+        assertEquals(setOf("Jelly", "Ria"), svc.active().map { it.owner }.toSet())
+        assertTrue(Files.isDirectory(work.resolve("Jelly/archief/pdf2zcbs")))
+        assertTrue(Files.isDirectory(work.resolve("Ria/archief/pdf2zcbs")))
     }
 
     @Test
@@ -78,41 +81,38 @@ class TestRunServiceLockTest {
         assertEquals(listOf("foto.pdf"), asUser("Ria", "beeldbank") { svc.view() }!!.rows.map { it.originalName })
         assertEquals("100", asUser("Jelly", "archief") { svc.view() }!!.startNumber)
         assertEquals("500", asUser("Ria", "beeldbank") { svc.view() }!!.startNumber)
-        assertNull(asUser("Jelly", "archief") { svc.lockedBy() })
-        assertNull(asUser("Ria", "beeldbank") { svc.lockedBy() })
-        assertEquals(setOf("archief", "beeldbank"), svc.locks().map { it.collection }.toSet())
+        assertEquals(setOf("archief", "beeldbank"), svc.active().map { it.collection }.toSet())
         assertTrue(Files.isDirectory(work.resolve("Jelly/archief/pdf2zcbs")))
         assertTrue(Files.isDirectory(work.resolve("Ria/beeldbank/pdf2zcbs")))
     }
 
     @Test
-    fun `iemand die niets gestart heeft houdt de collectie niet vast`() {
+    fun `iemand die alleen kijkt telt niet als bezig`() {
         val svc = service()
         asUser("Jelly", "archief") { svc.flowView() }
-        assertNull(asUser("Ria", "archief") { svc.lockedBy() }, "Jelly keek alleen, ze begon niets")
         asUser("Ria", "archief") { svc.flowView() }
-        assertEquals(emptyList(), svc.locks())
+        assertEquals(emptyList(), svc.active())
     }
 
     @Test
-    fun `na reset of klaar komt de collectie vrij`() {
+    fun `de naam met andere hoofdletters is dezelfde gebruiker`() {
         val svc = service()
         choose("Jelly", "archief")
         asUser("Jelly", "archief") { svc.start("100") }
-        assertNotNull(asUser("Ria", "archief") { svc.lockedBy() })
-        asUser("Jelly", "archief") { svc.reset() }
-        assertNull(asUser("Ria", "archief") { svc.lockedBy() })
-        assertEquals(emptyList(), asUser("Ria", "archief") { svc.filesInTestFolder() })
+        assertEquals("100", asUser("jelly", "archief") { svc.view() }!!.startNumber)
+        assertEquals(1, svc.sessions().size)
     }
 
     @Test
-    fun `een doorloop die te lang stil ligt komt vrij voor een ander`() {
-        val svc = service(timeoutMinutes = 0)
-        choose("Jelly", "archief")
+    fun `na reset heeft de gebruiker weer een lege doorloop, en die van een ander blijft staan`() {
+        val svc = service()
+        choose("Jelly", "archief", "jelly.pdf")
+        choose("Ria", "archief", "ria.pdf")
         asUser("Jelly", "archief") { svc.start("100") }
-        Thread.sleep(20)
-        assertNull(asUser("Ria", "archief") { svc.lockedBy() })
-        assertEquals("Ria", asUser("Ria", "archief") { svc.current() }.owner)
+        asUser("Ria", "archief") { svc.start("500") }
+        asUser("Jelly", "archief") { svc.reset() }
+        assertEquals(listOf("Ria"), svc.active().map { it.owner })
+        assertEquals("500", asUser("Ria", "archief") { svc.view() }!!.startNumber)
     }
 
     @Test
@@ -130,12 +130,11 @@ class TestRunServiceLockTest {
         // Een nieuwe app leest de bewaarde doorloop terug.
         val after = service()
         after.restore()
-        assertEquals(setOf("archief"), after.locks().map { it.collection }.toSet())
+        assertEquals(listOf("Jelly"), after.active().map { it.owner })
         val view = asUser("Jelly", "archief") { after.view() }!!
         assertEquals("100", view.startNumber)
         assertEquals(listOf("scan.pdf"), view.rows.map { it.originalName })
         assertEquals("DONE", view.rows[0].cells[0].status, "de hernoem-stap was klaar")
-        assertEquals("Jelly", asUser("Ria", "archief") { after.lockedBy() }?.owner)
         // Ook als de ZCBS-naam met andere hoofdletters wordt ingelogd.
         assertEquals("100", asUser("jelly", "archief") { after.view() }!!.startNumber)
     }
@@ -162,12 +161,14 @@ class TestRunServiceLockTest {
     }
 
     @Test
-    fun `de beheerder kan een collectie vrijgeven`() {
+    fun `de beheerder kan de doorloop van een gebruiker stoppen, zonder die van een ander`() {
         val svc = service()
-        choose("Jelly", "archief")
+        choose("Jelly", "archief", "jelly.pdf")
+        choose("Ria", "archief", "ria.pdf")
         asUser("Jelly", "archief") { svc.start("100") }
-        assertTrue(svc.release("archief"))
-        assertEquals(false, svc.release("archief"), "al vrij")
-        assertNull(asUser("Ria", "archief") { svc.lockedBy() })
+        asUser("Ria", "archief") { svc.start("500") }
+        assertTrue(svc.stop("jelly", "archief"))
+        assertEquals(false, svc.stop("Jelly", "archief"), "al gestopt")
+        assertEquals(listOf("Ria"), svc.active().map { it.owner })
     }
 }

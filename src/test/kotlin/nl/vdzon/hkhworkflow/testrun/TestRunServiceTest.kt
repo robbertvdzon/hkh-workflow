@@ -388,6 +388,22 @@ class TestRunServiceTest {
     }
 
     @Test
+    fun `images start niet als iemand anders intussen een van de nummers heeft gebruikt, en daarna kan het opnieuw`() {
+        assertEquals(null, items.login("Test Beheerder", "Beheer1"))
+        service.start("00000001")
+        runUntil("IMAGES")
+        // Een andere gebruiker maakt in de tussentijd record 2 aan.
+        zcbs.addRecord("edit-leeg.html", "00000002")
+        val step = next()
+        service.execute(step.id, RunMode.IN_APP)
+        val failed = stepView(step.id)
+        assertEquals("FAILED", failed.status)
+        assertTrue(failed.message!!.contains("Voordat images.exe"), failed.message)
+        assertTrue(failed.message!!.contains("Opnieuw beginnen"), failed.message)
+        assertTrue(!Files.exists(imgDir.resolve("images")) || filesIn(imgDir.resolve("images")).isEmpty(), "er is niets naar images.exe gekopieerd")
+    }
+
+    @Test
     fun `zonder lijst met vrije nummers uit ZCBS start er niets`() {
         service.acceptInput()
         assertTrue(service.prepare("90000000")!!.contains("vrije nummers"), "niet ingelogd")

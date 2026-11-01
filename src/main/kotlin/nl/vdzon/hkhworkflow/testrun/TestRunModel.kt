@@ -47,6 +47,10 @@ class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
     @Volatile
     var message: String? = null
 
+    /** Is deze stap al eens gestart? Bij een nieuwe poging bestaan de records van de eerste poging al, dus dan is de controle op vrije nummers niet meer zinvol. */
+    @Volatile
+    var attempted: Boolean = false
+
     /** Paden op de server die in deze run zijn geüpload en gecontroleerd (alleen bij de uploadstap). */
     val uploaded: MutableSet<String> = ConcurrentHashMap.newKeySet()
 

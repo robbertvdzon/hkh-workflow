@@ -177,6 +177,7 @@ class FlowSession(
         val steps = state.steps.map { st ->
             Step(st.id, StepType.valueOf(st.type), st.fileIndexes.mapNotNull { i -> files.firstOrNull { it.index == i } }).also { step ->
                 step.status = StepStatus.valueOf(st.status)
+                step.attempted = step.status != StepStatus.PENDING
                 step.message = st.message
                 step.uploaded += st.uploaded
                 if (step.status == StepStatus.RUNNING) {
@@ -482,6 +483,8 @@ class FlowSession(
             val settings = settings()
             val problems = problems(current, step, settings)
             check(problems.isEmpty()) { problems.joinToString("\n") }
+            if (step.type == StepType.IMAGES && !step.attempted) numbersTaken(step)?.let { error(it) }
+            step.attempted = true
             when (step.type) {
                 StepType.RENAME -> rename(current, step)
                 StepType.PDF2ZCBS -> runPdf2zcbs(current, step, settings, mode, auto)
@@ -494,6 +497,20 @@ class FlowSession(
             step.message = e.message ?: e.javaClass.simpleName
             log.warn("Stap {} ({}) mislukt: {}", step.id, step.type, step.message)
         }
+    }
+
+    /**
+     * images.exe maakt de records aan. Er is geen slot per collectie: heeft iemand anders intussen een van de nummers gebruikt, dan moet dat
+     * nu blijken en niet pas als images.exe een bestaand record zou overschrijven. Alleen bij de eerste poging van de stap.
+     * @return een melding als een nummer niet meer vrij is, anders null (ook als ZCBS de lijst niet geeft: dan kan het niet worden gecontroleerd).
+     */
+    private fun numbersTaken(step: Step): String? {
+        val numbers = step.files.mapNotNull { it.number.toLongOrNull() }.sorted()
+        if (numbers.isEmpty()) return null
+        val free = itemEditService.freeNumbers() ?: return null
+        val problem = free.check(numbers.first(), numbers.size) ?: return null
+        return "Voordat images.exe de records aanmaakt: $problem Waarschijnlijk heeft iemand anders intussen dezelfde nummers gebruikt. " +
+            "Er is niets aangemaakt. Kies \"Opnieuw beginnen\" en begin met een ander beginnummer."
     }
 
     @Synchronized

@@ -6,7 +6,6 @@ import nl.vdzon.hkhworkflow.items.Current
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
-import nl.vdzon.hkhworkflow.testrun.TestRunService
 import nl.vdzon.hkhworkflow.ux.AdminAccess
 import nl.vdzon.hkhworkflow.ux.CurrentContextFilter
 import org.springframework.stereotype.Controller
@@ -52,7 +51,6 @@ class ShellController(
     private val items: ItemEditService,
     private val admin: AdminAccess,
     private val settingsService: SettingsService,
-    private val testRunService: TestRunService,
 ) {
 
     @GetMapping("/")
@@ -86,7 +84,6 @@ class ShellController(
         if (!items.canUse(name)) return "redirect:/collectie"
         // Vanaf hier werkt deze browsersessie in deze collectie.
         session.setAttribute(CurrentContextFilter.COLLECTION, name)
-        model.addAttribute("lock", testRunService.lockedBy(name))
         model.addAttribute("active", "start")
         model.addAttribute("collection", name)
         return "collectie-acties"

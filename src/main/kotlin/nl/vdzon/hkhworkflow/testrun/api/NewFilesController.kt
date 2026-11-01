@@ -46,14 +46,6 @@ class NewFilesController(
         @RequestParam("pad", defaultValue = "") path: String,
         model: Model,
     ): String {
-        // Heeft een andere gebruiker deze collectie in gebruik, dan is er maar één ding te zien: wie en sinds wanneer.
-        testRunService.lockedBy()?.let { lock ->
-            model.addAttribute("active", "nieuw")
-            model.addAttribute("lock", lock)
-            model.addAttribute("sinceText", java.time.LocalTime.ofInstant(lock.since, java.time.ZoneId.systemDefault()).toString().take(5))
-            model.addAttribute("activeText", java.time.LocalTime.ofInstant(lock.lastActive, java.time.ZoneId.systemDefault()).toString().take(5))
-            return "nieuw-bezet"
-        }
         val settings = settingsService.get()
         // Klaar is één keer te zien; opent Carla de pagina daarna weer, dan begint ze weer bij het begin.
         val (flow, summary) = testRunService.pageState()

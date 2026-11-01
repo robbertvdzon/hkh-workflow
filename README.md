@@ -38,9 +38,10 @@ Instelbaar met omgevingsvariabelen:
 
 De app draait op één server; gebruikers werken vanaf hun eigen pc in de browser. Elke gebruiker heeft een eigen ZCBS-sessie en eigen mappen
 (`<werkmap>\<ZCBS-naam>\<collectie>\` met `invoer`, `werk`, `pdf2zcbs`, `images` en `resten`; de programma's staan daarin als kopie, zodat
-de gebruiker kan meekijken). Per collectie kan er hooguit één gebruiker tegelijk nieuwe bestanden in ZCBS zetten; twee gebruikers in twee
-collecties kunnen tegelijk werken. Wie de collectie heeft, staat op de startpagina; na `hkh.workflow.session-timeout-minutes` (standaard 120)
-zonder activiteit komt ze vrij, en de beheerder kan haar vrijgeven bij Instellingen, Sessies. De stand van een doorloop wordt in `sessie.json`
+de gebruiker kan meekijken). Er is geen slot per collectie: meer gebruikers kunnen tegelijk, ook in dezelfde collectie, elk in hun eigen doorloop. Het enige dat ze
+kunnen delen zijn de recordnummers; daarom controleert de app vlak voordat images.exe de records aanmaakt nog eens of de nummers vrij zijn
+in ZCBS, en meldt het als iemand anders ze intussen heeft gebruikt (dan begin je opnieuw met een ander beginnummer). De beheerder ziet bij
+Instellingen, Sessies wie er bezig is en kan een doorloop stoppen. De stand van een doorloop wordt in `sessie.json`
 in de map van de gebruiker bewaard en na een herstart van de app teruggezet. Zet de werkmap en de mappen met scans als UNC-pad
 (`\\server\...`) als de app als Windows-service draait: gekoppelde schijven zijn er niet.
 
