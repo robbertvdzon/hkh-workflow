@@ -10,19 +10,37 @@ Hiermee vul je de gegevens (titel, omschrijving, thema enzovoort) van records in
 ## Stappen
 
 1. **Inloggen.** Typ bij **Naam** je naam, precies zoals in ZCBS, en bij **Wachtwoord** je wachtwoord. Klik op **Inloggen**.
+
+   ![Inloggen: naam (1), wachtwoord (2), Inloggen (3)](afbeeldingen/inloggen.jpg)
 2. **Kies de collectie.** Klik op **archief**.
+
+   ![Kies de collectie archief (1)](afbeeldingen/collectie.jpg)
 3. **Kies wat je wilt doen.** Klik op **ZCBS records aanpassen**.
+
+   ![Klik op ZCBS records aanpassen (1)](afbeeldingen/kies-actie-records.jpg)
 4. **Kies de records.** Typ bij **Recordnummer of reeks** een nummer of een reeks. Meer mag, met een komma ertussen: `11934-11945, 11950`.
    Maximaal 30 tegelijk. Klik op **Toon deze records**.
+
+   ![Typ het nummer of de reeks (1) en klik op Toon deze records (2)](afbeeldingen/records-1-kiezen.jpg)
 5. **Bekijk de lijst.** Je ziet per record het nummer, de titel, of het **Op internet** staat en de **Status**.
    Met **Pdf** of **Afbeelding** zie je het document in een venster (met **Sluiten** sluit je het weer).
+
+   ![De lijst: Pdf of Afbeelding (1), Open in ZCBS (2), Bewerk (3)](afbeeldingen/records-2-lijst.jpg)
+
+   ![Het document in een venster; met Sluiten ga je terug](afbeeldingen/records-2-popup.jpg)
 6. **Open een record.** Klik achter het record op **Bewerk**. Ben je er al mee begonnen, dan staat er **Verder**; is het al klaar, dan **Nog eens**.
    **Let op: het record is vanaf nu 10 minuten voor anderen vergrendeld.** Open dus alleen wat je echt gaat invullen.
+
+   ![Het formulier: links het document, rechts de velden (1)](afbeeldingen/records-3-formulier.jpg)
 7. **Vul de velden in.** Links zie je het document, rechts de velden. Een **?** achter een veldnaam geeft uitleg.
    Bij een lijst waar je meer dan één ding mag kiezen (zoals Thema) houd je **Ctrl** (op een Mac **Cmd**) ingedrukt.
    Bij **Plaatsing op internet** kies je **ja** of **neen**.
 8. **Sla op.** Klik op **Opslaan en volgende** om meteen door te gaan met het volgende record, of op **Opslaan** om terug te gaan naar de lijst.
    Je ziet een groen bericht: het record is opgeslagen en teruggecontroleerd. In de lijst staat de status dan op **opgeslagen**.
+
+   ![Onderaan: Opslaan en volgende (1), Opslaan (2), Volgende zonder opslaan (3)](afbeeldingen/records-3-opslaan.jpg)
+
+   ![Opgeslagen: het groene bericht en de status opgeslagen](afbeeldingen/records-4-opgeslagen.jpg)
 9. **Herhaal** stap 6 tot en met 8 voor de volgende records. Bovenaan de lijst zie je hoeveel er klaar zijn ("x van y opgeslagen").
 10. **Klaar?** Klik in het menu op **Uitloggen**.
 

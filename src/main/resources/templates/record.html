@@ -15,7 +15,7 @@
             <a class="btn btn-s btn-sm" th:if="${zcbsUrl}" th:href="${zcbsUrl}" target="_blank">Open in ZCBS</a>
         </div>
 
-        <div class="alert alert-ok" th:if="${saved != null}" th:text="'Record ' + ${saved} + ' is opgeslagen en teruggecontroleerd. De beheerder krijgt een e-mail met het record.'"></div>
+        <div class="alert alert-ok" th:if="${saved != null}" th:text="'Record ' + ${saved} + ' is opgeslagen en teruggecontroleerd. ZCBS stuurt zelf een e-mail met het record.'"></div>
         <div class="alert alert-err stack" th:if="${panel == 'unsafe' or panel == 'error'}" style="gap:10px">
             <b th:text="${panel == 'unsafe'} ? 'Dit record is niet veilig te bewerken in deze app.' : 'Er ging iets mis.'"></b>
             <span th:each="m : ${messages}" th:text="${m}" style="white-space:pre-line"></span>

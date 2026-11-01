@@ -9,13 +9,13 @@
         <div class="head">
             <div>
                 <h1>ZCBS records aanpassen</h1>
-                <p class="sub">Kies de records die je wilt invullen of aanpassen en bewerk ze één voor één. Alles gaat via het formulier van ZCBS zelf, met een voorbeeld vooraf en teruglezen achteraf.
+                <p class="sub">Kies de records die je wilt invullen of aanpassen en bewerk ze één voor één. Alles gaat via het formulier van ZCBS zelf, met teruglezen achteraf.
                     Ingelogd bij ZCBS als <b th:text="${items.user}">Carla</b>.</p>
             </div>
         </div>
         <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
         <div class="alert alert-info" th:if="${info}" th:text="${info}"></div>
-        <div class="alert alert-ok" th:if="${saved != null}" th:text="'Record ' + ${saved} + ' is opgeslagen en teruggecontroleerd. De beheerder krijgt een e-mail met het record.'"></div>
+        <div class="alert alert-ok" th:if="${saved != null}" th:text="'Record ' + ${saved} + ' is opgeslagen en teruggecontroleerd. ZCBS stuurt zelf een e-mail met het record.'"></div>
 
         <section class="card pad stack" style="max-width:640px">
             <h2 style="margin:0" th:text="${records.isEmpty()} ? 'Welke records?' : 'Andere records kiezen'">Welke records?</h2>

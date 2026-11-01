@@ -13,7 +13,7 @@
         <div class="alert alert-info" th:if="${needsLogin}">Log eerst in bij ZCBS.</div>
         <section class="card pad stack" style="max-width:520px">
             <h2 style="margin:0">Inloggen bij ZCBS</h2>
-            <p class="muted" style="margin:0">Dit zijn dezelfde gegevens als op de ZCBS-website. De app bewaart ze alleen zolang hij draait en schrijft ze nergens op.</p>
+            <p class="muted" style="margin:0">Dit zijn dezelfde gegevens als op de ZCBS-website. De app bewaart ze alleen in het geheugen. Zodat je na een herstart niet opnieuw hoeft in te loggen, onthoudt je browser ze versleuteld (30 dagen) tot je uitlogt.</p>
             <div class="alert alert-info" th:unless="${zcbsConfigured}">Het adres van ZCBS is nog niet ingesteld. Dat doet de beheerder bij <a th:href="@{/instellingen}">Instellingen</a>.</div>
             <form method="post" th:action="@{/zcbs/login}" class="stack" autocomplete="off">
                 <input type="hidden" name="terug" value="/">

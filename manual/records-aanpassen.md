@@ -50,6 +50,9 @@ Alleen de collectie **archief** is nu beschikbaar. Andere collecties staan wel o
 
 ### 2.1 Inloggen
 
+![Het inlogscherm](afbeeldingen/inloggen.jpg)
+
+
 Op de startpagina (**Welkom bij ZcbsServer**) staat het blok **Inloggen bij ZCBS** met de velden **Naam** en **Wachtwoord** en de knop
 **Inloggen**. Gebruik dezelfde gegevens als op de ZCBS-website; typ de naam precies zoals in ZCBS. Zonder inlog stuurt de app je bij elke
 pagina van Carla's functies terug naar de startpagina met de melding "Log eerst in bij ZCBS."
@@ -71,6 +74,11 @@ Wat er met naam en wachtwoord gebeurt (uit de code gelezen):
 > daar een uitzondering op. Zie ook het overzicht onderaan.
 
 ### 2.2 Rechten per collectie
+
+![De collecties: alleen het archief is te kiezen](afbeeldingen/collectie.jpg)
+
+![De keuze ZCBS records aanpassen](afbeeldingen/kies-actie-records.jpg)
+
 
 In ZCBS gelden rechten **per collectie**. De app probeert daarom dezelfde naam en hetzelfde wachtwoord bij het ZCBS-script van **elke
 collectie** (archief, artikelen, beeldbank, bidprent, library, objecten, transcripties). Je bent ingelogd zodra het bij **minstens één**
@@ -94,6 +102,9 @@ Dan is alles wat je opslaat echt.
 ---
 
 ## 3. Records kiezen
+
+![Een nummer of reeks kiezen](afbeeldingen/records-1-kiezen.jpg)
+
 
 Op de pagina **ZCBS records aanpassen** staat het blok **Welke records?** (na de eerste keuze heet het **Andere records kiezen**).
 
@@ -128,6 +139,9 @@ Onder de lijst staat: "Een geopend record is 10 minuten voor anderen vergrendeld
 
 ### 4.1 Kolommen
 
+![De lijst met records](afbeeldingen/records-2-lijst.jpg)
+
+
 | Kolom | Betekenis |
 |---|---|
 | **Nummer** | Het recordnummer. |
@@ -152,6 +166,9 @@ Een record dat al **opgeslagen** is, houdt die status, ook als je het opnieuw op
 De status **later** is nooit "klaar" voor ZCBS: het record is gewoon niet bewerkt.
 
 ### 4.3 Knoppen per rij
+
+![De pdf of afbeelding in een venster](afbeeldingen/records-2-popup.jpg)
+
 
 | Knop | Wat hij doet |
 |---|---|
@@ -184,6 +201,9 @@ ZCBS zelf).
 - Als de site een tekstbestand (ocr) heeft: een kader **Tekst uit het document (ocr)** met de eerste 800 tekens.
 
 ### 5.2 Rechts: de velden
+
+![Het bewerkformulier](afbeeldingen/records-3-formulier.jpg)
+
 
 De velden, hun volgorde en hun keuzelijsten komen **rechtstreeks uit ZCBS**. De app heeft geen vaste veldenlijst; een nieuw veld in ZCBS
 verschijnt vanzelf. Een vraagteken (**?**) achter een veldnaam toont de helptekst die ZCBS erbij geeft. Voorbeelden van velden (uit de
@@ -218,6 +238,9 @@ Velden die jij niet aanraakt, blijven zoals ze in ZCBS stonden. Ook velden die h
 niet als invoerveld aanbiedt) neemt de app uit het oorspronkelijke record mee, zodat ze niet per ongeluk leeg worden opgeslagen.
 
 ### 5.3 De knoppen onderaan
+
+![De knoppen onderaan het formulier](afbeeldingen/records-3-opslaan.jpg)
+
 
 | Knop | Wanneer zichtbaar | Wat hij doet |
 |---|---|---|
@@ -256,6 +279,9 @@ Het voorbeeld zet **niets** naar ZCBS en vergrendelt niets extra.
 ---
 
 ## 7. Opslaan: wat de app stap voor stap doet
+
+![Na het opslaan: het groene bericht en de status opgeslagen](afbeeldingen/records-4-opgeslagen.jpg)
+
 
 Een klik op **Opslaan** zet de volgende stappen in gang. Stopt een stap, dan gebeurt er niets in ZCBS tenzij anders vermeld, en je invoer
 blijft in de app staan (je ziet haar terug in het formulier).

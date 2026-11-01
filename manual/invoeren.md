@@ -42,6 +42,13 @@ De originelen op `K:` worden nooit gewijzigd of verwijderd.
 
 ### Hoe je er komt
 
+![Het inlogscherm](afbeeldingen/inloggen.jpg)
+
+![De collectie kiezen](afbeeldingen/collectie.jpg)
+
+![De keuze Nieuwe bestanden in ZCBS zetten](afbeeldingen/kies-actie-invoeren.jpg)
+
+
 1. **Inloggen** op de startpagina met je eigen ZCBS-naam en -wachtwoord (knop **Inloggen**).
 2. **Collectie kiezen** op de pagina "Met welke collectie wil je werken?". Alleen `archief` is aan te klikken; andere collecties staan er grijs
    met "Geen rechten" (je hebt geen recht in ZCBS) of "Nog niet beschikbaar" (de app kan er nog niet mee werken).
@@ -128,6 +135,9 @@ oorzaak en oplossing staat in [hoofdstuk 14](#14-problemen-en-oplossingen).
 
 ### Fase 1. Controleren
 
+![Fase 1: alle controles zijn groen](afbeeldingen/invoeren-1-controleren.jpg)
+
+
 **Scherm.** Kop "1. Controleer of alles klaarstaat" met een lijst van zeven punten, elk met een groen vinkje (in orde) of een rood kruisje. Bij een rood
 punt staat eronder wat er aan de hand is en wat je kunt doen. Als er resten van een eerdere keer zijn, staat eronder het kader "Eerst opruimen:
 er staat nog werk van een eerdere keer" (zie [hoofdstuk 8](#8-resten-van-een-eerdere-keer)).
@@ -152,6 +162,13 @@ grijs en heet hij **Los eerst de rode punten op**. Bij het indrukken controleert
 kopieert de programma's erheen. Vanaf dat moment bestaat er een `sessie.json` en geldt de gebruiker als "bezig" (zichtbaar bij Sessies).
 
 ### Fase 2. Bestanden kiezen
+
+![Fase 2: kies een map met scans](afbeeldingen/invoeren-2-map-kiezen.jpg)
+
+![Scans aanvinken, bekijken met Open en doorgaan met Verder](afbeeldingen/invoeren-2-bestanden-kiezen.jpg)
+
+![Een scan in de popup](afbeeldingen/invoeren-2-popup.jpg)
+
 
 **Scherm.** Kop "2. Bestanden kiezen". Bovenaan "Scans van:" met een knop per map met scans (bijvoorbeeld **Jelly**, **Ria**); de eerste uit de instellingen
 staat meteen open. Daaronder een kruimelpad, de submappen (klik om te openen) en, als er bestanden in de map staan, een tabel met de kolommen
@@ -193,6 +210,9 @@ verwerkt-log later. De originelen blijven staan.
 
 ### Fase 3. Nummers
 
+![Fase 3: het eerste recordnummer](afbeeldingen/invoeren-3-nummers.jpg)
+
+
 **Scherm.** Kop "3. Nummers". Tekst: "Je hebt *N* bestanden gekozen. Ze krijgen aaneengesloten recordnummers: kies een beginnummer uit de nummers die in ZCBS nog vrij zijn."
 Daaronder "Laatste record in ZCBS: *11934*" en een tabel van de **vrije nummers** zoals ZCBS ze toont bij een nieuw record: per reeks de omvang
 (of "onbeperkt" bij een open einde) en of de reeks groot genoeg is ("Ja, past" / "Te klein"). Naast een passende reeks staat een knop **Begin hier**
@@ -222,6 +242,15 @@ De stappen zijn nu in de app aangemaakt: per bestand een stap Hernoemen (die met
 (en de resten opruimen in fase 1).
 
 ### Fase 4. pdf2zcbs
+
+![Fase 4: pdf2zcbs starten](afbeeldingen/invoeren-4-pdf2zcbs.jpg)
+
+![De lijst met wat pdf2zcbs heeft gemaakt](afbeeldingen/invoeren-4-controleer.jpg)
+
+![Bevestigen of opnieuw uitvoeren](afbeeldingen/invoeren-4-bevestig.jpg)
+
+![Een gemaakt bestand bekijken](afbeeldingen/invoeren-4-popup.jpg)
+
 
 **Scherm.** Kop "4. pdf2zcbs", een vraagregel "Start pdf2zcbs.exe" en een uitklapper **Wat gebeurt er?** (zet de bestanden uit `werk` in de map van
 het programma, start het één keer, verwacht per bestand tekst, pdf, small en large in `output`). Staat er iets in de weg, dan staat in rood de reden en zijn de knoppen grijs.
@@ -253,6 +282,13 @@ Staan er afbeeldingen tussen de gekozen bestanden, dan eindigt de melding met "*
 Daarna volgt de **controle na de stap** ([hoofdstuk 6](#6-de-controle-na-pdf2zcbs-en-na-imagesexe)).
 
 ### Fase 5. images.exe
+
+![Fase 5: images.exe starten](afbeeldingen/invoeren-5-images.jpg)
+
+![De lijst met wat images.exe heeft gemaakt, met de kolom Op de server](afbeeldingen/invoeren-5-controleer.jpg)
+
+![Bevestigen of opnieuw uitvoeren](afbeeldingen/invoeren-5-bevestig.jpg)
+
 
 **Scherm.** Kop "5. images.exe", vraagregel "Start images.exe", uitklapper **Wat gebeurt er?** met onder meer de vaste antwoorden, en dezelfde knoppen **Handmatig uitvoeren**
 en **Automatisch uitvoeren**. Dit is de stap die iets op de server en in ZCBS doet: `images.exe` uploadt de afbeeldingen small, large en 100pct met ftp en
@@ -288,6 +324,9 @@ Daarna volgt de controle na de stap (hoofdstuk 6). Opnieuw uitvoeren van deze st
 
 ### Fase 6. Upload ocr en pdf
 
+![Fase 6: upload](afbeeldingen/invoeren-6-upload.jpg)
+
+
 **Scherm.** Kop "6. Upload ocr en pdf", een tabel met de kolommen Bestand en Nummer (alle gekozen bestanden), de vraag "Upload tekst en pdf van *N* bestanden naar de server?" en
 **Wat gebeurt er?**. Eén knop: **Uitvoeren**. De upload van de app is een eigen stap en gaat niet via een programma: de pagina laadt opnieuw als hij klaar is.
 
@@ -307,6 +346,9 @@ is niet ingesteld ...", "Collectie is niet ingesteld ..."; "Tekstbestand ontbree
 
 ### Fase 7. Back-up
 
+![Fase 7: back-up](afbeeldingen/invoeren-7-backup.jpg)
+
+
 **Scherm.** Kop "7. Back-up", dezelfde tabel, de vraag "Maak een back-up van de 100pct en de pdf's en ruim de mappen op?", **Wat gebeurt er?** en de knop **Uitvoeren**.
 
 **Wat hij doet, in deze volgorde:**
@@ -322,6 +364,11 @@ is niet ingesteld ...", "Collectie is niet ingesteld ..."; "Tekstbestand ontbree
 **Klaar** met "Back-up gemaakt in *mappen* (*n* nieuw), daarna *m* bestanden en mappen opgeruimd. De *N* bestanden staan in het verwerkt-log."
 
 ### Het scherm Klaar
+
+![Het scherm Klaar](afbeeldingen/invoeren-klaar.jpg)
+
+![De pagina Verwerkt](afbeeldingen/verwerkt.jpg)
+
 
 Kop "Klaar": "*N* bestanden staan nu op het archief, met de recordnummers *11935* t/m *11946*. De 100pct en de pdf's hebben een back-up, de werkmappen zijn opgeruimd ..."
 met een link naar het overzicht van wat al verwerkt is. Een tabel (Waar, Soort, Bestanden, Map) toont wat er is gemaakt en waar het staat:
@@ -467,6 +514,9 @@ Randgevallen (uit de code gelezen):
 ---
 
 ## 8. Resten van een eerdere keer
+
+![Eerst opruimen: resten van een eerdere keer](afbeeldingen/invoeren-1-opruimen.jpg)
+
 
 pdf2zcbs wist zijn map `output` bij de start, images.exe zou oude small-, large- en 100pct-afbeeldingen opnieuw uploaden, en eerder gekozen bestanden zouden ongemerkt meedoen. Daarom kijkt fase 1 naar **resten** en staat de doorloop stil zolang die er zijn (ook fase 2 en 3 weigeren verder te gaan).
 

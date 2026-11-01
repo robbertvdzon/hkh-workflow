@@ -5,18 +5,20 @@ en controles. De specificaties en het ontwerp staan in [../docs](../docs/README.
 
 ## Voor medewerkers
 
-| Je wilt… | Lees |
-|---|---|
-| Nieuwe scans in ZCBS zetten | [quickstart-invoeren.md](quickstart-invoeren.md) |
-| Records in ZCBS invullen of aanpassen | [quickstart-records-aanpassen.md](quickstart-records-aanpassen.md) |
+| Je wilt… | Lees | Als pdf (om uit te printen) |
+|---|---|---|
+| Nieuwe scans in ZCBS zetten | [quickstart-invoeren.md](quickstart-invoeren.md) | [pdf/quickstart-invoeren.pdf](pdf/quickstart-invoeren.pdf) |
+| Records in ZCBS invullen of aanpassen | [quickstart-records-aanpassen.md](quickstart-records-aanpassen.md) | [pdf/quickstart-records-aanpassen.pdf](pdf/quickstart-records-aanpassen.pdf) |
 
 ## Volledige handleidingen
 
-| Onderwerp | Lees |
-|---|---|
-| Nieuwe bestanden in ZCBS zetten: elke fase, elke controle, wat te doen bij een melding | [invoeren.md](invoeren.md) |
-| Records aanpassen: kiezen, formulier, voorbeeld, opslaan, conflicten | [records-aanpassen.md](records-aanpassen.md) |
-| Instellingen en beheer (voor de beheerder) | [instellingen.md](instellingen.md) |
+| Onderwerp | Lees | Als pdf |
+|---|---|---|
+| Nieuwe bestanden in ZCBS zetten: elke fase, elke controle, wat te doen bij een melding | [invoeren.md](invoeren.md) | [pdf/invoeren.pdf](pdf/invoeren.pdf) |
+| Records aanpassen: kiezen, formulier, opslaan, conflicten | [records-aanpassen.md](records-aanpassen.md) | [pdf/records-aanpassen.pdf](pdf/records-aanpassen.pdf) |
+| Instellingen en beheer (voor de beheerder) | [instellingen.md](instellingen.md) | [pdf/instellingen.pdf](pdf/instellingen.pdf) |
+
+De plaatjes staan in [afbeeldingen](afbeeldingen/) en zijn gemaakt met het script in [../tools/docs](../tools/docs/README.md), net als de pdf's. Verandert de app, maak ze dan opnieuw.
 
 ## Hulp nodig?
 

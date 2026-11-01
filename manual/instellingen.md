@@ -43,6 +43,9 @@ Het menu links toont onderaan, onder het kopje **Beheer**, de links **Instelling
 
 ## 2. Inloggen als beheerder
 
+![Inloggen als beheerder](afbeeldingen/beheer-inloggen.jpg)
+
+
 De beheerder is een apart account van de ZCBS-gebruikers: er is één beheerderswachtwoord voor de hele app. Het staat niet in de instellingen of de database, maar in de configuratie van de server (zie hoofdstuk 7: `hkh.workflow.admin-password` of de omgevingsvariabele `HKH_WORKFLOW_ADMIN_PASSWORD`).
 
 **Inloggen**
@@ -116,6 +119,9 @@ De waarschuwingen komen van het moment dat de pagina wordt geopend, dus van de c
 
 ## 5. De velden van de pagina Instellingen
 
+![De pagina Instellingen](afbeeldingen/instellingen-0-boven.jpg)
+
+
 De velden staan hieronder in de volgorde van het scherm. Bij elk veld staan: wat het is, welke waarden mogen, de standaardwaarde, wat de app controleert en wat er misgaat als het fout staat.
 
 Schermvolgorde:
@@ -185,6 +191,9 @@ Gebruik overal **volledige paden**, bijvoorbeeld `C:\zcbs\images-werk\images.exe
 
 ### 5.5 Mappen met scans (groep "Bestanden van de server en ZCBS")
 
+![De groep Bestanden van de server en ZCBS](afbeeldingen/instellingen-1-server.jpg)
+
+
 | | |
 |---|---|
 | **Wat** | De mappen waarin Jelly en Ria (of wie dan ook) hun scans zetten. Op de pagina Nieuwe bestanden (fase 2, Bestanden kiezen) bladert de gebruiker door deze mappen en vinkt aan wat op het archief moet komen. De naam laat zien wie het gescand heeft. De bestanden op de schijf blijven staan. |
@@ -223,6 +232,9 @@ Het scriptpad in ZCBS is steeds `/cgi-bin/<collectie>.pl` (voor het archief `/cg
 
 ### 5.7 Map voor resten van een eerdere run (groep "Resten van een eerdere run")
 
+![De groep Resten van een eerdere run](afbeeldingen/instellingen-2-resten.jpg)
+
+
 | | |
 |---|---|
 | **Wat** | Staan er bij het begin van een doorloop nog bestanden van een eerdere keer (in de mappen van de gebruiker voor `invoer`, `werk`, `pdf2zcbs` of `images`), dan toont fase 1 dat als "Er staat nog werk van een eerdere keer". De gebruiker kan ze dan **verplaatsen** of **verwijderen**. Verplaatsen gaat naar deze map. |
@@ -235,6 +247,9 @@ Het scriptpad in ZCBS is steeds `/cgi-bin/<collectie>.pl` (voor het archief `/cg
 
 ### 5.8 Het ftp-wachtwoord meesturen naar het logboek (groep "Logboek")
 
+![De groep Logboek](afbeeldingen/instellingen-3-logboek.jpg)
+
+
 | | |
 |---|---|
 | **Wat** | Een aanvinkvakje. Aan: bij elke melding aan het workflow-logboek van hkh-admin (instellingenwijzigingen en doorlopen) staat het ftp-wachtwoord leesbaar in de gemelde instellingen. |
@@ -244,6 +259,9 @@ Het scriptpad in ZCBS is steeds `/cgi-bin/<collectie>.pl` (voor het archief `/cg
 | **Fout / let op** | Staat de optie aan, dan is het wachtwoord leesbaar voor iedereen die bij dat beheerscherm kan. Dat een wachtwoord veranderde, staat er altijd bij, ook als het wachtwoord zelf is weggelaten. Alleen de nieuwe stand van de optie telt: zet je de optie uit en wijzig je in dezelfde keer het wachtwoord, dan wordt het nieuwe wachtwoord niet meegestuurd. |
 
 ### 5.9 Wachtwoord van ... (groep "FTP-wachtwoord")
+
+![De groep FTP-wachtwoord](afbeeldingen/instellingen-4-ftp.jpg)
+
 
 De naam van het account staat in het label: het ftp-account van images.exe. Het is niet instelbaar.
 
@@ -262,6 +280,9 @@ De naam van het account staat in het label: het ftp-account van images.exe. Het 
 
 ### 5.10 Test verbinding
 
+![Test verbinding](afbeeldingen/instellingen-6-test.jpg)
+
+
 Onder het formulier staat de sectie **Test verbinding**. Ze toont het account, de ftp-server met poort (uit de keuze voor de test-ZCBS) en de basismap. De knop **Test verbinding**:
 
 - gebruikt de **opgeslagen** instellingen, niet wat je net hebt getypt maar nog niet hebt opgeslagen. Sla dus eerst op;
@@ -273,6 +294,9 @@ Het resultaat toont "Verbonden met ... als ..." en per map "bestaat" of "bestaat
 Bij het uploaden zelf werkt de app voorzichtig: hij overschrijft nooit een bestaand bestand, verwijdert nooit iets op de server en maakt nooit mappen aan. Hij controleert eerst of alle doelmappen bestaan en of geen enkel doelbestand al bestaat, uploadt onder een tijdelijke naam, hernoemt en controleert de grootte.
 
 ### 5.11 Per collectie
+
+![De groep Per collectie](afbeeldingen/instellingen-5-collectie.jpg)
+
 
 Bovenaan de groep staat: "De antwoorden van images.exe en pdf2zcbs.exe staan vast in de app, op de resolutie na. Die verschilt per collectie, net als de mappen voor de back-up. Collecties waar de app nog niet mee werkt kun je alvast instellen."
 
@@ -391,6 +415,9 @@ Een aantal instellingen staat niet op de pagina Instellingen maar in de configur
 ---
 
 ## 8. Sessies
+
+![De pagina Sessies](afbeeldingen/sessies.jpg)
+
 
 Open **Instellingen > Sessies** (menu: **Sessies**, onder **Instellingen**; adres `/instellingen/sessies`). De pagina heeft een link **← Instellingen** terug.
 
