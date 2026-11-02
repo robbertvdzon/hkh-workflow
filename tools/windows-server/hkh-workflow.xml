@@ -1,0 +1,32 @@
+<!--
+  Configuratie van de Windows-service voor WinSW (v2). install.ps1 vult @@JAVA@@ en @@POORT@@ in en zet dit bestand als
+  service\hkh-workflow.xml naast service\hkh-workflow.exe (de hernoemde WinSW). %BASE% is de map van die exe.
+  De service start run.ps1, dat java start en het bijwerken regelt (zie tools/windows-server/README.md).
+-->
+<service>
+  <id>hkh-workflow</id>
+  <name>HKH Workflow (ZcbsServer)</name>
+  <description>Webapp rond ZCBS: nieuwe bestanden in ZCBS zetten en records aanpassen.</description>
+
+  <executable>powershell.exe</executable>
+  <arguments>-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%BASE%\..\app\run.ps1"</arguments>
+  <workingdirectory>%BASE%\..</workingdirectory>
+  <env name="HKH_JAVA" value="@@JAVA@@"/>
+  <env name="HKH_WORKFLOW_PORT" value="@@POORT@@"/>
+
+  <!-- Start na een reboot vanzelf, een paar minuten na het opstarten (dan zijn netwerk en shares er). -->
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+
+  <!-- Valt run.ps1 zelf om, dan start Windows de service opnieuw. -->
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <resetfailure>1 hour</resetfailure>
+
+  <stoptimeout>30 sec</stoptimeout>
+  <log mode="roll-by-size">
+    <sizeThreshold>5120</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>

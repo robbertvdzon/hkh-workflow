@@ -1,7 +1,22 @@
 # Automatisch bijwerken van de app op de Windows-server
 
-Status: **voorstel, nog niets gebouwd** (31 oktober 2026, Robbert en Claude). Dit document beschrijft hoe de app straks op de
-fileserver als Windows-service draait en hoe een nieuwe versie zichzelf installeert. Het is bedoeld om later te bouwen.
+Status (2 november 2026): **de Windows-service met het startscript is gebouwd en getest** op de testlaptop (§3, §5 en §8 stap 1, 2 en 5, zie
+[../tools/windows-server/README.md](../tools/windows-server/README.md)). De updatecontrole in de app, het buildnummer en de download van GitHub (§6 en §7, zie ook §0) zijn
+nog niet gebouwd. Oorspronkelijk voorstel van 31 oktober 2026, Robbert en Claude.
+
+## 0. Besluiten van 2 november 2026
+
+- **Waar de jar vandaan komt:** van GitHub, niet uit een map die Robbert zelf vult. Bij elke push naar `main` bouwt een GitHub Action de jar (eerst de tests) en zet hem als
+  **GitHub Release** `build-<nummer>` met `hkh-workflow.jar` en een sha256. De repo is publiek, dus de server downloadt zonder token; in de jar staat niets geheims. Oude releases
+  worden opgeruimd (bijvoorbeeld alles behalve de laatste 20). De map `updates\` blijft als tussenstap en voor een handmatige noodupdate.
+- **Buildnummer:** het `run_number` van de Action gaat in `build-info` (`-Dbuild.number=`) en in `AppVersion` (nu `versie+bouwtijd`); de app vergelijkt nummers als gehele getallen.
+- **Wat er live gaat:** alles wat op `main` staat en groen is. Zodra de app bij HKH draait werkt Robbert met branches en moet `main` altijd goed zijn; een aparte
+  "stable"-markering is daarom niet nodig.
+- **Bijwerken door de beheerder:** een blok Versie in Beheer ("Build X draait, build Y staat klaar", knoppen *Controleer nu* en *Nu bijwerken*). Alleen als geen enkele doorloop een
+  programma draait (zie §6).
+- **Elke nacht om 00:00** (Europe/Amsterdam) controleert de app zelf en werkt bij als er een nieuwere build is. Is er dan nog iemand bezig, dan elke 10 minuten opnieuw tot ongeveer 03:00; daarna
+  slaat hij die nacht over en meldt dat in het logboek. Een schakelaar in Beheer zet dit aan of uit.
+- **Eerst de service:** voordat de updater gebouwd wordt is getest of de app (met `images.exe` en `pdf2zcbs.exe`) als Windows-service goed werkt. Dat werkt (testlaptop, 2 november).
 
 ## 1. Wat we willen
 
@@ -106,8 +121,8 @@ Zo is de service zelf eenvoudig (alleen "start dit script en herstart als het ei
 
 ## 8. Volgorde van bouwen
 
-1. Op de server testen of images.exe en pdf2zcbs.exe onder een service draaien (§3, punt 2), met een handmatig geïnstalleerde WinSW.
-2. Het startscript `run.ps1` en de WinSW-configuratie, met een installatiescript (`tools/windows-server/`); eerst zonder updatecontrole.
+1. Op de server testen of images.exe en pdf2zcbs.exe onder een service draaien (§3, punt 2), met een handmatig geïnstalleerde WinSW. **Gedaan op de testlaptop (2 november): werkt onder LocalSystem; nog te bevestigen op de echte server met de echte servicegebruiker.**
+2. Het startscript `run.ps1` en de WinSW-configuratie, met een installatiescript (`tools/windows-server/`); eerst zonder updatecontrole. **Gedaan en getest, ook het terugdraaien (stap 5) met bewust kapotte jars.**
 3. `build-info` in de pom en de updatemodule met de knop in Beheer.
 4. `deploy-app.sh` aanpassen naar "bouwen en uploaden naar `updates\`".
 5. Het terugdraaien en de statusmelding in het logboek testen met een bewust kapotte jar.
