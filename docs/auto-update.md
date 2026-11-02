@@ -1,8 +1,9 @@
 # Automatisch bijwerken van de app op de Windows-server
 
-Status (2 november 2026): **de Windows-service met het startscript is gebouwd en getest** op de testlaptop (§3, §5 en §8 stap 1, 2 en 5, zie
-[../tools/windows-server/README.md](../tools/windows-server/README.md)). De updatecontrole in de app, het buildnummer en de download van GitHub (§6 en §7, zie ook §0) zijn
-nog niet gebouwd. Oorspronkelijk voorstel van 31 oktober 2026, Robbert en Claude.
+Status (2 november 2026): **gebouwd en getest op de testlaptop**: de Windows-service met het startscript (§3, §5), het buildnummer en de GitHub Action met een Release per build (§0), de
+updatemodule met de pagina Versie (§6, §7) en de nachtelijke update. Zie [../tools/windows-server/README.md](../tools/windows-server/README.md) voor installatie en testresultaten en
+[technisch-ontwerp.md](technisch-ontwerp.md) §8a voor de werking. Nog te doen: installeren op de echte server met de echte servicegebruiker en daar de exe's testen (§9).
+Oorspronkelijk voorstel van 31 oktober 2026, Robbert en Claude.
 
 ## 0. Besluiten van 2 november 2026
 
@@ -124,14 +125,22 @@ Zo is de service zelf eenvoudig (alleen "start dit script en herstart als het ei
 
 1. Op de server testen of images.exe en pdf2zcbs.exe onder een service draaien (§3, punt 2), met een handmatig geïnstalleerde WinSW. **Gedaan op de testlaptop (2 november): werkt onder LocalSystem; nog te bevestigen op de echte server met de echte servicegebruiker.**
 2. Het startscript `run.ps1` en de WinSW-configuratie, met een installatiescript (`tools/windows-server/`); eerst zonder updatecontrole. **Gedaan en getest, ook het terugdraaien (stap 5) met bewust kapotte jars.**
-3. `build-info` in de pom en de updatemodule met de knop in Beheer.
-4. `deploy-app.sh` aanpassen naar "bouwen en uploaden naar `updates\`".
+3. `build-info` in de pom en de updatemodule met de knop in Beheer. **Gedaan (2 november): download op de achtergrond met voortgang, controle op sha256 en buildnummer, herstart met exitcode 10.**
+4. `deploy-app.sh` aanpassen naar "bouwen en uploaden naar `updates\`". **Vervangen door `tools/windows-server/deploy-testlaptop.sh` en de GitHub Action.**
 5. Het terugdraaien en de statusmelding in het logboek testen met een bewust kapotte jar.
-6. Pas daarna eventueel automatisch bijwerken en/of een download via een URL.
+6. Pas daarna eventueel automatisch bijwerken en/of een download via een URL. **Beide gedaan (2 november): de nachtelijke update en de download van GitHub.**
 
 ## 9. Open vragen
 
 - Wat is het adres van de fileserver en kan Robbert er per SSH (OpenSSH) of via een share bij om de jar neer te zetten?
 - Welk account wordt de servicegebruiker, en kan HKH dat aanmaken?
-- Mag de app zichzelf automatisch bijwerken als er niemand werkt (bijvoorbeeld 's nachts), of altijd alleen na een klik?
+- ~~Mag de app zichzelf automatisch bijwerken als er niemand werkt (bijvoorbeeld 's nachts), of altijd alleen na een klik?~~ Besloten: elke nacht om 00:00 (§0).
 - Moet de updatemap ook een eerdere versie kunnen terugzetten vanuit Beheer ("terug naar de vorige")?
+
+## 10. Les uit het testen
+
+- **Exitcode 10 moet echt uit het proces komen.** De herstart van de app (`SpringRestarter`) sluit Spring af en roept daarna `exitProcess(10)` aan, vanuit een eigen thread. Is die thread een
+  daemon-thread (een thread erft dat van wie hem maakt, en de download draait op een daemon-thread), dan eindigt de JVM zelf met code 0 zodra Spring klaar is en komt `exitProcess` nooit. Daarom
+  is de thread expliciet geen daemon, en laat `run.ps1` ook een exitcode 0 de service niet meer beëindigen.
+- **Een download op een trage lijn duurt minuten.** De klik op *Nu bijwerken* start de download op de achtergrond; de pagina toont de voortgang.
+- **Een klaarstaande update gaat voor.** `updates\hkh-workflow.jar` wordt bij de eerstvolgende start van java geplaatst, ook over een net geïnstalleerde jar heen; `install.ps1 -Jar` ruimt hem daarom op.

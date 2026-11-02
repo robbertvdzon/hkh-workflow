@@ -82,10 +82,11 @@ Op de testlaptop (Windows 10 Home, Java, service als LocalSystem), met de echte 
 | Bestand dat geen jar is | Geweigerd, naar `mislukt\`, draaiende versie blijft |
 | Verkeerde sha256 | Geweigerd, naar `mislukt\`, draaiende versie blijft |
 | Geldige zip die niet start | Na 4 s teruggedraaid naar de vorige versie; de app draait weer |
+| Bijwerken vanaf de pagina Versie (build 1 naar de nieuwste op GitHub) | Download met voortgang, sha256- en buildnummercontrole, app sluit af met exitcode 10, `run.ps1` plaatst de jar, nieuwe versie gezond na ~12 s |
+| Nachtelijke update (cron tijdelijk elke 2 minuten) | De app werkte zichzelf twee keer bij (build 4 naar 5 en naar 6) zonder dat iemand klikte |
 | Reboot van de laptop | Service startte zelf (ruim 3 minuten na het opstarten door de vertraagde start); app antwoordt na nog 35 s |
 
 **Nog niet getest:**
-- Exitcode 10 (de app moet die nog kunnen geven; nu is een crash gebruikt om de update te laten ingrijpen).
 - Een eigen servicegebruiker in plaats van LocalSystem, en mappen op het netwerk.
 - Een reboot zonder dat iemand inlogt: de testlaptop logt zelf in (explorer draaide), dus dat is niet te scheiden van een service die wacht op een inlog. Een service start
   in Windows los van een inlog, maar dit is niet apart bewezen.
