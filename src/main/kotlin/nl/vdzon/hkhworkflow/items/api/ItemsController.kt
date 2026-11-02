@@ -132,7 +132,7 @@ class ItemsController(
         return "records-lijst :: volgende"
     }
 
-    /** Het bestand van een record voor de knop Open scan bij het invoerveld: `{kind, url}` of `{error}`. */
+    /** Het bestand van een record voor de knop Open bij het invoerveld: `{kind, url}` of `{error}`. */
     @GetMapping("/records/media")
     @ResponseBody
     fun media(@RequestParam("nummer", defaultValue = "") number: String): Map<String, String> {

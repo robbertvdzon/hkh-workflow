@@ -1,4 +1,4 @@
-// Records aanpassen: de drie knoppen bij het invoerveld (Open scan, Bewerk, Open in ZCBS) voor het ingevulde recordnummer.
+// Records aanpassen: de drie knoppen bij het invoerveld (Open, Bewerk, Open in ZCBS) voor het ingevulde recordnummer.
 (function () {
     var form = document.getElementById('openrec');
     if (!form) return;
@@ -27,7 +27,7 @@
         if (n) window.open(base + '/' + n + '/zcbs', '_blank');
     });
 
-    // Open scan: vraagt eerst welk bestand het record heeft en opent het dan in de popup van de pagina (zie viewer.js).
+    // Open: vraagt eerst welk bestand het record heeft en opent het dan in de popup van de pagina (zie viewer.js).
     form.querySelector('[data-act=scan]').addEventListener('click', function () {
         var n = number();
         if (!n) return;
