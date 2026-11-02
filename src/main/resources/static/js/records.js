@@ -10,7 +10,7 @@
     function number() {
         var n = input.value.trim();
         if (!/^\d{1,9}$/.test(n)) {
-            msg.textContent = 'Vul één recordnummer in, bijvoorbeeld 11934.';
+            msg.textContent = input.value.trim() === '' ? 'Vul een recordnummer in, bijvoorbeeld 11934.' : 'Vul één recordnummer in, bijvoorbeeld 11934.';
             input.focus();
             return null;
         }

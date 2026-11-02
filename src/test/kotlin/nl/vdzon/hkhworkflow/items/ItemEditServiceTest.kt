@@ -345,25 +345,6 @@ class ItemEditServiceTest {
     }
 
     @Test
-    fun `een geslaagde opslag komt in het bewerkt-log, een mislukte of ongewijzigde niet`() {
-        val props = WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), editLog = "bewerkt.tsv")
-        val history = EditHistory(settings, props)
-        service = ItemEditService(settings, history)
-        assertNull(service.login("Test Beheerder", "Beheer1"))
-        service.startBatch(listOf(BatchRecord("11905")))
-        opened("11905")
-
-        assertEquals(SaveOutcome.NoChanges, service.save("11905", emptyMap()))
-        assertTrue(history.all().isEmpty(), "zonder wijziging is er niets opgeslagen en dus niets gelogd")
-
-        assertEquals(SaveOutcome.Saved, service.save("11905", mapOf("a5" to listOf("Een titel"))))
-
-        val events = history.all()
-        assertEquals(1, events.size)
-        assertEquals(Triple("Test Beheerder", "archief", "11905"), Triple(events[0].user, events[0].collection, events[0].number))
-    }
-
-    @Test
     fun `de titel van een record komt uit ZCBS en wie het open heeft, ziet een ander`() {
         assertEquals("Testrecord & meer", service.summaryOf("11905")?.title)
 

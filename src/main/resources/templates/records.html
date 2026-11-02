@@ -20,7 +20,7 @@
         </div>
 
         <form id="openrec" th:action="@{/records/kies}" th:attr="data-base=@{/records}" method="post" class="openrec">
-            <input type="text" name="nummer" class="mono" inputmode="numeric" autocomplete="off" autofocus required placeholder="Recordnummer, bijvoorbeeld 11934" aria-label="Recordnummer">
+            <input type="text" name="nummer" class="mono" inputmode="numeric" autocomplete="off" autofocus placeholder="Recordnummer, bijvoorbeeld 11934" aria-label="Recordnummer">
             <button class="btn btn-p" type="button" data-act="scan" title="De pdf of afbeelding van dit record">Open scan</button>
             <button class="btn btn-p" type="submit">Bewerk</button>
             <button class="btn btn-p" type="button" data-act="zcbs" title="Dit record in ZCBS zelf, met dezelfde inlog">Open in ZCBS</button>
@@ -29,11 +29,11 @@
 
         <section class="recent" th:if="${loggedIn}">
             <div class="recenthead">
-                <h2>Recent in het archief</h2>
+                <h2>Recent toegevoegd</h2>
                 <div class="filters">
-                    <a class="fchip" th:classappend="${show == 'mijn'} ? 'on'" th:href="@{/records}">Alleen van mij</a>
-                    <a class="fchip" th:classappend="${show == 'alles'} ? 'on'" th:href="@{/records(toon='alles')}">Alles</a>
-                    <a class="fchip" th:classappend="${show == 'beschrijven'} ? 'on'" th:href="@{/records(toon='beschrijven')}">Nog te beschrijven</a>
+                    <a class="btn btn-sm" th:classappend="${show == 'mijn'} ? 'btn-p' : 'btn-s'" th:href="@{/records}">Alleen van mij</a>
+                    <a class="btn btn-sm" th:classappend="${show == 'alles'} ? 'btn-p' : 'btn-s'" th:href="@{/records(toon='alles')}">Alles</a>
+                    <a class="btn btn-sm" th:classappend="${show == 'beschrijven'} ? 'btn-p' : 'btn-s'" th:href="@{/records(toon='beschrijven')}">Nog te beschrijven</a>
                 </div>
             </div>
 
@@ -47,7 +47,7 @@
                 <p class="hint loading">Recente records ophalen…</p>
             </div>
 
-            <p class="hint recentnote">Records die met deze app zijn toegevoegd of aangepast, nieuwste eerst. Wijzigingen die rechtstreeks in ZCBS zijn gedaan staan hier niet bij.</p>
+            <p class="hint recentnote">Records die met deze app zijn toegevoegd, nieuwste eerst, met wie en wanneer. Records die rechtstreeks in ZCBS zijn toegevoegd staan hier niet bij.</p>
         </section>
     </main>
 <div th:replace="~{fragments/viewer :: viewer}"></div>

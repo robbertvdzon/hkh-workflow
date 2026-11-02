@@ -30,9 +30,17 @@ class FlowActivity(private val testRunService: TestRunService) : Activity {
 @Component
 class SpringRestarter(private val context: ConfigurableApplicationContext) : AppRestarter {
     override fun restart() {
-        Thread({
+        newThread {
             Thread.sleep(2_000)
             exitProcess(SpringApplication.exit(context, ExitCodeGenerator { EXIT_UPDATE }))
-        }, "update-herstart").start()
+        }.start()
+    }
+
+    companion object {
+        /**
+         * Geen daemon-thread, ook niet als de aanroeper er een is (een thread erft dat): zodra Spring is afgesloten eindigt de JVM anders zelf, met code 0, nog voordat
+         * deze thread [exitProcess] met [EXIT_UPDATE] aanroept, en dan denkt het startscript van de service dat het een gewone stop was.
+         */
+        internal fun newThread(task: Runnable): Thread = Thread(task, "update-herstart").apply { isDaemon = false }
     }
 }

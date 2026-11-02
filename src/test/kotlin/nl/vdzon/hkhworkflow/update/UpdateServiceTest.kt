@@ -185,6 +185,14 @@ class UpdateServiceTest {
     }
 
     @Test
+    fun `de herstartthread is geen daemon, ook niet als hij vanuit een daemon-thread wordt gemaakt`() {
+        var daemon: Boolean? = null
+        val maker = Thread({ daemon = SpringRestarter.newThread { }.isDaemon }).apply { isDaemon = true }
+        maker.start(); maker.join()
+        assertEquals(false, daemon)
+    }
+
+    @Test
     fun `is er geen nieuwere build, dan gebeurt er niets`() {
         val source = FakeSource(Release(0, "build-0", null, "j", "s"))
         val problem = service(source).updateNow("Robbert")

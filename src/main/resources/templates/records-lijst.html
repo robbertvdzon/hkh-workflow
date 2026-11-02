@@ -4,7 +4,7 @@
 <!-- Een stuk van de lijst met recente records van Records aanpassen; wordt met htmx opgehaald (de eerste keer en bij Meer laden). -->
 <th:block th:fragment="rows">
     <p class="hint" th:if="${failed}" th:text="${failed}"></p>
-    <p class="hint" th:if="${empty}" th:text="${show == 'mijn'} ? 'Je hebt nog geen records toegevoegd of aangepast met deze app. Kies Alles om te zien wat anderen deden.' : (${show == 'beschrijven'} ? 'Alle recente records hebben een titel.' : 'Er zijn nog geen records toegevoegd of aangepast met deze app.')"></p>
+    <p class="hint" th:if="${empty}" th:text="${show == 'mijn'} ? 'Je hebt nog geen records toegevoegd met deze app. Kies Alles om te zien wat anderen toevoegden.' : (${show == 'beschrijven'} ? 'Alle recent toegevoegde records hebben een titel.' : 'Er zijn nog geen records toegevoegd met deze app.')"></p>
     <div class="rec" th:each="r : ${rows}">
         <span class="mono c-nr" th:text="${r.number}">99093</span>
         <span class="c-type" th:text="${r.type}">pdf</span>

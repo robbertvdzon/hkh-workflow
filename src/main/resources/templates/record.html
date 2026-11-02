@@ -20,7 +20,7 @@
             <span th:each="m : ${messages}" th:text="${m}" style="white-space:pre-line"></span>
             <div class="row-actions" th:if="${controls.isEmpty()}">
                 <a class="btn btn-p btn-sm" th:href="${zcbsUrl}" target="_blank">Open in ZCBS</a>
-                <form th:action="@{/records/{nr}/later(nr=${r.number})}" method="post"><button class="btn btn-s btn-sm" type="submit">Doe ik later</button></form>
+                <form th:action="@{/records/{nr}/later(nr=${r.number})}" method="post"><button class="btn btn-s btn-sm" type="submit">Annuleren</button></form>
             </div>
         </div>
         <div class="alert alert-warn stack" th:if="${panel == 'locked'}" style="gap:8px">
@@ -28,7 +28,7 @@
             <span>Probeer het over een paar minuten opnieuw, of doe dit record later.</span>
             <div class="row-actions" th:if="${controls.isEmpty()}">
                 <a class="btn btn-p btn-sm" th:href="@{/records/{nr}(nr=${r.number})}">Probeer opnieuw</a>
-                <form th:action="@{/records/{nr}/later(nr=${r.number})}" method="post"><button class="btn btn-s btn-sm" type="submit">Doe ik later</button></form>
+                <form th:action="@{/records/{nr}/later(nr=${r.number})}" method="post"><button class="btn btn-s btn-sm" type="submit">Annuleren</button></form>
             </div>
         </div>
         <div class="alert alert-info" th:if="${panel == 'info'}" th:each="m : ${messages}" th:text="${m}"></div>
@@ -89,12 +89,10 @@
             <!-- Opslaan staat vooraan in de pagina, zodat Enter in een veld opslaat; met CSS staat het rechts. -->
             <div class="selbar">
                 <span style="display:flex;gap:10px;align-items:center;order:2">
-                    <button th:class="${nextNumber} ? 'btn btn-s' : 'btn btn-p'" type="submit">Opslaan</button>
-                    <button class="btn btn-p" th:if="${nextNumber}" type="submit" name="volgende" value="1">Opslaan en volgende</button>
+                    <button class="btn btn-p" type="submit">Opslaan</button>
                 </span>
                 <span style="display:flex;gap:10px;align-items:center;order:1">
-                    <button class="btn btn-s" th:if="${nextNumber}" type="submit" name="volgende" value="1" th:formaction="@{/records/{nr}/later(nr=${r.number})}" formnovalidate title="Dit record niet opslaan en het volgende openen">Volgende zonder opslaan</button>
-                    <button class="btn btn-s" th:unless="${nextNumber}" type="submit" th:formaction="@{/records/{nr}/later(nr=${r.number})}" formnovalidate title="Dit record niet opslaan en terug naar de lijst">Doe ik later</button>
+                    <button class="btn btn-s" type="submit" th:formaction="@{/records/{nr}/later(nr=${r.number})}" formnovalidate title="Dit record niet opslaan en terug naar Records aanpassen">Annuleren</button>
                 </span>
             </div>
         </form>

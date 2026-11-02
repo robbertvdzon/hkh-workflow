@@ -84,8 +84,9 @@ De service start niet java, maar dit script, dat in een lus draait:
 2. Start `java -jar current.jar` (met de instellingen die nu in `app-start.ps1` staan).
 3. Wacht na de start tot `/actuator/health` antwoordt (maximaal een minuut). Lukt dat niet en was dit een nieuwe jar, dan: `previous.jar`
    terugzetten, de mislukte jar naar `updates\mislukt\` verplaatsen, een regel in `update.log` en opnieuw starten.
-4. Eindigt java met **exitcode 10** (de app vraagt een update), dan begint de lus opnieuw bij stap 1. Eindigt hij met **0**, dan is het een
-   gewone stop en eindigt het script. Bij een andere code (crash) wacht het script een paar seconden en start hij opnieuw.
+4. Eindigt java met **exitcode 10** (de app vraagt een update), dan begint de lus opnieuw bij stap 1. Bij elke andere code, ook 0, wacht het script
+   een paar seconden en start hij opnieuw: de service blijft altijd draaien, stoppen kan met `Stop-Service`. (Eerst was 0 een "gewone stop" waarbij het script eindigde; dat
+   ging mis toen een daemon-thread de exitcode 10 verloor, zie hieronder.)
 
 Zo is de service zelf eenvoudig (alleen "start dit script en herstart als het eindigt") en zit alle logica in één leesbaar script.
 

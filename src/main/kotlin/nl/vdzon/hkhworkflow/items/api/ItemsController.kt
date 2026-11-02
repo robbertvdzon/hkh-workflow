@@ -208,7 +208,6 @@ class ItemsController(
         model.addAttribute("pdfUrl", pdfUrl)
         model.addAttribute("imageUrl", if (pdfUrl == null) items.imageUrl(number) else null)
         model.addAttribute("ocr", items.ocrText(number))
-        model.addAttribute("nextNumber", nextToDescribe(number))
         return "record"
     }
 
@@ -247,7 +246,6 @@ class ItemsController(
         model.addAttribute("zcbsUrl", items.recordUrl(number))
         model.addAttribute("pdfUrl", null)
         model.addAttribute("imageUrl", null)
-        model.addAttribute("nextNumber", nextToDescribe(number))
         model.addAttribute("ocr", null)
         return "record"
     }
@@ -296,15 +294,12 @@ class ItemsController(
     fun save(
         @PathVariable("nr") number: String,
         @RequestParam params: MultiValueMap<String, String>,
-        @RequestParam("volgende", required = false) next: String?,
         model: Model,
         redirect: RedirectAttributes,
     ): String {
-        // Het volgende record bepalen vóór het opslaan: daarna staat dit record op opgeslagen.
-        val nextNumber = nextToDescribe(number)
         val values = values(number, params)
         editLog.willSave(number, changesOf(number, values))
-        return handle(number, items.save(number, values), model, redirect, if (next != null) nextNumber else null)
+        return handle(number, items.save(number, values), model, redirect)
     }
 
     @PostMapping("/records/{nr}/conflict")
@@ -322,12 +317,8 @@ class ItemsController(
         else showForm(model, number, "info", listOf("De velden die botsten zijn vervangen door de versie uit ZCBS. Controleer het formulier en sla dan op."))
     }
 
-    private fun handle(number: String, outcome: SaveOutcome, model: Model, redirect: RedirectAttributes, next: String? = null): String = when (outcome) {
-        is SaveOutcome.Saved -> if (next != null) {
-            recent.forget(number)
-            redirect.addFlashAttribute("saved", number)
-            "redirect:/records/$next"
-        } else { recent.forget(number); "redirect:/records?opgeslagen=$number" }
+    private fun handle(number: String, outcome: SaveOutcome, model: Model, redirect: RedirectAttributes): String = when (outcome) {
+        is SaveOutcome.Saved -> { recent.forget(number); "redirect:/records?opgeslagen=$number" }
         is SaveOutcome.NoChanges -> showForm(model, number, "info", listOf("Er is niets gewijzigd; er is niets opgeslagen."))
         is SaveOutcome.Blocked -> showForm(model, number, "blocked", outcome.messages)
         is SaveOutcome.Locked -> showForm(model, number, "locked", listOf(outcome.message))
@@ -336,11 +327,11 @@ class ItemsController(
         is SaveOutcome.NeedsLogin -> { redirect.addFlashAttribute("error", "Je sessie bij ZCBS is verlopen. Log opnieuw in; je invoer blijft bewaard."); "redirect:/" }
     }
 
+    /** Annuleren: het record wordt niet opgeslagen en je gaat terug naar Records aanpassen. */
     @PostMapping("/records/{nr}/later")
-    fun later(@PathVariable("nr") number: String, @RequestParam("volgende", required = false) next: String?): String {
-        val nextNumber = nextToDescribe(number)
+    fun later(@PathVariable("nr") number: String): String {
         items.later(number)
-        return if (next != null && nextNumber != null) "redirect:/records/$nextNumber" else "redirect:/records"
+        return "redirect:/records"
     }
 
     private companion object {

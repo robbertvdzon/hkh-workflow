@@ -13,9 +13,7 @@ fun interface NewRecordsSource {
     fun newRecords(): List<NewRecord>
 }
 
-enum class RecentKind(val label: String) { NIEUW("nieuw"), AANGEPAST("aangepast") }
-
-/** Welke records de lijst toont: de eigen, alle, of alle die nog geen titel hebben (nog te beschrijven). */
+/** Welke records de lijst toont: de door jou toegevoegde, alle, of alle die nog geen titel hebben (nog te beschrijven). */
 enum class RecentScope { MINE, ALL, TO_DESCRIBE }
 
 /**
@@ -26,11 +24,10 @@ fun isUndescribed(title: String): Boolean = title.isBlank() || title.trim().star
 
 /**
  * Een record in de lijst met recente records. [title] is de titel uit ZCBS (nog niet beschreven: zie [isUndescribed]) en null als ZCBS het niet liet zien.
- * [by] en [at] zijn van de laatste keer dat iemand het met de app toevoegde of aanpaste; [busyBy] is wie het nu open heeft.
+ * [by] en [at] zijn van wie het met de app toevoegde en wanneer; [busyBy] is wie het nu open heeft.
  */
 data class RecentRecord(
     val number: String,
-    val kind: RecentKind,
     val by: String,
     val at: LocalDateTime,
     val title: String?,
@@ -45,13 +42,12 @@ data class RecentRecord(
 data class RecentPage(val records: List<RecentRecord>, val more: Boolean)
 
 /**
- * De recent toegevoegde en aangepaste records van een collectie, nieuwste eerst: wat er met de app is toegevoegd (verwerkt-log) en wat er met
- * Records aanpassen is opgeslagen ([EditHistory]), door alle gebruikers van deze app. Wat iemand rechtstreeks in ZCBS deed, staat er niet bij.
+ * De recent toegevoegde records van een collectie, nieuwste eerst: wat er met de app is toegevoegd (verwerkt-log), door alle gebruikers van deze
+ * app, met wie en wanneer. Aanpassen van een record verandert daar niets aan. Wat iemand rechtstreeks in ZCBS toevoegde, staat er niet bij.
  * De titels komen uit ZCBS zelf (gewone weergave, zet geen vergrendeling) en worden even onthouden.
  */
 @Service
 class RecentRecords internal constructor(
-    private val edits: () -> List<EditEvent>,
     private val added: () -> List<NewRecord>,
     private val titleOf: (String) -> String?,
     private val busyOf: (String) -> String?,
@@ -59,10 +55,10 @@ class RecentRecords internal constructor(
     private val mediaOf: (String, String?) -> Media? = { _, _ -> null },
 ) {
     @Autowired
-    constructor(items: ItemEditService, history: EditHistory, sources: List<NewRecordsSource>) :
-        this({ history.all() }, { sources.flatMap { it.newRecords() } }, { items.summaryOf(it)?.title }, items::openedByOther, System::currentTimeMillis, items::mediaOf)
+    constructor(items: ItemEditService, sources: List<NewRecordsSource>) :
+        this({ sources.flatMap { it.newRecords() } }, { items.summaryOf(it)?.title }, items::openedByOther, System::currentTimeMillis, items::mediaOf)
 
-    private class Candidate(val number: String, val kind: RecentKind, val by: String, val at: LocalDateTime, val mine: Boolean, val fileName: String?)
+    private class Candidate(val number: String, val by: String, val at: LocalDateTime, val mine: Boolean, val fileName: String?)
 
     private val titles = ConcurrentHashMap<String, Pair<String?, Long>>()
 
@@ -90,15 +86,12 @@ class RecentRecords internal constructor(
         return found
     }
 
+    /** De records die met de app zijn toegevoegd, nieuwste eerst; een record dat vaker is toegevoegd telt met de laatste keer. */
     private fun candidates(user: String, collection: String): List<Candidate> {
         val me = user.trim().lowercase()
-        class Event(val at: LocalDateTime, val by: String, val kind: RecentKind, val fileName: String? = null)
-        val byNumber = linkedMapOf<String, MutableList<Event>>()
-        added().filter { it.collection == collection }.forEach { byNumber.getOrPut(it.number) { mutableListOf() } += Event(it.at, it.user, RecentKind.NIEUW, it.fileName) }
-        edits().filter { it.collection == collection }.forEach { byNumber.getOrPut(it.number) { mutableListOf() } += Event(it.at, it.user, RecentKind.AANGEPAST) }
-        return byNumber.map { (number, events) ->
+        return added().filter { it.collection == collection }.groupBy { it.number }.map { (number, events) ->
             val last = events.maxBy { it.at }
-            Candidate(number, last.kind, last.by, last.at, events.any { it.by.trim().lowercase() == me }, events.lastOrNull { it.fileName != null }?.fileName)
+            Candidate(number, last.user, last.at, last.user.trim().lowercase() == me, last.fileName)
         }.sortedWith(compareByDescending<Candidate> { it.at }.thenByDescending { it.number })
     }
 
@@ -113,7 +106,7 @@ class RecentRecords internal constructor(
             val title = title(collection, c.number)
             if (scope == RecentScope.TO_DESCRIBE && !(title != null && isUndescribed(title))) continue
             if (matched++ < offset) continue
-            found += RecentRecord(c.number, c.kind, c.by, c.at, title, c.mine, busyOf(c.number), media(collection, c.number, c.fileName))
+            found += RecentRecord(c.number, c.by, c.at, title, c.mine, busyOf(c.number), media(collection, c.number, c.fileName))
             if (found.size > limit) break
         }
         return RecentPage(found.take(limit), found.size > limit)

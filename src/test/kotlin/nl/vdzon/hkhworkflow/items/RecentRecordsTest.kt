@@ -1,15 +1,11 @@
 package nl.vdzon.hkhworkflow.items
 
-import java.nio.file.Files
 import java.time.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import nl.vdzon.hkhworkflow.settings.SettingsService
-import nl.vdzon.hkhworkflow.settings.WorkflowProperties
-import tools.jackson.databind.json.JsonMapper
 
 class RecentRecordsTest {
     private val day = LocalDateTime.of(2026, 10, 31, 8, 0)
@@ -18,28 +14,25 @@ class RecentRecordsTest {
     private val lookups = mutableListOf<String>()
     private val busy = mutableMapOf<String, String>()
     private val added = mutableListOf<NewRecord>()
-    private val edited = mutableListOf<EditEvent>()
 
-    private fun recent() = RecentRecords({ edited }, { added }, { n -> lookups += n; titles[n] }, { busy[it] }, { clock })
+    private fun recent() = RecentRecords({ added }, { n -> lookups += n; titles[n] }, { busy[it] }, { clock })
 
     private fun new(number: String, user: String, at: LocalDateTime, collection: String = "archief") = NewRecord(at, user, collection, number, "scan_$number.pdf")
 
     @Test
-    fun `toont de laatste records, nieuwste eerst, en bij elk record de laatste keer dat iemand eraan werkte`() {
+    fun `toont de laatste toegevoegde records, nieuwste eerst, met wie en wanneer ze zijn toegevoegd`() {
         added += new("99090", "carla", day)
-        added += new("99091", "carla", day.plusHours(1))
-        edited += EditEvent(day.plusHours(3), "ria", "archief", "99090")
+        added += new("99091", "ria", day.plusHours(1))
         titles += mapOf("99090" to "Markt", "99091" to "")
 
         val page = recent().page("carla", "archief", RecentScope.ALL, 20)
 
-        assertEquals(listOf("99090", "99091"), page.records.map { it.number })
-        val first = page.records[0]
-        assertEquals(RecentKind.AANGEPAST, first.kind)
-        assertEquals("ria", first.by, "wie het record als laatste aanpaste")
-        assertTrue(first.mine, "carla heeft het zelf toegevoegd, dus het is ook van haar")
-        assertEquals(RecentKind.NIEUW, page.records[1].kind)
-        assertTrue(page.records[1].toDescribe)
+        assertEquals(listOf("99091", "99090"), page.records.map { it.number })
+        assertEquals("ria", page.records[0].by)
+        assertEquals(day.plusHours(1), page.records[0].at)
+        assertTrue(page.records[0].toDescribe)
+        assertTrue(page.records[1].mine, "carla heeft dit zelf toegevoegd")
+        assertFalse(page.records[0].mine)
         assertFalse(page.more)
     }
 
@@ -132,22 +125,6 @@ class RecentRecordsTest {
     }
 
     @Test
-    fun `het bewerkt-log bewaart wie welk record wanneer opsloeg en leest het weer`() {
-        val dir = Files.createTempDirectory("edit-history")
-        val props = WorkflowProperties(settingsFile = dir.resolve("settings.json").toString(), editLog = "bewerkt.tsv")
-        val history = EditHistory(SettingsService(JsonMapper.builder().build(), props), props)
-        assertTrue(history.all().isEmpty())
-
-        history.add(EditEvent(day, "carla", "archief", "99090"))
-        history.add(EditEvent(day.plusMinutes(5), "ria\tx", "archief", "99091"))
-
-        val all = history.all()
-        assertEquals(listOf("99090", "99091"), all.map { it.number })
-        assertEquals("ria x", all[1].user, "een tab in een naam breekt het bestand niet")
-        assertEquals(dir.resolve("bewerkt.tsv"), history.file())
-    }
-
-    @Test
     fun `de standaardtitel van een nieuw record telt als nog niet beschreven`() {
         assertTrue(isUndescribed(""))
         assertTrue(isUndescribed("Een nog niet beschreven record (261031)"))
@@ -182,7 +159,7 @@ class RecentRecordsTest {
         added += NewRecord(day.plusMinutes(1), "carla", "archief", "99091", "dorp_003.jpg")
         titles += mapOf("99090" to "a", "99091" to "b")
         val asked = mutableListOf<Pair<String, String?>>()
-        val r = RecentRecords({ edited }, { added }, { titles[it] }, { null }, { clock }, { n, hint -> asked += n to hint; Media(if (hint!!.endsWith("pdf")) "pdf" else "image", "http://zcbs/$n") })
+        val r = RecentRecords({ added }, { titles[it] }, { null }, { clock }, { n, hint -> asked += n to hint; Media(if (hint!!.endsWith("pdf")) "pdf" else "image", "http://zcbs/$n") })
 
         val rows = r.page("carla", "archief", RecentScope.ALL, 20).records.associateBy { it.number }
 

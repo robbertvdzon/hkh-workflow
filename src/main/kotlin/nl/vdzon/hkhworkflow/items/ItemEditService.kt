@@ -1,6 +1,5 @@
 package nl.vdzon.hkhworkflow.items
 
-import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.zcbs.Control
@@ -17,7 +16,7 @@ data class Media(val kind: String, val url: String)
  * meer mensen tegelijk werken zonder dat de een de ander uitlogt.
  */
 @Service
-class ItemEditService(private val settingsService: SettingsService, private val history: EditHistory? = null) {
+class ItemEditService(private val settingsService: SettingsService) {
     private val sessions = ConcurrentHashMap<String, EditSession>()
 
     private fun key(name: String) = name.trim().lowercase()
@@ -81,16 +80,9 @@ class ItemEditService(private val settingsService: SettingsService, private val 
     fun preview(number: String, values: Map<String, List<String>>): PreviewOutcome = session()?.preview(number, values) ?: PreviewOutcome.Failed(NOT_LOGGED_IN)
     fun later(number: String) { session()?.later(number) }
     fun controlsFor(number: String): List<Control> = session()?.controlsFor(number).orEmpty()
-    fun save(number: String, values: Map<String, List<String>>, force: Boolean = false): SaveOutcome =
-        recorded(number, session()?.save(number, values, force) ?: SaveOutcome.NeedsLogin)
+    fun save(number: String, values: Map<String, List<String>>, force: Boolean = false): SaveOutcome = session()?.save(number, values, force) ?: SaveOutcome.NeedsLogin
     fun resolveConflict(number: String, keepMine: Boolean, values: Map<String, List<String>>): SaveOutcome =
-        recorded(number, session()?.resolveConflict(number, keepMine, values) ?: SaveOutcome.NeedsLogin)
-
-    /** Een geslaagde opslag komt in het bewerkt-log, voor de lijst met recente records. */
-    private fun recorded(number: String, outcome: SaveOutcome): SaveOutcome {
-        if (outcome is SaveOutcome.Saved) Current.user()?.let { history?.add(EditEvent(LocalDateTime.now(), it, Current.collection(), number)) }
-        return outcome
-    }
+        session()?.resolveConflict(number, keepMine, values) ?: SaveOutcome.NeedsLogin
 
     /** De titel en de plaatsing op internet van een record, uit de gewone weergave in ZCBS (zet geen vergrendeling). Null als ZCBS het niet liet zien. */
     fun summaryOf(number: String): RecordSummary? = session()?.summaryOf(number)
