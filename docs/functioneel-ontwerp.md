@@ -62,7 +62,7 @@ Belangrijke regels:
 - **Opnieuw beginnen** is altijd mogelijk; het wist de gekozen kopieën maar laat originelen en eigen bestanden staan.
 - **Herstart:** de stand van elke doorloop wordt bewaard. Na een herstart van de app staat de gebruiker in dezelfde fase; een stap die op dat
   moment liep staat dan op *mislukt* en kan opnieuw.
-- Wat al verwerkt is staat op de pagina **Verwerkt**.
+- Wat al op het archief is gezet, staat onder **Recent toegevoegd** bij ZCBS records aanpassen (de pagina Verwerkt bestaat niet meer).
 
 ## 5. ZCBS records aanpassen
 

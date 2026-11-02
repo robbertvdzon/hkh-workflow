@@ -69,9 +69,9 @@ De app begint met **inloggen bij ZCBS**, daarna kies je de **collectie** (nu all
   5. **images.exe**: idem. Handmatig typen: de app onthoudt de antwoorden en stelt ze de volgende keer voor; automatisch gebruikt hij de onthouden antwoorden.
   6. **Upload** van tekst en pdf met ftp, net als images.exe (overschrijft en verwijdert nooit; gewone ftp is niet versleuteld).
   7. **Back-up** van de 100pct en de pdf's naar K:, opruimen en in het verwerkt-log zetten. De originelen op K: blijven staan.
-- **ZCBS records aanpassen** — kies een recordnummer of een reeks en vul de gegevens in via het formulier van ZCBS: voorbeeld van de wijziging, opslaan en teruglezen,
-  "later" voor een record dat je overslaat. **Bij de echte site schrijft elke opslag in het echte archief en gaat er een e-mail naar de beheerder.**
-- **Verwerkt** — wat al op het archief is gezet: per doorloop de bestanden, hun recordnummer, wie het deed en uit welke map ze kwamen.
+- **ZCBS records aanpassen** — vul één recordnummer in, of kies uit **Recent toegevoegd** (de laatste records die met de app zijn toegevoegd of aangepast, met filters Alleen van mij,
+  Alles en Nog te beschrijven), en vul de gegevens in via het formulier van ZCBS: opslaan en teruglezen. **Bij de echte site schrijft elke opslag in het echte archief en stuurt ZCBS zelf een e-mail.**
+- **Versie** (alleen beheerder) — welke build draait (het buildnummer staat ook klein onderin het menu), welke staat er op GitHub, bijwerken met een knop en elke nacht om 00:00 vanzelf; dit werkt als de app als Windows-service draait (`tools/windows-server`).
 - **Instellingen** en **Test (technisch)** (alleen beheerder) — mappen, paden naar `images.exe` en `pdf2zcbs.exe`, collectie, back-upmappen, ftp-server (met Test verbinding) en de
   onthouden antwoorden; en dezelfde stappen per bestand met alle knoppen en logs. Instellingen worden als JSON opgeslagen, die niet in git komt.
 
