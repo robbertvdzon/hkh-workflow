@@ -11,9 +11,8 @@
 #   1. Staat er een jar in updates\? Controleren (zip, sha256) en voor current.jar zetten; de oude wordt previous.jar.
 #   2. java -jar current.jar starten en wachten tot /actuator/health antwoordt (maximaal $HealthSeconden).
 #   3. Eindigt java met exitcode 10: de app vroeg om een update, dus opnieuw bij stap 1.
-#      Eindigt java met 0: gewone stop, het script eindigt (de service stopt).
-#      Iets anders (crash): als de jar net nieuw was en nooit gezond is geworden, dan terugdraaien naar previous.jar;
-#      anders na een korte pauze opnieuw starten.
+#      Eindigt java met iets anders (ook 0): als de jar net nieuw was en nooit gezond is geworden, dan terugdraaien naar previous.jar;
+#      anders na een korte pauze opnieuw starten. De service blijft dus altijd draaien; stoppen doe je met Stop-Service (WinSW beeindigt dan het hele proces).
 # Alleen ASCII in dit bestand: Windows PowerShell 5.1 leest bestanden zonder BOM als ANSI.
 
 param(
@@ -133,7 +132,6 @@ while ($true) {
     Log "java is gestopt met exitcode $code"
 
     if ($code -eq 10) { Log 'De app vraagt om een update.'; continue }
-    if ($code -eq 0 -and $gezond) { Log 'Gewone stop; de service eindigt.'; exit 0 }
 
     if ($nieuw -and -not $gezond -and (Test-Path $previous)) {
         Move-NaarMislukt $current 'startte niet of werd niet gezond'

@@ -62,8 +62,8 @@ Het startscript doet bij elke (her)start van java het volgende:
 2. Is de jar goed, dan wordt `current.jar` de nieuwe `previous.jar` en komt de nieuwe jar op `current.jar`.
 3. Het script start java en wacht maximaal 90 seconden tot `/actuator/health` antwoordt. Lukt dat niet, of stopt java eerder met een fout, en de jar
    was nieuw, dan gaat die naar `mislukt\`, komt `previous.jar` terug en wordt de vorige versie gestart.
-4. Eindigt java met **exitcode 10**, dan is het een verzoek van de app om bij te werken: de lus begint opnieuw bij stap 1. Exitcode 0 is een gewone stop (de
-   service eindigt); alles anders is een crash, waarna het script na 10 seconden opnieuw start.
+4. Eindigt java met **exitcode 10**, dan is het een verzoek van de app om bij te werken: de lus begint opnieuw bij stap 1. Alles anders (ook exitcode 0) is een onverwachte stop,
+   waarna het script na 10 seconden opnieuw start: de service blijft draaien. Stoppen doe je met `Stop-Service` (WinSW beeindigt dan het hele proces).
 
 Een nieuwe jar neerzetten gaat in twee stappen, zodat het script nooit een half bestand ziet: eerst kopieren als `hkh-workflow.jar.part`, dan hernoemen (en het
 `.sha256`-bestand ervoor zetten). `deploy-testlaptop.sh --update` doet dat. De updatemodule van de app doet dat straks ook.

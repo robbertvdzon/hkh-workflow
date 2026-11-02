@@ -93,7 +93,7 @@ winsw="$hier/winsw/WinSW.exe"
 
 echo "== Kopieren naar $installmap"
 for f in run.ps1 hkh-workflow.xml install.ps1 uninstall.ps1; do
-  scp "${ssh_opts[@]}" -q "$hier/$f" "$doel:$(scp_pad "$installmap\$f")"
+  scp "${ssh_opts[@]}" -q "$hier/$f" "$doel:$(scp_pad "$installmap\\$f")"
 done
 scp "${ssh_opts[@]}" -q "$winsw" "$doel:$(scp_pad "$installmap\\WinSW.exe")"
 echo "   jar: $(basename "$jar") ($(du -h "$jar" | cut -f1))"

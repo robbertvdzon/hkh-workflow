@@ -39,7 +39,13 @@ if (Get-Service $dienst -ErrorAction SilentlyContinue) {
     Write-Host 'Bestaande service wordt gestopt en verwijderd.'
     & $exe stop 2>&1 | Out-Null
     & $exe uninstall 2>&1 | Out-Null
-    Start-Sleep -Seconds 2
+    # Wachten tot WinSW en java echt weg zijn; anders zijn hun bestanden nog vergrendeld.
+    for ($i = 0; $i -lt 30; $i++) {
+        $nog = @(Get-Process hkh-workflow -ErrorAction SilentlyContinue) + @(Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.CommandLine -like '*current.jar*' })
+        if ($nog.Count -eq 0) { break }
+        if ($i -eq 15) { Get-Process hkh-workflow -ErrorAction SilentlyContinue | Stop-Process -Force; Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.CommandLine -like '*current.jar*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force } }
+        Start-Sleep -Seconds 1
+    }
 }
 
 Copy-Item -Force $WinSw $exe
@@ -49,6 +55,8 @@ $xml = (Get-Content -Raw (Join-Path $hier 'hkh-workflow.xml')) -replace '@@JAVA@
 
 if ($Jar) {
     Copy-Item -Force $Jar (Join-Path $Map 'app\current.jar')
+    # Een klaarstaande update van eerder zou deze jar bij de volgende start weer overschrijven (updates\ gaat voor), dus die vervalt.
+    Remove-Item -Force (Join-Path $Map 'updates\hkh-workflow.jar*') -ErrorAction SilentlyContinue
     Write-Host "Jar geplaatst: $Map\app\current.jar"
 } elseif (-not (Test-Path (Join-Path $Map 'app\current.jar'))) {
     Write-Host 'Let op: er is nog geen app\current.jar; zet een hkh-workflow.jar in updates\ of draai opnieuw met -Jar.'
