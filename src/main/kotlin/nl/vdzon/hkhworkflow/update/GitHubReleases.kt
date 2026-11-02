@@ -6,8 +6,6 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.time.Duration
 import java.time.Instant
@@ -53,11 +51,27 @@ class GitHubReleases(
         return response.body()
     }
 
-    override fun download(url: String, target: Path): String {
+    override fun download(url: String, target: Path, progress: (Long, Long) -> Unit): String {
         val response = client.send(request(url, "application/octet-stream"), HttpResponse.BodyHandlers.ofInputStream())
         check(response.statusCode() == 200) { "Downloaden mislukt (${response.statusCode()})" }
+        val total = response.headers().firstValueAsLong("content-length").orElse(-1L)
         val digest = MessageDigest.getInstance("SHA-256")
-        response.body().use { body -> DigestInputStream(body, digest).use { Files.copy(it, target, StandardCopyOption.REPLACE_EXISTING) } }
+        var done = 0L
+        var reported = 0L
+        response.body().use { body ->
+            Files.newOutputStream(target).use { out ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val n = body.read(buffer)
+                    if (n < 0) break
+                    out.write(buffer, 0, n)
+                    digest.update(buffer, 0, n)
+                    done += n
+                    if (done - reported >= 256 * 1024) { reported = done; progress(done, total) }
+                }
+            }
+        }
+        progress(done, total)
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 

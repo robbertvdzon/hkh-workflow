@@ -66,16 +66,18 @@ class ItemsController(
         return back(target)
     }
 
-    /** Een rij van de lijst met recente records, klaar voor de pagina. */
+    /** Een rij van de lijst met recente records, klaar voor de pagina (de kolommen staan in `records-lijst.html`). */
     data class RecentRow(
-        val number: String, val title: String?, val toDescribe: Boolean, val kind: String, val newRecord: Boolean,
-        val who: String, val time: String, val busyBy: String?,
-        /** `pdf` of `image`, en het adres, als het record een bestand op de site heeft; zie de knop Open pdf of Open afbeelding. */
+        val number: String, val title: String?, val toDescribe: Boolean,
+        /** `pdf` of `jpg`, of leeg als het record geen bestand op de site heeft. */
+        val type: String,
+        val date: String, val time: String,
+        /** De gebruiker, hooguit 8 tekens. */
+        val who: String,
+        val busyBy: String?,
+        /** `pdf` of `image`, en het adres, als het record een bestand op de site heeft; zie de knop Open. */
         val mediaKind: String?, val mediaUrl: String?,
     )
-
-    /** De rijen van één dag; [date] is die dag (yyyy-MM-dd), om bij "Meer laden" te weten of de dagkop al staat. */
-    data class RecentGroup(val label: String, val date: String, val rows: List<RecentRow>)
 
     /**
      * De pagina zelf: het invoerveld staat er meteen. De lijst met recente records duurt even (de titels komen uit ZCBS) en wordt daarom
@@ -103,7 +105,6 @@ class ItemsController(
     fun recentList(
         @RequestParam("toon", defaultValue = "mijn") show: String,
         @RequestParam("van", defaultValue = "0") offset: Int,
-        @RequestParam("dag", required = false) lastDay: String?,
         model: Model,
     ): String {
         val scope = scopeOf(show)
@@ -115,15 +116,12 @@ class ItemsController(
             model.addAttribute("failed", "De records konden niet worden opgehaald: ${e.message ?: e.javaClass.simpleName}")
             null
         }
-        val groups = page?.let { groups(it.records, me) }.orEmpty()
         model.addAttribute("show", scopeName(scope))
         model.addAttribute("first", from == 0)
         model.addAttribute("empty", page != null && page.records.isEmpty() && from == 0)
-        // Staat de laatste dag van het vorige stuk ook bovenaan dit stuk, dan komt de dagkop er niet nog een keer.
-        model.addAttribute("groups", groups.mapIndexed { i, g -> if (i == 0 && g.date == lastDay) g.copy(label = "") else g })
+        model.addAttribute("rows", page?.let { rows(it.records) }.orEmpty())
         model.addAttribute("more", page?.more == true)
         model.addAttribute("nextFrom", from + PAGE_SIZE)
-        model.addAttribute("lastDay", groups.lastOrNull()?.date ?: lastDay.orEmpty())
         return "records-lijst :: rows"
     }
 
@@ -164,21 +162,13 @@ class ItemsController(
         return "zcbs-open"
     }
 
-    private fun groups(records: List<RecentRecord>, me: String): List<RecentGroup> {
-        val today = java.time.LocalDate.now()
-        val dayFormat = java.time.format.DateTimeFormatter.ofPattern("d MMMM", java.util.Locale.forLanguageTag("nl"))
-        val timeFormat = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-        return records.groupBy { it.at.toLocalDate() }.map { (day, rows) ->
-            val label = when (day) { today -> "Vandaag"; today.minusDays(1) -> "Gisteren"; else -> day.format(dayFormat) }
-            RecentGroup(
-                label, day.toString(),
-                rows.map {
-                    RecentRow(
-                        it.number, it.title, it.toDescribe, it.kind.label, it.kind == nl.vdzon.hkhworkflow.items.RecentKind.NIEUW,
-                        if (it.by.trim().equals(me, ignoreCase = true)) "jij" else it.by, it.at.format(timeFormat), it.busyBy,
-                        it.media?.kind, it.media?.url,
-                    )
-                },
+    private fun rows(records: List<RecentRecord>): List<RecentRow> {
+        val date = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+        val time = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        return records.map {
+            RecentRow(
+                it.number, it.title, it.toDescribe, when (it.media?.kind) { "pdf" -> "pdf"; "image" -> "jpg"; else -> "" },
+                it.at.format(date), it.at.format(time), it.by.trim().take(8), it.busyBy, it.media?.kind, it.media?.url,
             )
         }
     }

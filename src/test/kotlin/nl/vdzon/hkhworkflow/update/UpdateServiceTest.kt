@@ -58,10 +58,11 @@ class UpdateServiceTest {
         private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
         override fun latest(): Release? = if (failLatest) error("geen verbinding") else release
         override fun text(url: String) = sha(jar()) + "  hkh-workflow.jar\n"
-        override fun download(url: String, target: Path): String {
+        override fun download(url: String, target: Path, progress: (Long, Long) -> Unit): String {
             downloads++
             val bytes = jar().let { if (corruptDownload) it + byteArrayOf(1) else it }
             Files.write(target, bytes)
+            progress(bytes.size.toLong(), bytes.size.toLong())
             return sha(bytes)
         }
     }
@@ -77,7 +78,7 @@ class UpdateServiceTest {
     private fun service(source: ReleaseSource, service: Boolean = true) = UpdateService(
         source, settings, object : Activity { override fun running(): List<String> = busyNow() },
         object : AppRestarter { override fun restart() { restarts += EXIT_UPDATE } }, clock, updates.toString(), service,
-    )
+    ).also { it.background = { task -> task.run() } } // de tests wachten op de download
 
     @Test
     fun `een nieuwere build wordt klaargezet met sha256 en de app start opnieuw`() {
@@ -114,17 +115,20 @@ class UpdateServiceTest {
     fun `wordt er tijdens het downloaden een programma gestart, dan blijft de app draaien`() {
         var calls = 0
         busyNow = { if (++calls >= 2) listOf("Ria in archief") else emptyList() }
-        val problem = service(FakeSource()).updateNow("Robbert")
-        assertNotNull(problem)
+        val svc = service(FakeSource())
+        assertNull(svc.updateNow("Robbert")) // de download is gestart
+        val status = svc.status()
+        assertEquals(UpdatePhase.FAILED, status.phase)
+        assertTrue(status.failure!!.contains("Ria in archief"))
         assertTrue(restarts.isEmpty())
     }
 
     @Test
     fun `een bestand met een verkeerde sha256 wordt geweigerd`() {
         val source = FakeSource().apply { corruptDownload = true }
-        val problem = service(source).updateNow("Robbert")
-        assertNotNull(problem)
-        assertTrue(problem.contains("sha256"))
+        val svc = service(source)
+        assertNull(svc.updateNow("Robbert"))
+        assertTrue(svc.status().failure!!.contains("sha256"))
         assertFalse(updates.resolve("hkh-workflow.jar").exists())
         assertFalse(updates.resolve("hkh-workflow.jar.part").exists())
         assertTrue(restarts.isEmpty())
@@ -133,11 +137,51 @@ class UpdateServiceTest {
     @Test
     fun `een jar met een ander buildnummer dan de release wordt geweigerd`() {
         val source = FakeSource().apply { jarBuild = 57 }
-        val problem = service(source).updateNow("Robbert")
-        assertNotNull(problem)
-        assertTrue(problem.contains("build 57"))
+        val svc = service(source)
+        assertNull(svc.updateNow("Robbert"))
+        assertTrue(svc.status().failure!!.contains("build 57"))
         assertFalse(updates.resolve("hkh-workflow.jar").exists())
         assertTrue(restarts.isEmpty())
+    }
+
+    @Test
+    fun `een tweede klik terwijl er gedownload wordt, wordt geweigerd en de download zelf loopt door`() {
+        val source = FakeSource()
+        val svc = service(source)
+        var task: Runnable? = null
+        svc.background = { task = it } // de download is "bezig": hij staat klaar maar is nog niet uitgevoerd
+        assertNull(svc.updateNow("Robbert"))
+        assertEquals(UpdatePhase.DOWNLOADING, svc.status().phase)
+        assertEquals("De nieuwe versie wordt al gedownload.", svc.updateNow("Jelly"))
+        assertEquals(0, source.downloads)
+        task!!.run()
+        assertEquals(UpdatePhase.RESTARTING, svc.status().phase)
+        assertEquals(1, source.downloads)
+        assertEquals(listOf(EXIT_UPDATE), restarts)
+        assertEquals("De app wordt al opnieuw gestart.", svc.updateNow("Jelly"))
+    }
+
+    @Test
+    fun `na een mislukte download kan het opnieuw`() {
+        val source = FakeSource().apply { corruptDownload = true }
+        val svc = service(source)
+        svc.updateNow("Robbert")
+        assertEquals(UpdatePhase.FAILED, svc.status().phase)
+        source.corruptDownload = false
+        assertNull(svc.updateNow("Robbert"))
+        assertEquals(UpdatePhase.RESTARTING, svc.status().phase)
+        assertNull(svc.status().failure)
+    }
+
+    @Test
+    fun `de voortgang van de download staat in de status`() {
+        val svc = service(FakeSource())
+        var task: Runnable? = null
+        svc.background = { task = it }
+        svc.updateNow("Robbert")
+        assertNull(svc.status().percent) // totaal nog onbekend
+        task!!.run()
+        assertEquals(UpdatePhase.RESTARTING, svc.status().phase)
     }
 
     @Test

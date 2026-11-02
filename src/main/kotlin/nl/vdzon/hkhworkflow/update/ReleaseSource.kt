@@ -14,6 +14,9 @@ interface ReleaseSource {
     /** De tekst op [url] (het sha256-bestand). */
     fun text(url: String): String
 
-    /** Downloadt [url] naar [target] en geeft de sha256 (hex, kleine letters) van wat is binnengekomen. */
-    fun download(url: String, target: Path): String
+    /**
+     * Downloadt [url] naar [target] en geeft de sha256 (hex, kleine letters) van wat is binnengekomen. [progress] krijgt af en toe
+     * (bytes binnen, totaal of -1 als dat niet bekend is).
+     */
+    fun download(url: String, target: Path, progress: (Long, Long) -> Unit = { _, _ -> }): String
 }

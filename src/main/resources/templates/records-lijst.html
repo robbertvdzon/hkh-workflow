@@ -5,28 +5,27 @@
 <th:block th:fragment="rows">
     <p class="hint" th:if="${failed}" th:text="${failed}"></p>
     <p class="hint" th:if="${empty}" th:text="${show == 'mijn'} ? 'Je hebt nog geen records toegevoegd of aangepast met deze app. Kies Alles om te zien wat anderen deden.' : (${show == 'beschrijven'} ? 'Alle recente records hebben een titel.' : 'Er zijn nog geen records toegevoegd of aangepast met deze app.')"></p>
-    <th:block th:each="g : ${groups}">
-        <div class="day" th:unless="${g.label.isEmpty()}" th:text="${g.label}">Vandaag</div>
-        <div class="rec" th:each="r : ${g.rows}">
-            <span class="mono" th:text="${r.number}">99093</span>
+    <div class="rec" th:each="r : ${rows}">
+        <span class="mono c-nr" th:text="${r.number}">99093</span>
+        <span class="c-type" th:text="${r.type}">pdf</span>
+        <span class="c-date" th:text="${r.date}">31-10-2026</span>
+        <span class="c-time" th:text="${r.time}">20:15</span>
+        <span class="c-user" th:text="${r.who}" th:title="${r.who}">user1</span>
+        <span class="c-title">
             <span class="ttl" th:classappend="${r.toDescribe} ? 'todo'" th:text="${r.title == null} ? '' : (${r.toDescribe} ? 'Nog niet beschreven' : ${r.title})">Titel</span>
-            <span class="meta">
-                <span class="rpill busy" th:if="${r.busyBy != null}" th:text="${r.busyBy} + ' heeft dit open'">Ria heeft dit open</span>
-                <span class="rpill new" th:if="${r.busyBy == null and r.newRecord}" th:text="${r.kind}">nieuw</span>
-                <span class="rpill" th:if="${r.busyBy == null and !r.newRecord}" th:text="${r.kind}">aangepast</span>
-                <span th:text="${r.who} + ' · ' + ${r.time}">jij · 20:15</span>
-            </span>
-            <span class="acts">
-                <button type="button" class="btn btn-p btn-sm" data-viewer th:if="${r.mediaUrl != null}"
-                        th:attr="data-url=${r.mediaUrl},data-title=${r.number + ' – ' + (r.title == null or r.toDescribe ? (r.mediaKind == 'pdf' ? 'pdf' : 'afbeelding') : r.title)},data-kind=${r.mediaKind}"
-                        th:text="${r.mediaKind == 'pdf'} ? 'Open pdf' : 'Open afbeelding'">Open pdf</button>
-                <a class="btn btn-p btn-sm" th:href="@{/records/{nr}(nr=${r.number})}">Bewerk</a>
-                <a class="btn btn-p btn-sm" th:href="@{/records/{nr}/zcbs(nr=${r.number})}" target="_blank" rel="noopener">Open in ZCBS</a>
-            </span>
-        </div>
-    </th:block>
+            <span class="rpill busy" th:if="${r.busyBy != null}" th:text="${r.busyBy} + ' heeft dit open'">Ria heeft dit open</span>
+        </span>
+        <span class="acts">
+            <button type="button" class="btn btn-p btn-sm" data-viewer th:if="${r.mediaUrl != null}"
+                    th:attr="data-url=${r.mediaUrl},data-title=${r.number + ' – ' + (r.title == null or r.toDescribe ? (r.mediaKind == 'pdf' ? 'pdf' : 'afbeelding') : r.title)},data-kind=${r.mediaKind}"
+                    th:title="${r.mediaKind == 'pdf'} ? 'Open de pdf van dit record' : 'Open de afbeelding van dit record'">Open</button>
+            <span th:unless="${r.mediaUrl != null}"></span>
+            <a class="btn btn-p btn-sm" th:href="@{/records/{nr}(nr=${r.number})}">Bewerk</a>
+            <a class="btn btn-p btn-sm" th:href="@{/records/{nr}/zcbs(nr=${r.number})}" target="_blank" rel="noopener">Open in ZCBS</a>
+        </span>
+    </div>
     <div class="loadmore" th:if="${more}">
-        <button type="button" class="btn btn-s btn-sm" th:hx-get="@{/records/lijst(toon=${show},van=${nextFrom},dag=${lastDay})}" hx-target="closest .loadmore" hx-swap="outerHTML" hx-disabled-elt="this">
+        <button type="button" class="btn btn-s btn-sm" th:hx-get="@{/records/lijst(toon=${show},van=${nextFrom})}" hx-target="closest .loadmore" hx-swap="outerHTML" hx-disabled-elt="this">
             <span class="idle">Meer laden</span><span class="busytxt">Laden…</span>
         </button>
     </div>

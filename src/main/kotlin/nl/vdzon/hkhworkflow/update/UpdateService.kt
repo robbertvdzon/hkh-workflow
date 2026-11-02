@@ -26,6 +26,9 @@ interface AppRestarter {
     fun restart()
 }
 
+/** Waar het bijwerken is: niets aan de hand, de nieuwe jar wordt gedownload, de app start opnieuw, of het klaarzetten is mislukt. */
+enum class UpdatePhase { IDLE, DOWNLOADING, RESTARTING, FAILED }
+
 /** De stand voor de pagina Versie. */
 data class UpdateStatus(
     val current: AppVersion.Info,
@@ -37,9 +40,17 @@ data class UpdateStatus(
     val busy: List<String>,
     val nightly: Boolean,
     val nightlyPending: Boolean,
-    val restarting: Boolean,
+    val phase: UpdatePhase,
+    val downloaded: Long,
+    val total: Long,
+    val failure: String?,
     val events: List<String>,
-)
+) {
+    val restarting: Boolean get() = phase == UpdatePhase.RESTARTING
+
+    /** Hoeveel procent van de download binnen is, of null als dat (nog) niet bekend is. */
+    val percent: Int? get() = if (phase == UpdatePhase.DOWNLOADING && total > 0) (downloaded * 100 / total).toInt().coerceIn(0, 100) else null
+}
 
 /**
  * Houdt de app bij: kijkt op GitHub of er een nieuwere build is, zet die klaar in `updates/` (met sha256-controle) en laat de app opnieuw
@@ -68,9 +79,18 @@ class UpdateService(
 
     @Volatile private var checkError: String? = null
 
-    @Volatile private var restarting = false
+    @Volatile private var phase = UpdatePhase.IDLE
+
+    @Volatile private var downloaded = 0L
+
+    @Volatile private var total = -1L
+
+    @Volatile private var failure: String? = null
 
     @Volatile private var pendingUntil: Instant? = null
+
+    /** Voert het downloaden uit; standaard op een eigen thread, zodat een klik direct antwoord krijgt (de download kan op een trage lijn minuten duren). De tests voeren het direct uit. */
+    internal var background: (Runnable) -> Unit = { Thread(it, "update-download").apply { isDaemon = true }.start() }
 
     private fun now(): Instant = Instant.now(clock)
 
@@ -111,31 +131,62 @@ class UpdateService(
         busy = activity.running(),
         nightly = settingsService.get().nightlyUpdate,
         nightlyPending = pendingUntil != null,
-        restarting = restarting,
+        phase = phase,
+        downloaded = downloaded,
+        total = total,
+        failure = failure,
         events = synchronized(events) { events.toList() },
     )
 
     /**
      * Haalt de nieuwste build binnen en laat de app opnieuw starten. Geeft null als dat is gestart, anders waarom het niet kan.
-     * De app is dan binnen een paar seconden weg en komt na ongeveer een halve minuut terug met de nieuwe versie.
+     * Het downloaden gebeurt op de achtergrond (zie [status]); daarna is de app binnen een paar seconden weg en komt hij na ongeveer een halve minuut terug
+     * met de nieuwe versie. Met [inline] wacht de aanroeper op het resultaat en komt een mislukte download als tekst terug (de nachtelijke update).
      */
-    fun updateNow(by: String): String? {
-        if (restarting) return "De app wordt al opnieuw gestart."
+    fun updateNow(by: String, inline: Boolean = false): String? {
+        alreadyBusy()?.let { return it }
         if (!runsAsService) return "Bijwerken kan alleen als de app als Windows-service draait (zie tools/windows-server)."
         val release = check() ?: return checkError
         if (!isNewer(release)) return "Je draait al de nieuwste build (${release.number})."
-        busyMessage()?.let { return it }
-        try {
-            stage(release)
-        } catch (e: Exception) {
-            event("Build ${release.number} klaarzetten mislukt: ${e.message}")
-            return "Klaarzetten van build ${release.number} mislukt: ${e.message}"
+        synchronized(transition) {
+            alreadyBusy()?.let { return it } // een tweede klik terwijl de eerste nog bezig was
+            busyMessage()?.let { return it }
+            failure = null
+            downloaded = 0
+            total = -1
+            phase = UpdatePhase.DOWNLOADING
         }
-        busyMessage()?.let { return it } // het downloaden kan even duren: kijk vlak voor de herstart nog eens
-        restarting = true
+        if (inline) return perform(release, by)
+        background { perform(release, by) }
+        return null
+    }
+
+    /** Zet de jar klaar en laat de app herstarten. Geeft null als dat gelukt is, anders waarom niet (dat staat dan ook in de status). */
+    private fun perform(release: Release, by: String): String? {
+        val problem = try {
+            stage(release)
+            busyMessage() // het downloaden kan lang duren: kijk vlak voor de herstart nog eens
+        } catch (e: Exception) {
+            "Klaarzetten van build ${release.number} mislukt: ${e.message}"
+        }
+        if (problem != null) {
+            failure = problem
+            phase = UpdatePhase.FAILED
+            event(problem)
+            return problem
+        }
+        phase = UpdatePhase.RESTARTING
         event("Build ${release.number} staat klaar (gestart door $by); de app start opnieuw.")
         restarter.restart()
         return null
+    }
+
+    private val transition = Any()
+
+    private fun alreadyBusy(): String? = when (phase) {
+        UpdatePhase.RESTARTING -> "De app wordt al opnieuw gestart."
+        UpdatePhase.DOWNLOADING -> "De nieuwe versie wordt al gedownload."
+        else -> null
     }
 
     private fun busyMessage(): String? {
@@ -150,7 +201,7 @@ class UpdateService(
         Files.createDirectories(dir)
         val part = dir.resolve("hkh-workflow.jar.part")
         val actual = try {
-            source.download(release.jarUrl, part)
+            source.download(release.jarUrl, part) { done, size -> downloaded = done; total = size }
         } catch (e: Exception) {
             Files.deleteIfExists(part)
             throw e
@@ -200,7 +251,7 @@ class UpdateService(
             event("Nachtelijke controle: build ${release.number} is de nieuwste.")
             return
         }
-        val problem = updateNow("de nachtelijke update")
+        val problem = updateNow("de nachtelijke update", inline = true)
         if (problem == null) pendingUntil = null else event("Nachtelijke update wacht: $problem")
     }
 

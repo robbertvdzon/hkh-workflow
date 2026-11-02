@@ -15,6 +15,13 @@
         <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
         <div class="alert alert-info" th:if="${info}" th:text="${info}"></div>
 
+        <section class="alert alert-info" id="downloaden" th:if="${downloading}">
+            <b>De nieuwe versie wordt gedownload</b><span th:if="${status.percent != null}" th:text="': ' + ${status.percent} + '% (' + ${megabytes['done']} + ' van ' + ${megabytes['total']} + ' MB)'">: 45%</span>.
+            Dit kan op een trage verbinding een paar minuten duren. Daarna start de app vanzelf opnieuw; je kunt deze pagina openlaten.
+        </section>
+        <section class="alert alert-err" th:if="${status.failure != null and !downloading and !restartRequested}">
+            <b>Bijwerken is niet gelukt.</b> <span th:text="${status.failure}">reden</span>
+        </section>
         <section class="alert alert-info" id="herstart" th:if="${restartRequested}">
             <b>De app wordt opnieuw gestart.</b> Dit duurt ongeveer een halve minuut. Deze pagina laadt daarna vanzelf opnieuw; je moet dan opnieuw als beheerder inloggen.
         </section>
@@ -43,7 +50,7 @@
             <div style="display:flex;gap:10px;flex-wrap:wrap">
                 <form method="post" th:action="@{/instellingen/versie/controleren}"><button class="btn btn-s" type="submit">Controleer nu</button></form>
                 <form method="post" th:action="@{/instellingen/versie/bijwerken}" onsubmit="return confirm('De app nu bijwerken? De app start opnieuw en is een halve minuut niet bereikbaar. Wie bezig is met een bevestiging of formulier, moet daarna opnieuw inloggen.')">
-                    <button class="btn" type="submit" th:disabled="${!status.runsAsService or !status.newer or !status.busy.isEmpty() or status.restarting}">Nu bijwerken</button></form>
+                    <button class="btn" type="submit" th:disabled="${!status.runsAsService or !status.newer or !status.busy.isEmpty() or downloading or restartRequested}">Nu bijwerken</button></form>
             </div>
         </section>
 
@@ -63,6 +70,10 @@
         </section>
     </main>
 </div>
+<script th:if="${downloading}">
+    // Tijdens het downloaden de pagina elke paar seconden verversen, zodat de voortgang klopt en hij vanzelf overgaat in "opnieuw starten".
+    setTimeout(function () { location.reload(); }, 2500);
+</script>
 <script th:if="${restartRequested}">
     // Wacht tot de app weg is en weer terug, en laad dan de pagina opnieuw.
     (function () {

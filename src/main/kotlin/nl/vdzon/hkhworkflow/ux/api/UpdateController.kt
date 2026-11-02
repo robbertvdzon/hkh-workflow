@@ -5,6 +5,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import nl.vdzon.hkhworkflow.settings.SettingsService
+import nl.vdzon.hkhworkflow.update.UpdatePhase
 import nl.vdzon.hkhworkflow.update.UpdateService
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -19,13 +20,15 @@ class UpdateController(private val updates: UpdateService, private val settingsS
     private val moment = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", Locale.of("nl", "NL")).withZone(ZoneId.of("Europe/Amsterdam"))
 
     @GetMapping("/instellingen/versie")
-    fun page(@RequestParam("herstart", required = false) restart: String?, model: Model): String {
+    fun page(model: Model): String {
         val status = updates.status()
         model.addAttribute("active", "versie")
         model.addAttribute("status", status)
         model.addAttribute("checkedAt", status.checkedAt?.let { moment.format(it) })
         model.addAttribute("publishedAt", status.latest?.publishedAt?.let { moment.format(it) })
-        model.addAttribute("restartRequested", restart != null && status.restarting)
+        model.addAttribute("downloading", status.phase == UpdatePhase.DOWNLOADING)
+        model.addAttribute("restartRequested", status.restarting)
+        model.addAttribute("megabytes", mapOf("done" to status.downloaded / 1_048_576, "total" to status.total / 1_048_576))
         return "versie"
     }
 
@@ -39,11 +42,8 @@ class UpdateController(private val updates: UpdateService, private val settingsS
     fun update(request: HttpServletRequest, redirect: RedirectAttributes): String {
         val by = request.session.getAttribute("zcbsUser") as? String ?: "de beheerder"
         val problem = updates.updateNow(by)
-        if (problem != null) {
-            redirect.addFlashAttribute("error", problem)
-            return "redirect:/instellingen/versie"
-        }
-        return "redirect:/instellingen/versie?herstart=1"
+        if (problem != null) redirect.addFlashAttribute("error", problem)
+        return "redirect:/instellingen/versie" // het downloaden loopt op de achtergrond; de pagina toont de voortgang
     }
 
     @PostMapping("/instellingen/versie/nacht")

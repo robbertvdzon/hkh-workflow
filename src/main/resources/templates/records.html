@@ -37,6 +37,9 @@
                 </div>
             </div>
 
+            <div class="rec rechead" aria-hidden="true">
+                <span>Nr</span><span>Type</span><span>Datum</span><span>Tijd</span><span class="c-user">Gebruiker</span><span>Titel</span><span></span>
+            </div>
             <!-- De lijst wordt apart opgehaald, want de titels komen uit ZCBS en dat duurt even. -->
             <div id="lijst" th:hx-get="@{/records/lijst(toon=${show})}" hx-trigger="load" hx-swap="innerHTML"
                  hx-on:htmx:response-error="this.innerHTML='<p class=&quot;hint&quot;>Het ophalen van de records is mislukt. Laad de pagina opnieuw.</p>'"

@@ -80,7 +80,10 @@ class GitHubReleasesTest {
     @Test
     fun `downloaden volgt een redirect en geeft de sha256 van wat is binnengekomen`() {
         val target = dir.resolve("x.jar.part")
-        val sha = source().download("$base/redirect", target)
+        val reports = mutableListOf<Pair<Long, Long>>()
+        val sha = source().download("$base/redirect", target) { done, total -> reports += done to total }
+        assertEquals(payload.size.toLong(), reports.last().first)
+        assertEquals(payload.size.toLong(), reports.last().second)
         assertEquals(MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { "%02x".format(it) }, sha)
         assertEquals(payload.size, target.readBytes().size)
     }
