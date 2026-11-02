@@ -81,6 +81,9 @@ via het formulier van ZCBS. Wat *Later* en *Volgende zonder opslaan* doen: wat j
 - **Instellingen** (alleen beheerder): werkmap, mappen met scans, programma's, per collectie de resolutie en back-upmappen, ftp en de keuze voor de
   test-ZCBS of het echte archief. Zie [manual/instellingen.md](../manual/instellingen.md).
 - **Sessies:** wie is er ingelogd en wie werkt aan nieuwe bestanden (collectie, fase, sinds wanneer, laatst actief); de beheerder kan een doorloop stoppen.
+- **Versie:** welke build draait (het buildnummer en de bouwtijd staan ook klein onderin het menu), welke build er op GitHub klaarstaat, en een knop om bij te werken. Bijwerken kan alleen
+  als geen enkele gebruiker een programma of upload draait, en de app is dan een halve minuut niet bereikbaar. Elke nacht om 00:00 werkt de app zich zelf bij als er een nieuwere build is
+  (uit te zetten); is er dan nog iemand bezig, dan probeert hij het tot 03:00 opnieuw. Dit werkt alleen als de app als Windows-service draait.
 - **Technische testpagina** (`/test`): de losse stappenketen voor ontwikkelaars.
 
 ## 7. Meer gebruikers tegelijk

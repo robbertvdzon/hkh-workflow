@@ -38,7 +38,7 @@ object ProgramFiles {
                 }
                 entry.isRegularFile() -> if (!isData(entry)) {
                     val dest = to.resolve(name)
-                    if (!Files.exists(dest) || Files.size(dest) != Files.size(entry) || Files.getLastModifiedTime(dest) < Files.getLastModifiedTime(entry)) {
+                    if (!Files.exists(dest) || Files.size(dest) != Files.size(entry) || Files.getLastModifiedTime(dest).toMillis() < Files.getLastModifiedTime(entry).toMillis()) {
                         Files.copy(entry, dest, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES)
                         copied++
                     }

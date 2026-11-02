@@ -29,7 +29,8 @@ Controllers staan in een `api`-subpackage.
 | `adminlog` | settings | `AdminLogClient` (meldingen aan hkh-admin), `SnapshotSanitizer`, `SettingsChangeReporter`, `AppLogAppender`/`AppLogSpool`/`AppLogShipper` (app-log), `AppVersion` |
 | `items` | adminlog, zcbs, settings | `ItemEditService` (facade), `EditSession` (de ZCBS-sessie en het bewerken van één gebruiker), `Current` (wie is aan het woord), `RememberLogin`, `EditLogReporter`; `api/ItemsController` |
 | `testrun` | adminlog, settings, exerunner, ftp, items, zcbs | `TestRunService` (registry van doorlopen), `FlowSession` (één doorloop: fasen, controles, stappen), `WorkFolders`, `ProgramFiles`, `SourceFilesService`, `ProcessedLog`, `FlowState` (bewaarde stand), `ExeAnswers`, `FlowLogReporter`; `api/NewFilesController`, `api/TestController` |
-| `ux` | adminlog, settings, items, testrun | `CurrentContextFilter`, `WebConfig` (wie waar mag komen), `AdminAccess`; `api/ShellController`, `api/SessionsController` |
+| `update` | adminlog, settings, testrun | `UpdateService` (kijkt op GitHub of er een nieuwere build is, zet de jar klaar in `updates/`, laat de app met exitcode 10 herstarten, nachtelijke controle), `ReleaseSource`/`GitHubReleases` (de Releases van de repository), `FlowActivity` (loopt er een programma of upload?), `SpringRestarter` |
+| `ux` | adminlog, settings, items, testrun, update | `CurrentContextFilter`, `WebConfig` (wie waar mag komen), `AdminAccess`; `api/ShellController`, `api/SessionsController`, `api/UpdateController` |
 
 ## 3. Wie is aan het woord: meerdere gebruikers
 
@@ -77,6 +78,7 @@ Controllers staan in een `api`-subpackage.
 | `/zcbs/login`, `/zcbs/logout` | ZCBS-inlog |
 | `/beheer`, `/beheer/inloggen`, `/beheer/uitloggen` | Beheerderslogin |
 | `/instellingen`, `/instellingen/ftp-test`, `/instellingen/sessies`, `/instellingen/sessies/stoppen` | Beheer |
+| `/instellingen/versie`, `.../controleren`, `.../bijwerken`, `.../nacht` | Beheer: welke build draait, wat staat er klaar, bijwerken, de nachtelijke schakelaar |
 | `/test`, `/test/…` | Technische testpagina (stappenketen, console, logs) |
 
 `WebConfig` bepaalt wie waar mag komen: `/collectie`, `/nieuw`, `/records`, `/verwerkt` vragen een ZCBS-inlog; `/instellingen` en delen van `/test` de beheerder.
@@ -102,12 +104,29 @@ java -jar target/hkh-workflow.jar
   `tools/localfileserver/` testscans; `tools/windows-testlaptop/` scripts voor de echte exe's op een testlaptop.
 - **Handleidingen:** de screenshots en pdf's in `manual/` worden gemaakt met `tools/docs/` (Playwright en Chrome tegen de lokale testomgeving); zie `tools/docs/README.md`.
 - **Omgevingsvariabelen** (`application.properties`): `HKH_WORKFLOW_ADDRESS`, `…_PORT`, `…_SETTINGS_FILE`, `…_CONSOLE_CHARSET`, `…_ADMIN_PASSWORD`, `…_PROCESSED_LOG`, `…_ADMIN_LOG_URL` (leeg = geen meldingen), `…_LOG_DIR`.
-- **Draaien op de server:** nu macOS (Windows benadert mappen via de localfileserver); later een Windows-service met automatisch bijwerken (voorstel in [auto-update.md](auto-update.md)).
+- **Draaien op de server:** nu macOS (Windows benadert mappen via de localfileserver); op Windows als service (`tools/windows-server`, zie §8a en [auto-update.md](auto-update.md)).
   Bij een Windows-service UNC-paden (`\\server\…`) gebruiken voor werkmap en scans.
+
+## 8a. Build, release en bijwerken
+
+- **Buildnummer.** `pom.xml` zet via `build-info` het buildnummer (`-Dbuild.number`, het `run_number` van de GitHub Action), de commit (`-Dbuild.commit`) en de bouwtijd in
+  `META-INF/build-info.properties`. Lokaal blijven nummer en commit `0` en `-`. `AppVersion.info` leest ze; onderin het menu staat klein `build 57 · 2 nov 2026 20:34`
+  (tijd in Nederlandse tijd), en het workflow-logboek krijgt `build 57 (0.0.1-SNAPSHOT+20261102.1934)`.
+- **Release per build.** `.github/workflows/build.yml` draait bij elke push naar `main` `mvn clean package` (met alle tests) en zet bij een groene build een GitHub Release
+  `build-<nummer>` met `hkh-workflow.jar` en `hkh-workflow.jar.sha256` klaar; de laatste 20 blijven staan. De repository is publiek, dus de server downloadt zonder token.
+- **Bijwerken.** `UpdateService` vraagt `/repos/<repo>/releases` op en neemt de release met het **hoogste buildnummer** (niet de nieuwste aanmaaktijd). Is dat hoger dan het draaiende
+  nummer, dan downloadt hij de jar naar `updates/hkh-workflow.jar.part`, controleert de sha256 (die van de Release) en of het buildnummer in de jar klopt, schrijft het `.sha256`-bestand
+  en hernoemt de jar pas dan naar `hkh-workflow.jar`. Daarna sluit de app na twee seconden af met **exitcode 10**; `tools/windows-server/run.ps1` plaatst de jar en start hem
+  (en draait terug als hij niet gezond wordt). Dit gebeurt alleen als de app als service draait (`HKH_SERVICE=1`, door `hkh-workflow.xml` gezet) en alleen als er geen programma of
+  stap (upload, back-up) loopt, gecontroleerd vlak voor het downloaden en nog eens erna (`FlowSession.busy()`).
+- **Elke nacht.** `UpdateService.nightly()` draait elke nacht om 00:00 (`hkh.workflow.update-cron`, Nederlandse tijd) als de instelling `nightlyUpdate` aan staat. Is er dan nog een programma
+  bezig, dan probeert `retryNightly()` het elke 10 minuten opnieuw tot 03:00; daarna slaat hij die nacht over. Alle gebeurtenissen staan als INFO in de app-log (dus ook in hkh-admin) en
+  de laatste twintig op de pagina Versie.
+- Instellingen: `hkh.workflow.update-dir` (standaard `updates`), `hkh.workflow.update-repo` (standaard `robbertvdzon/hkh-workflow`), `hkh.workflow.update-cron`, `hkh.service`.
 
 ## 9. Bekende beperkingen en open punten
 
-- De echte `images.exe`/`pdf2zcbs.exe` zijn nog niet bevestigd vanuit een map van een gebruiker op Windows (de mocks wel); zie [testen-bij-hkh.md](testen-bij-hkh.md).
+- De echte `images.exe`/`pdf2zcbs.exe` zijn op de testlaptop (Windows 10, als service onder LocalSystem) vanuit een map van een gebruiker bevestigd; op de echte server met de echte servicegebruiker nog niet; zie [testen-bij-hkh.md](testen-bij-hkh.md) en [../tools/windows-server/README.md](../tools/windows-server/README.md).
 - Alleen het archief is ingeschakeld (`IMPLEMENTED_COLLECTIONS`); de instellingen per collectie bestaan al.
 - De collectie is per browsersessie; geen collectie in het adres.
 - Zonder slot kunnen twee gebruikers tegelijk dezelfde nummers kiezen; alleen de controle vlak voor images vangt dat af.
