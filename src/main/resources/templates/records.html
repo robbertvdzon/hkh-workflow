@@ -16,7 +16,7 @@
         <div class="alert alert-info" th:if="${info}" th:text="${info}"></div>
         <div class="alert alert-ok stack" th:if="${saved != null}" style="gap:10px">
             <span th:text="'Record ' + ${saved} + ' is opgeslagen en teruggecontroleerd. ZCBS stuurt zelf een e-mail met het record.'"></span>
-            <div th:if="${nextNumber != null}"><a class="btn btn-p btn-sm" th:href="@{/records/{nr}(nr=${nextNumber})}" th:text="'Volgende om te beschrijven: ' + ${nextNumber}">Volgende</a></div>
+            <div th:hx-get="@{/records/volgende(na=${saved})}" hx-trigger="load" hx-swap="innerHTML"><span class="hint">Het volgende record zoeken…</span></div>
         </div>
 
         <form th:action="@{/records/kies}" method="post" class="openrec">
@@ -34,26 +34,14 @@
                 </div>
             </div>
 
-            <p class="hint" th:if="${empty}" th:text="${show == 'mijn'} ? 'Je hebt nog geen records toegevoegd of aangepast met deze app. Kies Alles om te zien wat anderen deden.' : (${show == 'beschrijven'} ? 'Alle recente records hebben een titel.' : 'Er zijn nog geen records toegevoegd of aangepast met deze app.')"></p>
-
-            <th:block th:each="g : ${groups}">
-                <div class="day" th:text="${g.label}">Vandaag</div>
-                <a class="rec" th:each="r : ${g.rows}" th:href="@{/records/{nr}(nr=${r.number})}">
-                    <span class="mono" th:text="${r.number}">99093</span>
-                    <span class="ttl" th:classappend="${r.toDescribe} ? 'todo'" th:text="${r.title == null} ? '' : (${r.toDescribe} ? 'Nog niet beschreven' : ${r.title})">Titel</span>
-                    <span class="meta">
-                        <span class="rpill busy" th:if="${r.busyBy != null}" th:text="${r.busyBy} + ' heeft dit open'">Ria heeft dit open</span>
-                        <span class="rpill new" th:if="${r.busyBy == null and r.newRecord}" th:text="${r.kind}">nieuw</span>
-                        <span class="rpill" th:if="${r.busyBy == null and !r.newRecord}" th:text="${r.kind}">aangepast</span>
-                        <span th:text="${r.who} + ' · ' + ${r.time}">jij · 20:15</span>
-                    </span>
-                </a>
-            </th:block>
-
-            <div class="recentfoot" th:if="${!groups.isEmpty()}">
-                <span class="hint">Records die met deze app zijn toegevoegd of aangepast, nieuwste eerst. Wijzigingen die rechtstreeks in ZCBS zijn gedaan staan hier niet bij.</span>
-                <a class="btn btn-s btn-sm" th:if="${more}" th:href="@{/records(toon=${show},aantal=${moreCount})}">Toon meer</a>
+            <!-- De lijst wordt apart opgehaald, want de titels komen uit ZCBS en dat duurt even. -->
+            <div id="lijst" th:hx-get="@{/records/lijst(toon=${show})}" hx-trigger="load" hx-swap="innerHTML"
+                 hx-on:htmx:response-error="this.innerHTML='<p class=&quot;hint&quot;>Het ophalen van de records is mislukt. Laad de pagina opnieuw.</p>'"
+                 hx-on:htmx:send-error="this.innerHTML='<p class=&quot;hint&quot;>Het ophalen van de records is mislukt. Laad de pagina opnieuw.</p>'">
+                <p class="hint loading">Recente records ophalen…</p>
             </div>
+
+            <p class="hint recentnote">Records die met deze app zijn toegevoegd of aangepast, nieuwste eerst. Wijzigingen die rechtstreeks in ZCBS zijn gedaan staan hier niet bij.</p>
         </section>
     </main>
 </div>

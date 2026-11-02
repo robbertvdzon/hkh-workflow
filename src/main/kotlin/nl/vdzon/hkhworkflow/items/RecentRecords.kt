@@ -88,15 +88,17 @@ class RecentRecords internal constructor(
         }.sortedWith(compareByDescending<Candidate> { it.at }.thenByDescending { it.number })
     }
 
-    /** De eerste [limit] records van [scope], nieuwste eerst; [RecentPage.more] zegt of er meer zijn. */
-    fun page(user: String, collection: String, scope: RecentScope, limit: Int): RecentPage {
+    /** Maximaal [limit] records van [scope] vanaf het [offset]-de, nieuwste eerst; [RecentPage.more] zegt of er daarna nog meer zijn. */
+    fun page(user: String, collection: String, scope: RecentScope, limit: Int, offset: Int = 0): RecentPage {
         val found = mutableListOf<RecentRecord>()
+        var matched = 0
         var scanned = 0
         for (c in candidates(user, collection)) {
             if (scope == RecentScope.MINE && !c.mine) continue
             if (++scanned > MAX_SCAN) break
             val title = title(collection, c.number)
             if (scope == RecentScope.TO_DESCRIBE && !(title != null && isUndescribed(title))) continue
+            if (matched++ < offset) continue
             found += RecentRecord(c.number, c.kind, c.by, c.at, title, c.mine, busyOf(c.number))
             if (found.size > limit) break
         }
@@ -117,7 +119,7 @@ class RecentRecords internal constructor(
     }
 
     private companion object {
-        const val TITLE_TTL_MILLIS = 30_000L
+        const val TITLE_TTL_MILLIS = 5 * 60_000L
         const val MAX_SCAN = 200
     }
 }

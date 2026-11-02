@@ -68,36 +68,76 @@ class ItemsController(
     /** Een rij van de lijst met recente records, klaar voor de pagina. */
     data class RecentRow(
         val number: String, val title: String?, val toDescribe: Boolean, val kind: String, val newRecord: Boolean,
-        val who: String, val time: String, val busyBy: String?,
+        val who: String, val time: String, val busyBy: String?, val zcbsUrl: String?,
     )
 
-    data class RecentGroup(val label: String, val rows: List<RecentRow>)
+    /** De rijen van één dag; [date] is die dag (yyyy-MM-dd), om bij "Meer laden" te weten of de dagkop al staat. */
+    data class RecentGroup(val label: String, val date: String, val rows: List<RecentRow>)
 
+    /**
+     * De pagina zelf: het invoerveld staat er meteen. De lijst met recente records duurt even (de titels komen uit ZCBS) en wordt daarom
+     * apart opgehaald, zie [recentList].
+     */
     @GetMapping("/records")
     fun list(
         @RequestParam("opgeslagen", required = false) saved: String?,
         @RequestParam("toon", defaultValue = "mijn") show: String,
-        @RequestParam("aantal", defaultValue = "20") count: Int,
         model: Model,
     ): String {
-        val scope = when (show) { "alles" -> RecentScope.ALL; "beschrijven" -> RecentScope.TO_DESCRIBE; else -> RecentScope.MINE }
-        val limit = count.coerceIn(20, 200)
-        val me = items.user.orEmpty()
-        val collection = Current.collection()
-        val page = if (items.loggedIn()) recent.page(me, collection, scope, limit) else null
         model.addAttribute("active", "records")
         model.addAttribute("items", items)
         model.addAttribute("saved", saved)
         model.addAttribute("loggedIn", items.loggedIn())
-        model.addAttribute("scope", scope.name)
-        model.addAttribute("show", when (scope) { RecentScope.ALL -> "alles"; RecentScope.TO_DESCRIBE -> "beschrijven"; else -> "mijn" })
-        model.addAttribute("groups", page?.let { groups(it.records, me) } ?: emptyList<RecentGroup>())
-        model.addAttribute("empty", page != null && page.records.isEmpty())
-        model.addAttribute("more", page?.more == true)
-        model.addAttribute("moreCount", limit + 20)
-        // Na het opslaan: welk eigen record nog beschreven moet worden.
-        model.addAttribute("nextNumber", if (saved != null && items.loggedIn()) recent.nextToDescribe(me, collection, saved) else null)
+        model.addAttribute("show", scopeName(scopeOf(show)))
         return "records"
+    }
+
+    private fun scopeOf(show: String) = when (show) { "alles" -> RecentScope.ALL; "beschrijven" -> RecentScope.TO_DESCRIBE; else -> RecentScope.MINE }
+    private fun scopeName(scope: RecentScope) = when (scope) { RecentScope.ALL -> "alles"; RecentScope.TO_DESCRIBE -> "beschrijven"; else -> "mijn" }
+
+    /** Een stuk van de lijst met recente records (het eerste, of met [offset] het volgende bij "Meer laden"); wordt door de pagina met htmx opgehaald. */
+    @GetMapping("/records/lijst")
+    fun recentList(
+        @RequestParam("toon", defaultValue = "mijn") show: String,
+        @RequestParam("van", defaultValue = "0") offset: Int,
+        @RequestParam("dag", required = false) lastDay: String?,
+        model: Model,
+    ): String {
+        val scope = scopeOf(show)
+        val from = offset.coerceAtLeast(0)
+        val me = items.user.orEmpty()
+        val page = try {
+            recent.page(me, Current.collection(), scope, PAGE_SIZE, from)
+        } catch (e: Exception) {
+            model.addAttribute("failed", "De records konden niet worden opgehaald: ${e.message ?: e.javaClass.simpleName}")
+            null
+        }
+        val groups = page?.let { groups(it.records, me) }.orEmpty()
+        model.addAttribute("show", scopeName(scope))
+        model.addAttribute("first", from == 0)
+        model.addAttribute("empty", page != null && page.records.isEmpty() && from == 0)
+        // Staat de laatste dag van het vorige stuk ook bovenaan dit stuk, dan komt de dagkop er niet nog een keer.
+        model.addAttribute("groups", groups.mapIndexed { i, g -> if (i == 0 && g.date == lastDay) g.copy(label = "") else g })
+        model.addAttribute("more", page?.more == true)
+        model.addAttribute("nextFrom", from + PAGE_SIZE)
+        model.addAttribute("lastDay", groups.lastOrNull()?.date ?: lastDay.orEmpty())
+        return "records-lijst :: rows"
+    }
+
+    /** De knop naar het volgende eigen record dat nog beschreven moet worden, na het opslaan van [number]; apart opgehaald omdat het even duurt. */
+    @GetMapping("/records/volgende")
+    fun nextToDescribeButton(@RequestParam("na") number: String, model: Model): String {
+        model.addAttribute("nextNumber", nextToDescribe(number))
+        return "records-lijst :: volgende"
+    }
+
+    /** Opent de pdf of anders de afbeelding van het record op de site (in een nieuw tabblad, zie de knop Open). */
+    @GetMapping("/records/{nr}/bestand")
+    fun file(@PathVariable("nr") number: String, redirect: RedirectAttributes): String {
+        val url = items.pdfUrl(number) ?: items.imageUrl(number)
+        if (url != null) return "redirect:$url"
+        redirect.addFlashAttribute("error", "Bij record $number staat geen pdf of afbeelding op de site.")
+        return "redirect:/records"
     }
 
     private fun groups(records: List<RecentRecord>, me: String): List<RecentGroup> {
@@ -107,11 +147,12 @@ class ItemsController(
         return records.groupBy { it.at.toLocalDate() }.map { (day, rows) ->
             val label = when (day) { today -> "Vandaag"; today.minusDays(1) -> "Gisteren"; else -> day.format(dayFormat) }
             RecentGroup(
-                label,
+                label, day.toString(),
                 rows.map {
                     RecentRow(
                         it.number, it.title, it.toDescribe, it.kind.label, it.kind == nl.vdzon.hkhworkflow.items.RecentKind.NIEUW,
                         if (it.by.trim().equals(me, ignoreCase = true)) "jij" else it.by, it.at.format(timeFormat), it.busyBy,
+                        items.recordUrl(it.number, false),
                     )
                 },
             )
@@ -289,6 +330,9 @@ class ItemsController(
     }
 
     private companion object {
+        /** Zoveel records tegelijk in de lijst met recente records. */
+        const val PAGE_SIZE = 20
+
         /** De naam van het sessiekenmerk waarin staat wie is ingelogd; zie `CurrentContextFilter` (die staat in een andere module). */
         const val USER_ATTRIBUTE = "zcbsUser"
     }

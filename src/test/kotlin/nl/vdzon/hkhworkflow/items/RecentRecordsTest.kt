@@ -91,7 +91,7 @@ class RecentRecordsTest {
         r.forget("99090")
         assertEquals("Nu beschreven", r.page("carla", "archief", RecentScope.ALL, 20).records.single().title)
 
-        clock += 31_000
+        clock += 301_000
         titles["99090"] = "Weer anders"
         assertEquals("Weer anders", r.page("carla", "archief", RecentScope.ALL, 20).records.single().title)
     }
@@ -157,5 +157,22 @@ class RecentRecordsTest {
 
         assertTrue(recent().page("carla", "archief", RecentScope.ALL, 20).records.single().toDescribe)
         assertEquals("99090", recent().page("carla", "archief", RecentScope.TO_DESCRIBE, 20).records.single().number)
+    }
+
+    @Test
+    fun `meer laden gaat verder waar de vorige keer ophield`() {
+        (1..45).forEach { added += new("990%02d".format(it), "carla", day.plusMinutes(it.toLong())); titles["990%02d".format(it)] = "t" }
+        val r = recent()
+
+        val first = r.page("carla", "archief", RecentScope.MINE, 20)
+        val second = r.page("carla", "archief", RecentScope.MINE, 20, offset = 20)
+        val third = r.page("carla", "archief", RecentScope.MINE, 20, offset = 40)
+
+        assertEquals("99045", first.records.first().number)
+        assertEquals("99025", second.records.first().number)
+        assertTrue(first.more && second.more)
+        assertEquals(listOf("99005", "99004", "99003", "99002", "99001"), third.records.map { it.number })
+        assertFalse(third.more)
+        assertEquals(45, (first.records + second.records + third.records).map { it.number }.distinct().size)
     }
 }

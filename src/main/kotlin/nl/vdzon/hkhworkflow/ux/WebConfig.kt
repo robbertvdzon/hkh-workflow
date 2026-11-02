@@ -48,10 +48,15 @@ class WebConfig(
                 val needsAdmin = adminOnly.any { matches(path, it) } || path == "/test"
                 val needsEither = !needsAdmin && shared.any { matches(path, it) }
                 val needsZcbs = zcbsOnly.any { matches(path, it) }
+                // Een verzoek van htmx (een stuk van de pagina dat later wordt opgehaald) volgt een redirect niet in de pagina, maar laat de hele pagina navigeren.
+                fun redirect(target: String) {
+                    if (request.getHeader("HX-Request") != null) { response.setHeader("HX-Redirect", request.contextPath + target); response.status = 200 }
+                    else response.sendRedirect(request.contextPath + target)
+                }
                 when {
-                    needsAdmin && !isAdmin -> response.sendRedirect(request.contextPath + "/beheer?terug=" + java.net.URLEncoder.encode(path, Charsets.UTF_8))
-                    needsEither && !isAdmin && !items.loggedIn() -> response.sendRedirect(request.contextPath + "/?inloggen=1")
-                    needsZcbs && !items.loggedIn() -> response.sendRedirect(request.contextPath + "/?inloggen=1")
+                    needsAdmin && !isAdmin -> redirect("/beheer?terug=" + java.net.URLEncoder.encode(path, Charsets.UTF_8))
+                    needsEither && !isAdmin && !items.loggedIn() -> redirect("/?inloggen=1")
+                    needsZcbs && !items.loggedIn() -> redirect("/?inloggen=1")
                     else -> return true
                 }
                 return false

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Een stuk van de lijst met recente records van Records aanpassen; wordt met htmx opgehaald (de eerste keer en bij Meer laden). -->
+<th:block th:fragment="rows">
+    <p class="hint" th:if="${failed}" th:text="${failed}"></p>
+    <p class="hint" th:if="${empty}" th:text="${show == 'mijn'} ? 'Je hebt nog geen records toegevoegd of aangepast met deze app. Kies Alles om te zien wat anderen deden.' : (${show == 'beschrijven'} ? 'Alle recente records hebben een titel.' : 'Er zijn nog geen records toegevoegd of aangepast met deze app.')"></p>
+    <th:block th:each="g : ${groups}">
+        <div class="day" th:unless="${g.label.isEmpty()}" th:text="${g.label}">Vandaag</div>
+        <div class="rec" th:each="r : ${g.rows}">
+            <span class="mono" th:text="${r.number}">99093</span>
+            <span class="ttl" th:classappend="${r.toDescribe} ? 'todo'" th:text="${r.title == null} ? '' : (${r.toDescribe} ? 'Nog niet beschreven' : ${r.title})">Titel</span>
+            <span class="meta">
+                <span class="rpill busy" th:if="${r.busyBy != null}" th:text="${r.busyBy} + ' heeft dit open'">Ria heeft dit open</span>
+                <span class="rpill new" th:if="${r.busyBy == null and r.newRecord}" th:text="${r.kind}">nieuw</span>
+                <span class="rpill" th:if="${r.busyBy == null and !r.newRecord}" th:text="${r.kind}">aangepast</span>
+                <span th:text="${r.who} + ' · ' + ${r.time}">jij · 20:15</span>
+            </span>
+            <span class="acts">
+                <a class="btn btn-s btn-sm" th:href="@{/records/{nr}/bestand(nr=${r.number})}" target="_blank" rel="noopener" title="De pdf of afbeelding van dit record, in een nieuw tabblad">Open scan</a>
+                <a class="btn btn-p btn-sm" th:href="@{/records/{nr}(nr=${r.number})}">Bewerk</a>
+                <a class="btn btn-s btn-sm" th:if="${r.zcbsUrl}" th:href="${r.zcbsUrl}" target="_blank" rel="noopener">Open in ZCBS</a>
+            </span>
+        </div>
+    </th:block>
+    <div class="loadmore" th:if="${more}">
+        <button type="button" class="btn btn-s btn-sm" th:hx-get="@{/records/lijst(toon=${show},van=${nextFrom},dag=${lastDay})}" hx-target="closest .loadmore" hx-swap="outerHTML" hx-disabled-elt="this">
+            <span class="idle">Meer laden</span><span class="busytxt">Laden…</span>
+        </button>
+    </div>
+</th:block>
+
+<!-- De knop naar het volgende record dat nog beschreven moet worden (na het opslaan). -->
+<th:block th:fragment="volgende">
+    <a class="btn btn-p btn-sm" th:if="${nextNumber != null}" th:href="@{/records/{nr}(nr=${nextNumber})}" th:text="'Volgende om te beschrijven: ' + ${nextNumber}">Volgende</a>
+</th:block>
+</body>
+</html>

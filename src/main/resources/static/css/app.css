@@ -15,6 +15,7 @@ a{color:var(--accent)} a:hover{color:var(--accent-h)}
 .side a.nav{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:8px;color:var(--ink2);text-decoration:none;font-size:14px;font-weight:500}
 .side a.nav:hover{background:#e6dfcf;color:var(--ink)}
 .side a.nav.on{background:var(--accent);color:#fff}
+.side .build{font-size:11px;color:var(--muted);padding:14px 12px 0;line-height:1.3}
 .side .sep{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:18px 12px 6px}
 .badge{margin-left:auto;font-size:12px;font-weight:600;background:#e0d8c6;padding:1px 8px;border-radius:999px}
 .on .badge{background:rgba(255,255,255,.2)}
@@ -168,12 +169,19 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 .fchip:hover{border-color:var(--accent)}
 .fchip.on{background:var(--ink);border-color:var(--ink);color:#fff}
 .day{font-size:12px;color:var(--muted);margin:18px 0 4px}
-.rec{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 6px;border-top:1px solid var(--line);color:var(--ink);text-decoration:none}
+.rec{display:grid;grid-template-columns:70px minmax(0,1fr) auto auto;gap:6px 14px;align-items:center;padding:8px 6px;border-top:1px solid var(--line);color:var(--ink)}
 .rec:hover{background:var(--sel)}
 .rec .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rec .ttl.todo{color:var(--muted)}
 .rec .meta{font-size:12.5px;color:var(--muted);white-space:nowrap;text-align:right}
+.rec .acts{display:flex;gap:8px;justify-content:flex-end}
+@media (max-width:1100px){.rec{grid-template-columns:70px minmax(0,1fr) auto}.rec .acts{grid-column:1 / -1;justify-content:flex-start}}
 .rpill{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:6px;margin-right:8px;background:var(--neutral-bg);color:var(--ink2)}
 .rpill.new{background:var(--accent-soft);color:var(--accent-h)}
 .rpill.busy{background:var(--busy-bg);color:var(--busy)}
-.recentfoot{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
+.loadmore{border-top:1px solid var(--line);padding:12px 0 4px}
+.loadmore .busytxt{display:none}
+.loadmore .htmx-request .idle,.loadmore button.htmx-request .idle{display:none}
+.loadmore button.htmx-request .busytxt{display:inline}
+.recentnote{border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
+.loading{padding:14px 0}
