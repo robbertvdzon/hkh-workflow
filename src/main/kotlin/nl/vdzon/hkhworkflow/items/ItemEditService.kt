@@ -8,6 +8,9 @@ import nl.vdzon.hkhworkflow.zcbs.FreeNumbers
 import nl.vdzon.hkhworkflow.zcbs.RecordSummary
 import org.springframework.stereotype.Service
 
+/** Het bestand van een record op de site: `pdf` of `image`, met het adres. */
+data class Media(val kind: String, val url: String)
+
 /**
  * De ZCBS-sessies van alle gebruikers die nu zijn ingelogd, elk met hun eigen inlog en gekozen records ([EditSession]). Elke aanroep
  * gaat naar de sessie van de gebruiker die nu aan het woord is ([Current]); zonder inlog geeft hij een "niet ingelogd"-antwoord. Zo kunnen
@@ -91,6 +94,26 @@ class ItemEditService(private val settingsService: SettingsService, private val 
 
     /** De titel en de plaatsing op internet van een record, uit de gewone weergave in ZCBS (zet geen vergrendeling). Null als ZCBS het niet liet zien. */
     fun summaryOf(number: String): RecordSummary? = session()?.summaryOf(number)
+
+    /**
+     * De pdf of anders de afbeelding van een record. Weet je uit welk bestand het record kwam ([fileName]), dan volgt het type daaruit (een pdf
+     * wordt als pdf geüpload, een jpg of png als afbeelding) en kost het geen verzoek aan ZCBS; anders wordt het gecontroleerd. Null als er geen is.
+     */
+    fun mediaOf(number: String, fileName: String? = null): Media? {
+        val s = session() ?: return null
+        val collection = Current.collection()
+        return when (fileName?.substringAfterLast('.', "")?.lowercase()) {
+            "pdf" -> s.fileUrl("$collection/pdf/$number.pdf")?.let { Media("pdf", it) }
+            "jpg", "jpeg", "png" -> s.fileUrl("$collection/large/$number.jpg")?.let { Media("image", it) }
+            else -> s.pdfUrl(number)?.let { Media("pdf", it) } ?: s.imageUrl(number)?.let { Media("image", it) }
+        }
+    }
+
+    /** Zie [ZcbsHandoff]: om een record in ZCBS zelf te openen met dezelfde inlog. */
+    fun zcbsHandoff(number: String): ZcbsHandoff? = session()?.handoff(number)
+
+    /** [number] aangevuld met nullen tot de lengte van de nummers in ZCBS. */
+    fun padded(number: String): String = session()?.padded(number) ?: number
 
     /** Wie een ander dan de huidige gebruiker dit record nu open heeft (en het dus vergrendeld is), of null. */
     fun openedByOther(number: String): String? {

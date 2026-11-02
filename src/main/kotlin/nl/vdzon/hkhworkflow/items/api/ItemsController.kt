@@ -23,6 +23,7 @@ import org.springframework.util.MultiValueMap
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
@@ -68,7 +69,9 @@ class ItemsController(
     /** Een rij van de lijst met recente records, klaar voor de pagina. */
     data class RecentRow(
         val number: String, val title: String?, val toDescribe: Boolean, val kind: String, val newRecord: Boolean,
-        val who: String, val time: String, val busyBy: String?, val zcbsUrl: String?,
+        val who: String, val time: String, val busyBy: String?,
+        /** `pdf` of `image`, en het adres, als het record een bestand op de site heeft; zie de knop Open pdf of Open afbeelding. */
+        val mediaKind: String?, val mediaUrl: String?,
     )
 
     /** De rijen van één dag; [date] is die dag (yyyy-MM-dd), om bij "Meer laden" te weten of de dagkop al staat. */
@@ -131,13 +134,34 @@ class ItemsController(
         return "records-lijst :: volgende"
     }
 
-    /** Opent de pdf of anders de afbeelding van het record op de site (in een nieuw tabblad, zie de knop Open). */
-    @GetMapping("/records/{nr}/bestand")
-    fun file(@PathVariable("nr") number: String, redirect: RedirectAttributes): String {
-        val url = items.pdfUrl(number) ?: items.imageUrl(number)
-        if (url != null) return "redirect:$url"
-        redirect.addFlashAttribute("error", "Bij record $number staat geen pdf of afbeelding op de site.")
-        return "redirect:/records"
+    /** Het bestand van een record voor de knop Open scan bij het invoerveld: `{kind, url}` of `{error}`. */
+    @GetMapping("/records/media")
+    @ResponseBody
+    fun media(@RequestParam("nummer", defaultValue = "") number: String): Map<String, String> {
+        val clean = number.trim()
+        if (!clean.matches(Regex("\\d{1,9}"))) return mapOf("error" to "Vul één recordnummer in, bijvoorbeeld 11934.")
+        val padded = items.padded(clean)
+        val media = items.mediaOf(padded) ?: return mapOf("error" to "Bij record $padded staat geen pdf of afbeelding op de site.")
+        return mapOf("kind" to media.kind, "url" to media.url, "title" to "Record $padded")
+    }
+
+    /**
+     * Opent een record in ZCBS zelf, meteen ingelogd met de gegevens waarmee je hier bent ingelogd: een pagina die de browser met één formulier naar
+     * ZCBS laat posten (naam, wachtwoord en recordnummer). ZCBS toont dan het record en zet zijn eigen cookies, zodat je daar ingelogd blijft.
+     * De pagina bevat je wachtwoord en wordt dus nooit onthouden of doorgegeven.
+     */
+    @GetMapping("/records/{nr}/zcbs")
+    fun openInZcbs(@PathVariable("nr") number: String, model: Model, response: HttpServletResponse, redirect: RedirectAttributes): String {
+        val clean = number.trim()
+        val handoff = if (clean.matches(Regex("\\d{1,9}"))) items.zcbsHandoff(items.padded(clean)) else null
+        if (handoff == null) {
+            redirect.addFlashAttribute("error", "Je bent niet ingelogd bij ZCBS of dit is geen recordnummer.")
+            return "redirect:/records"
+        }
+        response.setHeader("Cache-Control", "no-store")
+        response.setHeader("Referrer-Policy", "no-referrer")
+        model.addAttribute("h", handoff)
+        return "zcbs-open"
     }
 
     private fun groups(records: List<RecentRecord>, me: String): List<RecentGroup> {
@@ -152,7 +176,7 @@ class ItemsController(
                     RecentRow(
                         it.number, it.title, it.toDescribe, it.kind.label, it.kind == nl.vdzon.hkhworkflow.items.RecentKind.NIEUW,
                         if (it.by.trim().equals(me, ignoreCase = true)) "jij" else it.by, it.at.format(timeFormat), it.busyBy,
-                        items.recordUrl(it.number, false),
+                        it.media?.kind, it.media?.url,
                     )
                 },
             )

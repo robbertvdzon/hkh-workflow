@@ -406,6 +406,24 @@ class EditSession(private val settingsService: SettingsService) {
         return SaveOutcome.NoChanges
     }
 
+    /** Het adres van een bestand op de site van ZCBS, bijvoorbeeld `archief/pdf/11934.pdf`; null zonder inlog. */
+    fun fileUrl(path: String): String? = client?.fileUrl(path)
+
+    /** De inloggegevens en het adres om [number] in ZCBS zelf te openen, zie [ZcbsHandoff]; null als je niet bent ingelogd. */
+    fun handoff(number: String): ZcbsHandoff? {
+        val c = client ?: return null
+        val name = userName ?: return null
+        return ZcbsHandoff(c.recordUrl(number, false).substringBefore('?'), name, password, number)
+    }
+
+    @Volatile private var width: Int? = null
+
+    /** [number] aangevuld met nullen tot de lengte van de nummers in ZCBS (die komt uit ZCBS en wordt onthouden). */
+    fun padded(number: String): String {
+        val w = width ?: (freeNumbers()?.width ?: 5).also { width = it }
+        return number.padStart(w, '0')
+    }
+
     /** De titel en plaatsing op internet van het record uit ZCBS (gewone weergave, geen vergrendeling), of null als dat niet lukt. */
     @Synchronized
     fun summaryOf(number: String): RecordSummary? {

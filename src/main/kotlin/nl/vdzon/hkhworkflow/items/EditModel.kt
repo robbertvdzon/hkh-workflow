@@ -75,3 +75,11 @@ sealed interface SaveOutcome {
     data object NeedsLogin : SaveOutcome
 }
 
+
+/**
+ * Wat een browser nodig heeft om een record in ZCBS zelf te openen zonder opnieuw in te loggen: het adres van het ZCBS-script en de inloggegevens
+ * van de gebruiker, die de browser in één keer naar ZCBS stuurt (zie de pagina `zcbs-open`). Zonder wachtwoord in [toString].
+ */
+data class ZcbsHandoff(val action: String, val user: String, val password: String, val number: String) {
+    override fun toString(): String = "ZcbsHandoff(action=$action, user=$user, number=$number)"
+}

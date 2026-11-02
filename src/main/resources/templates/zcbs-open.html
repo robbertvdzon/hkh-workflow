@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="referrer" content="no-referrer">
+    <title>Record openen in ZCBS</title>
+</head>
+<body onload="document.getElementById('f').submit()" style="font-family:system-ui,sans-serif;padding:24px;color:#333">
+<!-- De browser post de inloggegevens en het recordnummer in één keer naar ZCBS; ZCBS toont het record en zet zijn eigen cookies. -->
+<p>Record <span th:text="${h.number}">11934</span> wordt geopend in ZCBS…</p>
+<form id="f" method="post" th:action="${h.action}" accept-charset="ISO-8859-1">
+    <input type="hidden" name="user" th:value="${h.user}">
+    <input type="hidden" name="pswd" th:value="${h.password}">
+    <input type="hidden" name="ident" th:value="${h.number}">
+    <noscript><button type="submit">Open in ZCBS</button></noscript>
+</form>
+</body>
+</html>

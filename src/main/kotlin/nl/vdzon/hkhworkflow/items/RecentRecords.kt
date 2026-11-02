@@ -36,6 +36,8 @@ data class RecentRecord(
     val title: String?,
     val mine: Boolean,
     val busyBy: String?,
+    /** De pdf of afbeelding van het record, als er een is. */
+    val media: Media? = null,
 ) {
     val toDescribe: Boolean get() = title != null && isUndescribed(title)
 }
@@ -54,12 +56,13 @@ class RecentRecords internal constructor(
     private val titleOf: (String) -> String?,
     private val busyOf: (String) -> String?,
     private val now: () -> Long,
+    private val mediaOf: (String, String?) -> Media? = { _, _ -> null },
 ) {
     @Autowired
     constructor(items: ItemEditService, history: EditHistory, sources: List<NewRecordsSource>) :
-        this({ history.all() }, { sources.flatMap { it.newRecords() } }, { items.summaryOf(it)?.title }, items::openedByOther, System::currentTimeMillis)
+        this({ history.all() }, { sources.flatMap { it.newRecords() } }, { items.summaryOf(it)?.title }, items::openedByOther, System::currentTimeMillis, items::mediaOf)
 
-    private class Candidate(val number: String, val kind: RecentKind, val by: String, val at: LocalDateTime, val mine: Boolean)
+    private class Candidate(val number: String, val kind: RecentKind, val by: String, val at: LocalDateTime, val mine: Boolean, val fileName: String?)
 
     private val titles = ConcurrentHashMap<String, Pair<String?, Long>>()
 
@@ -76,15 +79,26 @@ class RecentRecords internal constructor(
         return fresh
     }
 
+    private val medias = ConcurrentHashMap<String, Media>()
+
+    /** De pdf of afbeelding van een record; wat gevonden is, verandert niet meer en wordt onthouden. */
+    private fun media(collection: String, number: String, fileName: String?): Media? {
+        val key = "$collection#$number"
+        medias[key]?.let { return it }
+        val found = runCatching { mediaOf(number, fileName) }.getOrNull()
+        if (found != null) medias[key] = found
+        return found
+    }
+
     private fun candidates(user: String, collection: String): List<Candidate> {
         val me = user.trim().lowercase()
-        class Event(val at: LocalDateTime, val by: String, val kind: RecentKind)
+        class Event(val at: LocalDateTime, val by: String, val kind: RecentKind, val fileName: String? = null)
         val byNumber = linkedMapOf<String, MutableList<Event>>()
-        added().filter { it.collection == collection }.forEach { byNumber.getOrPut(it.number) { mutableListOf() } += Event(it.at, it.user, RecentKind.NIEUW) }
+        added().filter { it.collection == collection }.forEach { byNumber.getOrPut(it.number) { mutableListOf() } += Event(it.at, it.user, RecentKind.NIEUW, it.fileName) }
         edits().filter { it.collection == collection }.forEach { byNumber.getOrPut(it.number) { mutableListOf() } += Event(it.at, it.user, RecentKind.AANGEPAST) }
         return byNumber.map { (number, events) ->
             val last = events.maxBy { it.at }
-            Candidate(number, last.kind, last.by, last.at, events.any { it.by.trim().lowercase() == me })
+            Candidate(number, last.kind, last.by, last.at, events.any { it.by.trim().lowercase() == me }, events.lastOrNull { it.fileName != null }?.fileName)
         }.sortedWith(compareByDescending<Candidate> { it.at }.thenByDescending { it.number })
     }
 
@@ -99,7 +113,7 @@ class RecentRecords internal constructor(
             val title = title(collection, c.number)
             if (scope == RecentScope.TO_DESCRIBE && !(title != null && isUndescribed(title))) continue
             if (matched++ < offset) continue
-            found += RecentRecord(c.number, c.kind, c.by, c.at, title, c.mine, busyOf(c.number))
+            found += RecentRecord(c.number, c.kind, c.by, c.at, title, c.mine, busyOf(c.number), media(collection, c.number, c.fileName))
             if (found.size > limit) break
         }
         return RecentPage(found.take(limit), found.size > limit)

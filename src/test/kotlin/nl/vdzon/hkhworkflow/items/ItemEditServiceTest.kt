@@ -374,4 +374,27 @@ class ItemEditServiceTest {
         assertEquals("Test Beheerder", service.openedByOther("11905"))
         assertNull(service.openedByOther("11902"))
     }
+
+    @Test
+    fun `het type van de scan volgt uit de bronnaam en kost dan geen verzoek`() {
+        val pdf = service.mediaOf("11905", "scan_0412.pdf")
+        assertEquals("pdf", pdf?.kind)
+        assertEquals("${zcbs.baseUrl}/archief/pdf/11905.pdf", pdf?.url)
+        assertEquals(Media("image", "${zcbs.baseUrl}/archief/large/11905.jpg"), service.mediaOf("11905", "foto.PNG"))
+        assertEquals(Media("image", "${zcbs.baseUrl}/archief/large/11905.jpg"), service.mediaOf("11905", "foto.jpeg"))
+        Current.set(null)
+        assertNull(service.mediaOf("11905", "scan.pdf"), "zonder inlog is er niets")
+    }
+
+    @Test
+    fun `een record openen in ZCBS geeft de inloggegevens, zonder het wachtwoord in de tekst`() {
+        val h = service.zcbsHandoff("11905")!!
+        assertEquals("${zcbs.baseUrl}/cgi-bin/archief.pl", h.action)
+        assertEquals("Test Beheerder", h.user)
+        assertEquals("Beheer1", h.password)
+        assertEquals("11905", h.number)
+        assertFalse(h.toString().contains("Beheer1"))
+        Current.set(null)
+        assertNull(service.zcbsHandoff("11905"))
+    }
 }

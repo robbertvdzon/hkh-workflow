@@ -17,9 +17,11 @@
                 <span th:text="${r.who} + ' · ' + ${r.time}">jij · 20:15</span>
             </span>
             <span class="acts">
-                <a class="btn btn-s btn-sm" th:href="@{/records/{nr}/bestand(nr=${r.number})}" target="_blank" rel="noopener" title="De pdf of afbeelding van dit record, in een nieuw tabblad">Open scan</a>
+                <button type="button" class="btn btn-p btn-sm" data-viewer th:if="${r.mediaUrl != null}"
+                        th:attr="data-url=${r.mediaUrl},data-title=${r.number + ' – ' + (r.title == null or r.toDescribe ? (r.mediaKind == 'pdf' ? 'pdf' : 'afbeelding') : r.title)},data-kind=${r.mediaKind}"
+                        th:text="${r.mediaKind == 'pdf'} ? 'Open pdf' : 'Open afbeelding'">Open pdf</button>
                 <a class="btn btn-p btn-sm" th:href="@{/records/{nr}(nr=${r.number})}">Bewerk</a>
-                <a class="btn btn-s btn-sm" th:if="${r.zcbsUrl}" th:href="${r.zcbsUrl}" target="_blank" rel="noopener">Open in ZCBS</a>
+                <a class="btn btn-p btn-sm" th:href="@{/records/{nr}/zcbs(nr=${r.number})}" target="_blank" rel="noopener">Open in ZCBS</a>
             </span>
         </div>
     </th:block>

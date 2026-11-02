@@ -175,4 +175,20 @@ class RecentRecordsTest {
         assertFalse(third.more)
         assertEquals(45, (first.records + second.records + third.records).map { it.number }.distinct().size)
     }
+
+    @Test
+    fun `de scan van een record komt bij de rij en het bronbestand bepaalt het type`() {
+        added += NewRecord(day, "carla", "archief", "99090", "raadhuis_001.pdf")
+        added += NewRecord(day.plusMinutes(1), "carla", "archief", "99091", "dorp_003.jpg")
+        titles += mapOf("99090" to "a", "99091" to "b")
+        val asked = mutableListOf<Pair<String, String?>>()
+        val r = RecentRecords({ edited }, { added }, { titles[it] }, { null }, { clock }, { n, hint -> asked += n to hint; Media(if (hint!!.endsWith("pdf")) "pdf" else "image", "http://zcbs/$n") })
+
+        val rows = r.page("carla", "archief", RecentScope.ALL, 20).records.associateBy { it.number }
+
+        assertEquals("pdf", rows.getValue("99090").media?.kind)
+        assertEquals("image", rows.getValue("99091").media?.kind)
+        r.page("carla", "archief", RecentScope.ALL, 20)
+        assertEquals(2, asked.size, "wat gevonden is, wordt onthouden")
+    }
 }

@@ -19,10 +19,13 @@
             <div th:hx-get="@{/records/volgende(na=${saved})}" hx-trigger="load" hx-swap="innerHTML"><span class="hint">Het volgende record zoeken…</span></div>
         </div>
 
-        <form th:action="@{/records/kies}" method="post" class="openrec">
+        <form id="openrec" th:action="@{/records/kies}" th:attr="data-base=@{/records}" method="post" class="openrec">
             <input type="text" name="nummer" class="mono" inputmode="numeric" autocomplete="off" autofocus required placeholder="Recordnummer, bijvoorbeeld 11934" aria-label="Recordnummer">
-            <button class="btn btn-p" type="submit">Open record</button>
+            <button class="btn btn-p" type="button" data-act="scan" title="De pdf of afbeelding van dit record">Open scan</button>
+            <button class="btn btn-p" type="submit">Bewerk</button>
+            <button class="btn btn-p" type="button" data-act="zcbs" title="Dit record in ZCBS zelf, met dezelfde inlog">Open in ZCBS</button>
         </form>
+        <p class="hint openrec-msg" id="openrec-msg" aria-live="polite"></p>
 
         <section class="recent" th:if="${loggedIn}">
             <div class="recenthead">
@@ -44,6 +47,8 @@
             <p class="hint recentnote">Records die met deze app zijn toegevoegd of aangepast, nieuwste eerst. Wijzigingen die rechtstreeks in ZCBS zijn gedaan staan hier niet bij.</p>
         </section>
     </main>
+<div th:replace="~{fragments/viewer :: viewer}"></div>
 </div>
+<script th:src="@{/js/records.js}"></script>
 </body>
 </html>
