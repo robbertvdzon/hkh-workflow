@@ -72,7 +72,7 @@ de mappen `small`, `large`, `100pct` en het bestand `updates-add.txt` weghalen, 
 Voor een test met het echte `images.exe` en de app samen op de laptop (map `C:\zcbs-workflow`, Java staat erop):
 
 ```
-tools/windows-testlaptop/deploy-app.sh               # mvn clean package, stopt de app op de laptop, uploadt de jar; start NIET
+    tools/windows-testlaptop/deploy-app.sh               # mvn clean package, stopt de app op de laptop, uploadt de jar; start NIET
 tools/windows-testlaptop/deploy-app.sh --starten     # doet het ook nog starten
 tools/windows-testlaptop/deploy-app.sh --zonder-tests    # sneller bouwen (-DskipTests)
 tools/windows-testlaptop/deploy-app.sh --zonder-bouwen   # gebruikt de bestaande target/hkh-workflow.jar
