@@ -41,6 +41,8 @@ data class WorkflowSettings(
     val leftoversFolder: String = "",
     /** Het ftp-wachtwoord ook meesturen naar het workflow-logboek (om de instelling te kunnen controleren). Zet dit uit zodra dat niet meer nodig is. */
     val logFtpPassword: Boolean = true,
+    /** Elke nacht om 00:00 automatisch bijwerken naar de nieuwste build (alleen als de app als service draait; zie `UpdateService`). */
+    val nightlyUpdate: Boolean = true,
     /**
      * Werk met de test-ZCBS (de Docker-container, zie tools/docker/zcbs) in plaats van het echte archief. Dit is de enige keuze:
      * het adres van ZCBS en de ftp-server volgen hieruit (zie [SettingsService.withEnvironment]) en worden zo ingevuld in [zcbsBaseUrl],

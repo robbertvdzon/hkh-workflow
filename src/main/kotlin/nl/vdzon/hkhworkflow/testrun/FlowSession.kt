@@ -51,6 +51,9 @@ class FlowSession(
 
     fun touch() { lastActivity = java.time.Instant.now() }
 
+    /** Loopt er nu een programma of een stap (upload, back-up)? Dan overleeft deze doorloop een herstart van de app niet. */
+    fun busy(): Boolean = exeRunner.isRunning() || run?.steps?.any { it.status == StepStatus.RUNNING } == true
+
     /** Stopt wat er loopt en wist de stand: de collectie komt vrij. De bestanden op schijf blijven staan (de controle op resten wijst er de gebruiker op). */
     fun release() {
         runCatching { reset() }

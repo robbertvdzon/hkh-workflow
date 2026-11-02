@@ -13,6 +13,8 @@
   <workingdirectory>%BASE%\..</workingdirectory>
   <env name="HKH_JAVA" value="@@JAVA@@"/>
   <env name="HKH_WORKFLOW_PORT" value="@@POORT@@"/>
+  <!-- Laat de app weten dat hij onder run.ps1 draait; alleen dan mag hij zichzelf bijwerken (exitcode 10). -->
+  <env name="HKH_SERVICE" value="1"/>
 
   <!-- Start na een reboot vanzelf, een paar minuten na het opstarten (dan zijn netwerk en shares er). -->
   <startmode>Automatic</startmode>

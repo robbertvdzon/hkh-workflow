@@ -19,6 +19,9 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Zie build-info hieronder: de GitHub Action zet deze twee; een lokale build houdt 0 en - (build-info accepteert geen lege waarde). -->
+        <build.number>0</build.number>
+        <build.commit>-</build.commit>
         <kotlin.version>2.2.21</kotlin.version>
         <spring-modulith.version>2.0.0</spring-modulith.version>
         <commons-net.version>3.11.1</commons-net.version>
@@ -131,6 +134,11 @@
                         <configuration>
                             <!-- De bouwtijd van deze build (de parent zet hem anders op een vaste datum): hij maakt het versienummer uniek. -->
                             <time>${maven.build.timestamp}</time>
+                            <!-- Het buildnummer en de commit komen van de GitHub Action (-Dbuild.number=... -Dbuild.commit=...); lokaal blijven ze 0 en -. -->
+                            <additionalProperties>
+                                <number>${build.number}</number>
+                                <commit>${build.commit}</commit>
+                            </additionalProperties>
                         </configuration>
                     </execution>
                 </executions>

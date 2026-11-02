@@ -2,6 +2,7 @@ package nl.vdzon.hkhworkflow.ux.api
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpSession
+import nl.vdzon.hkhworkflow.adminlog.AppVersion
 import nl.vdzon.hkhworkflow.items.Current
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
@@ -37,6 +38,13 @@ class ShellAdvice(private val items: ItemEditService, private val admin: AdminAc
 
     @ModelAttribute("zcbsAddress")
     fun zcbsAddress(): String = settingsService.get().zcbsBaseUrl
+
+    /** De korte regel onderin het menu (buildnummer en bouwtijd) en de hint daarbij (versie en commit). */
+    @ModelAttribute("appBuild")
+    fun appBuild(): String = AppVersion.info.label
+
+    @ModelAttribute("appBuildTitle")
+    fun appBuildTitle(): String = AppVersion.info.details
 }
 
 /** Een collectie op de keuzepagina. Alleen de collecties waar de app mee werkt, zijn te kiezen. */

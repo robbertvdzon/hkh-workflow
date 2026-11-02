@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Versie')}"></head>
+<body>
+<div class="app">
+    <nav th:replace="~{fragments/layout :: side}"></nav>
+    <main>
+        <a class="back" th:href="@{/instellingen}">← Instellingen</a>
+        <div class="head">
+            <div>
+                <h1>Versie</h1>
+                <p class="sub">Welke build van de app draait en of er een nieuwere klaarstaat. Bij elke wijziging op GitHub wordt een nieuwe build klaargezet.</p>
+            </div>
+        </div>
+        <div class="alert alert-err" th:if="${error}" th:text="${error}"></div>
+        <div class="alert alert-info" th:if="${info}" th:text="${info}"></div>
+
+        <section class="alert alert-info" id="herstart" th:if="${restartRequested}">
+            <b>De app wordt opnieuw gestart.</b> Dit duurt ongeveer een halve minuut. Deze pagina laadt daarna vanzelf opnieuw; je moet dan opnieuw als beheerder inloggen.
+        </section>
+
+        <section class="card pad stack">
+            <h2 style="margin:0">Deze installatie</h2>
+            <p style="margin:0"><b th:text="${status.current.label}">build 57 · 2 nov 2026 20:34</b></p>
+            <p class="muted" style="margin:0" th:text="${status.current.details}">0.0.1-SNAPSHOT, commit 9eedbee</p>
+            <p class="muted" style="margin:0" th:unless="${status.runsAsService}">De app draait niet als Windows-service; bijwerken vanuit dit scherm is dan uitgezet.</p>
+        </section>
+
+        <section class="card pad stack">
+            <h2 style="margin:0">Op GitHub</h2>
+            <p class="muted" th:if="${status.latest == null and status.checkError == null}" style="margin:0">Nog niet gecontroleerd.</p>
+            <p th:if="${status.checkError}" style="margin:0;color:var(--err)" th:text="${status.checkError}">GitHub is niet bereikbaar</p>
+            <div th:if="${status.latest != null}">
+                <p style="margin:0"><b th:text="'Build ' + ${status.latest.number}">Build 58</b>
+                    <span class="muted" th:if="${publishedAt}" th:text="' · gebouwd ' + ${publishedAt}">· gebouwd 2 nov 2026 21:02</span></p>
+                <p style="margin:6px 0 0" th:if="${status.newer}"><b>Er staat een nieuwere build klaar.</b></p>
+                <p class="muted" style="margin:6px 0 0" th:unless="${status.newer}">Je draait de nieuwste build.</p>
+            </div>
+            <p class="muted" style="margin:0" th:if="${checkedAt}" th:text="'Laatst gecontroleerd: ' + ${checkedAt}">Laatst gecontroleerd: 2 nov 2026 21:10</p>
+            <div th:unless="${status.busy.isEmpty()}" class="alert alert-info" style="margin:0">
+                Er loopt nu een programma of upload (<span th:text="${#strings.listJoin(status.busy, ', ')}">Jelly in archief</span>). Bijwerken kan pas als die klaar is.
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <form method="post" th:action="@{/instellingen/versie/controleren}"><button class="btn btn-s" type="submit">Controleer nu</button></form>
+                <form method="post" th:action="@{/instellingen/versie/bijwerken}" onsubmit="return confirm('De app nu bijwerken? De app start opnieuw en is een halve minuut niet bereikbaar. Wie bezig is met een bevestiging of formulier, moet daarna opnieuw inloggen.')">
+                    <button class="btn" type="submit" th:disabled="${!status.runsAsService or !status.newer or !status.busy.isEmpty() or status.restarting}">Nu bijwerken</button></form>
+            </div>
+        </section>
+
+        <section class="card pad stack">
+            <h2 style="margin:0">Elke nacht bijwerken</h2>
+            <form method="post" th:action="@{/instellingen/versie/nacht}" class="stack">
+                <label><input type="checkbox" name="aan" th:checked="${status.nightly}"> Elke nacht om 00:00 bijwerken naar de nieuwste build</label>
+                <p class="hint" style="margin:0">Is er dan nog iemand bezig met een programma of upload, dan probeert de app het elke 10 minuten opnieuw tot 03:00. Daarna wacht hij tot de volgende nacht.
+                    <span th:if="${status.nightlyPending}"><b>Er loopt nu een nachtelijke poging.</b></span></p>
+                <div><button class="btn btn-s" type="submit">Opslaan</button></div>
+            </form>
+        </section>
+
+        <section class="card pad stack" th:unless="${status.events.isEmpty()}">
+            <h2 style="margin:0">Recent</h2>
+            <p class="muted" th:each="e : ${status.events}" style="margin:0" th:text="${e}">02-11 00:00  Nachtelijke controle.</p>
+        </section>
+    </main>
+</div>
+<script th:if="${restartRequested}">
+    // Wacht tot de app weg is en weer terug, en laad dan de pagina opnieuw.
+    (function () {
+        var down = false;
+        setInterval(function () {
+            fetch('/actuator/health', {cache: 'no-store'}).then(function (r) {
+                if (r.ok && down) location.href = '/instellingen/versie';
+            }).catch(function () { down = true; });
+        }, 2000);
+    })();
+</script>
+</body>
+</html>
