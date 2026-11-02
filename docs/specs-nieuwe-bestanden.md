@@ -10,7 +10,7 @@ doet precies wat Jans stappenplan doet, zonder meer. Dit document is de bron voo
 | Voor | Nu |
 |---|---|
 | Eén batch met acht fasen, waarvan het bewerken van de records er een was | Zeven fasen (de eerste is een controle), **zonder bewerken**: het invullen van titel enzovoort gebeurt op een andere dag, soms door iemand anders |
-| Het woord "batch", met een batchoverzicht | Geen batches. Een **log** van wat er verwerkt is (pagina Verwerkt) |
+| Het woord "batch", met een batchoverzicht | Geen batches. Een **log** van wat er verwerkt is (de pagina Verwerkt is op 2 november weggehaald; het log voedt de lijst Recent toegevoegd bij Records aanpassen en de markering in de lijst met scans) |
 | Een bronmap met een submap per persoon, en vinkjes in één lange lijst | **Twee mappen met scans** (`K:\scans jelly`, `K:\scans ria`) waar Carla zelf doorheen **bladert**, met vinkjes per map |
 | Beginnummer = hoogste nummer + 1 (`LAST`) | Een beginnummer uit **de vrije nummers van ZCBS**, aaneengesloten |
 | De originelen gaan naar een archived-map | De originelen **blijven staan** op K:. De **100pct en de pdf's** (met recordnummer) krijgen een **back-up op K:** |
@@ -22,7 +22,7 @@ doet precies wat Jans stappenplan doet, zonder meer. Dit document is de bron voo
 
 1. **Inloggen bij ZCBS** met je eigen naam en wachtwoord (alleen in het geheugen). Zonder inlog komt niemand op de pagina's van Carla.
 2. **Collectie kiezen.** Nu alleen `archief` (de instelling *Collectie*).
-3. Twee knoppen: **Nieuwe bestanden in ZCBS zetten** (`/nieuw`) en **ZCBS records aanpassen** (`/records`), met daaronder een link naar **Verwerkt** (`/verwerkt`).
+3. Twee knoppen: **Nieuwe bestanden in ZCBS zetten** (`/nieuw`) en **ZCBS records aanpassen** (`/records`), (de link naar de pagina Verwerkt is op 2 november vervallen).
    Het menu links bevat alleen **Start** en onder Beheer de pagina's voor de beheerder; elke andere pagina heeft een link terug naar Start.
 
 ## 3. De flow Nieuwe bestanden (`/nieuw`)
@@ -90,7 +90,7 @@ geen vergrendeling; het werkt voor een gebruiker die records mag aanmaken). Geco
 ## 6. Het verwerkt-log
 
 Een bestand met een regel per bestand (tabs; `hkh-workflow-verwerkt.tsv` naast het instellingenbestand, of een eigen pad met
-`hkh.workflow.processed-log`): doorloop-id, tijd, ZCBS-gebruiker, collectie, recordnummer, bronmap (Jelly of Ria), map op K: en bestandsnaam. De app schrijft erin na een geslaagde back-up. De pagina Verwerkt toont het per doorloop; de lijst met scans markeert wat al
+`hkh.workflow.processed-log`): doorloop-id, tijd, ZCBS-gebruiker, collectie, recordnummer, bronmap (Jelly of Ria), map op K: en bestandsnaam. De app schrijft erin na een geslaagde back-up. De lijst Recent toegevoegd bij Records aanpassen toont het (nieuwste eerst, met wie en wanneer); de lijst met scans markeert wat al
 verwerkt is. Wil je een bestand opnieuw verwerken (bijvoorbeeld een betere scan onder dezelfde naam), haal dan de regel uit het log.
 
 ## 7. Beheerder

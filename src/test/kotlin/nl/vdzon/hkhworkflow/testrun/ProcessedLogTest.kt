@@ -33,9 +33,7 @@ class ProcessedLogTest {
         val all = log.all()
         assertEquals(listOf("11935", "11936", "11937"), all.map { it.number })
         assertEquals("K:\\scans ria\\map 57", all[0].folder)
-        assertEquals(listOf("r2", "r1"), log.runs().map { it.runId }, "nieuwste eerst")
-        assertEquals("11935", log.runs()[1].first)
-        assertEquals("11936", log.runs()[1].last)
+        assertEquals(listOf("r1", "r1", "r2"), all.map { it.runId })
     }
 
     @Test

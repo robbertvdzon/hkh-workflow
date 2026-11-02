@@ -307,7 +307,7 @@ class TestRunServiceTest {
         val logged = processed.all()
         assertEquals(listOf("90000000", "90000001"), logged.map { it.number })
         assertEquals(listOf("xx01.pdf", "xx02.pdf"), logged.map { it.name })
-        assertEquals(1, processed.runs().size)
+        assertEquals(1, processed.all().map { it.runId }.distinct().size)
         assertEquals("archief", logged[0].collection)
     }
 

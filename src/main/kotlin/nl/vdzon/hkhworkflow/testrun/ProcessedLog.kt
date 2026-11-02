@@ -26,13 +26,6 @@ data class ProcessedFile(
     val folder: String,
     val name: String,
 ) {
-    val dateText: String get() = at.format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", java.util.Locale.forLanguageTag("nl")))
-}
-
-/** Eén keer verwerken, zoals Carla het ziet: de bestanden van één doorloop van de flow. */
-data class ProcessedRun(val runId: String, val at: LocalDateTime, val user: String, val collection: String, val files: List<ProcessedFile>) {
-    val first: String get() = files.minOf { it.number }
-    val last: String get() = files.maxOf { it.number }
 }
 
 /**
@@ -75,12 +68,6 @@ class ProcessedLog(private val settingsService: SettingsService, private val pro
             }
         }.getOrElse { log.warn("Kan het verwerkt-log {} niet lezen: {}", path, it.message); emptyList() }
     }
-
-    /** Per keer verwerken, de nieuwste eerst. */
-    fun runs(): List<ProcessedRun> =
-        all().groupBy { it.runId }.values
-            .map { files -> ProcessedRun(files.first().runId, files.first().at, files.first().user, files.first().collection, files.sortedBy { it.number }) }
-            .sortedByDescending { it.at }
 
     /** De bestanden die al verwerkt zijn, per map en naam, om in de lijst met scans aan te geven. */
     fun index(): Map<Pair<String, String>, ProcessedFile> = all().associateBy { it.folder to it.name }

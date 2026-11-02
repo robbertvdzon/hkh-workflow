@@ -4,7 +4,6 @@ import java.nio.file.Files
 import nl.vdzon.hkhworkflow.ftp.FtpService
 import nl.vdzon.hkhworkflow.items.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
-import nl.vdzon.hkhworkflow.testrun.ProcessedLog
 import nl.vdzon.hkhworkflow.testrun.ProducedFile
 import nl.vdzon.hkhworkflow.testrun.CopyResult
 import nl.vdzon.hkhworkflow.testrun.StepType
@@ -31,7 +30,6 @@ class NewFilesController(
     private val testRunService: TestRunService,
     private val settingsService: SettingsService,
     private val itemEditService: ItemEditService,
-    private val processedLog: ProcessedLog,
     private val ftpService: FtpService,
 ) {
     /** Een gekozen bestand in de invoermap, met de bronmap waar het vandaan kwam. */
@@ -231,14 +229,4 @@ class NewFilesController(
     @GetMapping("/nieuw/bron/info")
     fun sourceInfo(@RequestParam("bron") rootName: String, @RequestParam("pad", defaultValue = "") path: String): ResponseEntity<Map<String, String>> =
         try { ResponseEntity.ok().header("Cache-Control", "no-store").body(testRunService.sources().details(rootName, path)) } catch (e: IllegalArgumentException) { ResponseEntity.badRequest().build() }
-
-    /** Wat er al op het archief is gezet, per keer verwerken. */
-    @GetMapping("/verwerkt")
-    fun processed(model: Model): String {
-        model.addAttribute("active", "verwerkt")
-        model.addAttribute("runs", processedLog.runs())
-        model.addAttribute("logFile", processedLog.file().toString())
-        model.addAttribute("settings", settingsService.get())
-        return "verwerkt"
-    }
 }

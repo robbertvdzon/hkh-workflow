@@ -73,7 +73,6 @@ Controllers staan in een `api`-subpackage.
 |---|---|
 | `/`, `/collectie`, `/collectie/{naam}` | Inloggen, collectie, twee keuzes |
 | `/nieuw`, `/nieuw/…` | De doorloop (kiezen, voorbereiden, starten, controleren, resten, opnieuw), `/nieuw/bron/…` (bestand en details van een bron), `/nieuw/resultaat/{soort}/{nummer}` (uitvoer bekijken) |
-| `/verwerkt` | Wat al verwerkt is |
 | `/records`, `/records/kies`, `/records/{nr}` en `/opslaan`, `/conflict`, `/later` | Records aanpassen. `/voorbeeld` en `/terug` (voorbeeldscherm) bestaan nog, maar `record.html` verwijst er niet meer naar |
 | `/zcbs/login`, `/zcbs/logout` | ZCBS-inlog |
 | `/beheer`, `/beheer/inloggen`, `/beheer/uitloggen` | Beheerderslogin |
@@ -81,7 +80,7 @@ Controllers staan in een `api`-subpackage.
 | `/instellingen/versie`, `.../controleren`, `.../bijwerken`, `.../nacht` | Beheer: welke build draait, wat staat er klaar, bijwerken, de nachtelijke schakelaar |
 | `/test`, `/test/…` | Technische testpagina (stappenketen, console, logs) |
 
-`WebConfig` bepaalt wie waar mag komen: `/collectie`, `/nieuw`, `/records`, `/verwerkt` vragen een ZCBS-inlog; `/instellingen` en delen van `/test` de beheerder.
+`WebConfig` bepaalt wie waar mag komen: `/collectie`, `/nieuw`, `/records` vragen een ZCBS-inlog; `/instellingen` en delen van `/test` de beheerder.
 Na een herstart logt de interceptor automatisch opnieuw in met het cookie.
 
 ## 7. Fouten en veerkracht

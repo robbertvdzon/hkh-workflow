@@ -23,7 +23,7 @@ class WebConfig(
     private val adminLog: AdminLogClient,
 ) : WebMvcConfigurer {
 
-    private val zcbsOnly = listOf("/collectie", "/nieuw", "/records", "/verwerkt")
+    private val zcbsOnly = listOf("/collectie", "/nieuw", "/records")
     private val adminOnly = listOf("/instellingen", "/test/runs", "/test/start", "/test/reset")
     private val shared = listOf("/test")
 
