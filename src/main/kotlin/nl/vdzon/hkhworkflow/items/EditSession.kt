@@ -9,6 +9,7 @@ import nl.vdzon.hkhworkflow.zcbs.ItemForm
 import nl.vdzon.hkhworkflow.zcbs.LoginOutcome
 import nl.vdzon.hkhworkflow.zcbs.Page
 import nl.vdzon.hkhworkflow.zcbs.RecordLookup
+import nl.vdzon.hkhworkflow.zcbs.RecordSummary
 import nl.vdzon.hkhworkflow.zcbs.ControlKind
 import nl.vdzon.hkhworkflow.zcbs.RecordRebuilder
 import nl.vdzon.hkhworkflow.zcbs.UnencodableException
@@ -403,6 +404,21 @@ class EditSession(private val settingsService: SettingsService) {
         r.fresh = null
         r.draft = merged
         return SaveOutcome.NoChanges
+    }
+
+    /** De titel en plaatsing op internet van het record uit ZCBS (gewone weergave, geen vergrendeling), of null als dat niet lukt. */
+    @Synchronized
+    fun summaryOf(number: String): RecordSummary? {
+        val c = client ?: return null
+        return (runCatching { c.lookup(number) }.getOrNull() as? RecordLookup.Found)?.summary
+    }
+
+    /** De naam van deze gebruiker als hij het record nu open heeft (het is dan nog tot 10 minuten na het openen voor anderen vergrendeld), anders null. */
+    fun openedBy(number: String): String? {
+        val r = record(number) ?: return null
+        val opened = r.openedAt ?: return null
+        val minutes = java.time.Duration.between(opened, java.time.LocalTime.now()).toMinutes()
+        return if (r.status == EditStatus.BEZIG && minutes in 0..9) userName else null
     }
 
     fun openedUntil(number: String): String? = record(number)?.openedAt?.plusMinutes(10)?.format(time)

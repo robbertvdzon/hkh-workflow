@@ -2,7 +2,7 @@
 
 Status: **gebouwd op 25 oktober 2026** (modules `zcbs` en `items`, pagina's Records, en de testpagina met twee nieuwe stappen; getest op de Mac tegen de lokale ZCBS in Docker, nog niet tegen de echte server). Eerder: voorstel van 24 oktober, bijgewerkt na de beslissingen van Robbert (geen login op de app, testen op het echte archief, lock bij openen). Bedoeld voor de eerste run met Carla in het echte archief, volgende week.
 > **Bijgewerkt 30 oktober 2026:** het bewerken is **geen fase meer in de flow** maar een eigen knop, "ZCBS records aanpassen": je kiest een recordnummer of een reeks
-> (`/records`, `POST /records/kies`) en bewerkt de records één voor één. De flow Nieuwe bestanden eindigt bij de back-up en het invullen gebeurt op een andere dag.
+> (`/records`: één nummer invullen of een record kiezen uit de lijst met recente records; `POST /records/kies`) en bewerkt de records één voor één. De flow Nieuwe bestanden eindigt bij de back-up en het invullen gebeurt op een andere dag.
 > Het formulier, de controles en het opslaan hieronder gelden ongewijzigd. De overzichtstabel in §1a en de stap "Records bewerken" in de testketen zijn daarmee vervangen:
 > zie [specs-nieuwe-bestanden.md](specs-nieuwe-bestanden.md). De lijst records heeft geen bestandsnamen of "gescand door" meer.
 

@@ -155,3 +155,25 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;
 .help{position:relative;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:6px;border-radius:50%;border:1px solid #b9b1a0;color:#6b6556;font-size:12px;font-weight:600;cursor:help;vertical-align:middle}
 .help .helptext{display:none;position:absolute;left:24px;top:-6px;z-index:5;width:380px;max-width:60vw;padding:10px 12px;background:#fffbe0;border:1px solid #cfc79c;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.15);color:var(--ink);font-size:13px;font-weight:400;line-height:1.45;white-space:pre-line;text-align:left}
 .help:hover .helptext,.help:focus .helptext{display:block}
+
+/* Records aanpassen: één nummer invoeren en de lijst met recente records. */
+.openrec{display:flex;gap:10px;align-items:center;max-width:560px;margin:4px 0 8px}
+.openrec input{flex:1;height:48px;font-size:18px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.openrec .btn{height:48px;padding:0 22px}
+.recent{margin-top:22px;max-width:900px}
+.recenthead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.recenthead h2{margin:0;font-size:16px}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.fchip{padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:13px;text-decoration:none}
+.fchip:hover{border-color:var(--accent)}
+.fchip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.day{font-size:12px;color:var(--muted);margin:18px 0 4px}
+.rec{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 6px;border-top:1px solid var(--line);color:var(--ink);text-decoration:none}
+.rec:hover{background:var(--sel)}
+.rec .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec .ttl.todo{color:var(--muted)}
+.rec .meta{font-size:12.5px;color:var(--muted);white-space:nowrap;text-align:right}
+.rpill{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:6px;margin-right:8px;background:var(--neutral-bg);color:var(--ink2)}
+.rpill.new{background:var(--accent-soft);color:var(--accent-h)}
+.rpill.busy{background:var(--busy-bg);color:var(--busy)}
+.recentfoot{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
