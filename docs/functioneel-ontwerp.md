@@ -66,15 +66,19 @@ Belangrijke regels:
 
 ## 5. ZCBS records aanpassen
 
-Records kiezen (een nummer of een reeks, maximaal 30 tegelijk), zien welke titel ze hebben en of ze al op internet staan, en ze één voor één invullen
-via het formulier van ZCBS. Wat *Later* en *Volgende zonder opslaan* doen: wat je in het formulier typte wordt niet bewaard. Details en controles: [manual/records-aanpassen.md](../manual/records-aanpassen.md).
+Eén record tegelijk kiezen en invullen via het formulier van ZCBS. Bovenaan staat één invoerveld voor één recordnummer; daaronder **Recent toegevoegd**, de records die met de
+app zijn toegevoegd. Details en controles: [manual/records-aanpassen.md](../manual/records-aanpassen.md).
 
-- Per record in de lijst: **Bewerk** (of Verder / Nog eens), **Open in ZCBS** en de **pdf of afbeelding** in een popup.
-- Opslaan gaat **direct** vanuit het formulier (*Opslaan en volgende*); een apart voorbeeldscherm met de wijzigingen bestaat in de code (`/records/{nr}/voorbeeld`),
-  maar het formulier heeft er geen knop meer naartoe. De app slaat alleen op wat hij helemaal begrijpt (anders: *niet veilig*) en weigert tekens en woorden die ZCBS niet aankan.
+- **Invoerveld** met drie knoppen: **Open** (de pdf of afbeelding in een popup), **Bewerk** en **Open in ZCBS** (nieuw tabblad, meteen ingelogd, alleen kijken). Geen reeksen meer.
+- **Recent toegevoegd**: tabel met nr, type (pdf of jpg), datum, tijd (van het toevoegen), gebruiker, titel en per record dezelfde drie knoppen. Standaard alleen de eigen records
+  (**Alleen van mij**), met de filters **Alles** en **Nog te beschrijven** (titel leeg of de standaardtitel van `images.exe`) en **Meer laden** (20 per keer). De lijst komt uit het
+  verwerkt-log; records die rechtstreeks in ZCBS zijn toegevoegd staan er niet bij. Heeft een ander het record open, dan staat er "*naam* heeft dit open".
+- **Formulier** met alleen **Opslaan** en **Annuleren** (Annuleren bewaart niets en wat je typte is dan weg). Na het opslaan komt de gebruiker terug op het beginscherm met een groen bericht en de
+  knop **Volgende om te beschrijven: nr** (het volgende eigen record zonder titel). De app slaat alleen op wat hij helemaal begrijpt (anders: *niet veilig*) en weigert tekens en woorden die ZCBS
+  niet aankan. Een apart voorbeeldscherm met de wijzigingen bestaat in de code (`/records/{nr}/voorbeeld`), maar er is geen knop meer naartoe.
 - Opslaan = opnieuw inloggen, het formulier opnieuw ophalen (ZCBS vergrendelt dan het record 10 minuten), controleren of iemand anders het record intussen
   heeft gewijzigd (zo ja: een conflict met per veld de keuze), posten en **teruglezen**. De app verstuurt zelf geen e-mail; ZCBS doet dat bij een opslag.
-- *Later* zet een record opzij; meer mensen kunnen tegelijk records aanpassen (ZCBS vergrendelt per record).
+- Meer mensen tegelijk kunnen records aanpassen (ZCBS vergrendelt per record).
 
 ## 6. Beheer
 

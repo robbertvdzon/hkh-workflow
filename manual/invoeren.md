@@ -52,9 +52,9 @@ De originelen op `K:` worden nooit gewijzigd of verwijderd.
 1. **Inloggen** op de startpagina met je eigen ZCBS-naam en -wachtwoord (knop **Inloggen**).
 2. **Collectie kiezen** op de pagina "Met welke collectie wil je werken?". Alleen `archief` is aan te klikken; andere collecties staan er grijs
    met "Geen rechten" (je hebt geen recht in ZCBS) of "Nog niet beschikbaar" (de app kan er nog niet mee werken).
-3. Kies **Nieuwe bestanden in ZCBS zetten**. De andere kaart is **ZCBS records aanpassen**; onderaan staat de link **Bekijk wat al verwerkt is**.
+3. Kies **Nieuwe bestanden in ZCBS zetten**. De andere kaart is **ZCBS records aanpassen**.
 
-Alle pagina's van de flow vragen alleen om de ZCBS-login. Instellingen en Sessies vragen daarnaast het beheerderswachtwoord.
+Alle pagina's van de flow vragen alleen om de ZCBS-login. Instellingen, Sessies en Versie vragen daarnaast het beheerderswachtwoord.
 
 ### De zeven fasen
 
@@ -367,11 +367,8 @@ is niet ingesteld ...", "Collectie is niet ingesteld ..."; "Tekstbestand ontbree
 
 ![Het scherm Klaar](afbeeldingen/invoeren-klaar.jpg)
 
-![De pagina Verwerkt](afbeeldingen/verwerkt.jpg)
-
-
-Kop "Klaar": "*N* bestanden staan nu op het archief, met de recordnummers *11935* t/m *11946*. De 100pct en de pdf's hebben een back-up, de werkmappen zijn opgeruimd ..."
-met een link naar het overzicht van wat al verwerkt is. Een tabel (Waar, Soort, Bestanden, Map) toont wat er is gemaakt en waar het staat:
+Kop "Klaar": "*N* bestanden staan nu op het archief, met de recordnummers *11935* t/m *11946*. De 100pct en de pdf's hebben een back-up en de werkmappen zijn opgeruimd. De nieuwe records staan onder Recent toegevoegd bij Records aanpassen." De tekst bevat een link naar **Recent toegevoegd** bij ZCBS records aanpassen; daar vul je de records later in.
+Een tabel (Waar, Soort, Bestanden, Map) toont wat er is gemaakt en waar het staat:
 
 - **Server (ftp ...):** small, large en 100pct (jpg, voor alle bestanden), tekst (ocr) en pdf (alleen voor pdf's), met de mappen op de server.
 - **Back-up:** 100pct (jpg) en pdf.
@@ -596,7 +593,7 @@ Na een geslaagde fase 7 schrijft de app voor elk bestand een regel in het verwer
 
 Het doorloop-id is de datum en tijd van de back-up (`yyyyMMdd-HHmmss`); alle bestanden van één doorloop delen het.
 
-- De pagina **Wat is al verwerkt** (link **Bekijk wat al verwerkt is**) toont het per doorloop, nieuwste boven: aantal bestanden, eerste en laatste nummer, datum, "door *naam*", de collectie, en per bestand Nummer, Bestand, Gescand door, Map en een knop **In ZCBS** (opent het record, alleen als het adres van ZCBS bekend is).
+- De lijst **Recent toegevoegd** bij **ZCBS records aanpassen** komt uit dit log: de records die met de app zijn toegevoegd, nieuwste eerst, met nummer, type (pdf of jpg), datum, tijd en wie ze toevoegde, en knoppen om het bestand te bekijken, het record te bewerken of het in ZCBS te openen (zie de handleiding [ZCBS records aanpassen](records-aanpassen.md), hoofdstuk 4). De losse pagina "Wat is al verwerkt" bestaat niet meer. Records die iemand rechtstreeks in ZCBS toevoegt, staan niet in het log en dus ook niet in die lijst.
 - De lijst in fase 2 markeert met dit log welke scans al verwerkt zijn ("Al verwerkt: *nummer*"). De sleutel is **map + bestandsnaam** (bij een png de naam met `.jpg`).
 - Wil je een bestand opnieuw verwerken (bijvoorbeeld een betere scan onder dezelfde naam), haal dan de regel uit het log (uit docs/specs-nieuwe-bestanden.md; de code leest het bestand bij elke aanroep opnieuw).
 - Regels die niet te lezen zijn (minder dan acht velden, ongeldige datum) worden stilzwijgend overgeslagen.
@@ -670,7 +667,7 @@ Alle meldingen komen uit de code. Hoofdletters en leestekens kunnen in het scher
 | Voor automatisch uitvoeren moet bij Instellingen het FTP-wachtwoord staan. ... | Geen ftp-wachtwoord ingesteld | Beheerder vult het in, of gebruik **Handmatig uitvoeren** en typ het één keer |
 | Automatisch: deze vraag wordt door geen enkele regel herkend. ... | `images.exe` stelt een vraag die de app niet kent (andere versie?) | Beantwoord de vraag in de console die nu verschijnt; meld de vraag aan de beheerder zodat de code kan worden aangepast |
 | Let op: de afbeeldingen zijn niet naar de server geüpload. / Let op: er zijn geen records aangemaakt in ZCBS. | Op de vraag over uploaden/records is niet met `j` geantwoord (alleen bij handmatig mogelijk) | De stap met **Niet goed: images.exe opnieuw uitvoeren** herhalen, na overleg met de beheerder |
-| Let op: deze records staan nog niet in ZCBS: ... / De records in ZCBS konden niet worden gecontroleerd. | Records niet (zichtbaar) aangemaakt, of ZCBS niet bereikbaar | In ZCBS kijken (opent via **In ZCBS** op de pagina Verwerkt, of in ZCBS zelf); bij twijfel de beheerder |
+| Let op: deze records staan nog niet in ZCBS: ... / De records in ZCBS konden niet worden gecontroleerd. | Records niet (zichtbaar) aangemaakt, of ZCBS niet bereikbaar | In ZCBS kijken (via **Open in ZCBS** bij Records aanpassen, of in ZCBS zelf); bij twijfel de beheerder |
 | Kolom "Op de server" toont **nee** | Een afbeelding staat niet op de ftp-server | Niet verder gaan; de beheerder laat de ftp-map en het log nakijken |
 | leeg: geen tekst gevonden / geen geldige afbeelding | De pagina had geen herkenbare tekst, resp. de jpg is kapot | Kijk met **Open**: een lege pagina is geen fout; een kapotte afbeelding wel (**Niet goed: ... opnieuw uitvoeren**) |
 

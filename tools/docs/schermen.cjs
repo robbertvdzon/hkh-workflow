@@ -65,6 +65,8 @@ async function rewrite(page) {
       .replace(/\/private\/tmp\/[^\s"]*?\/e2e2\/k\//g, 'K:\\')
       .replace(/\/private\/tmp\/[^\s"]*?\/e2e2\/invoer/g, '\\\\server\\werkmap')
       .replace(/\/private\/tmp\/[^\s"]*?\/e2e2\/(pdf2zcbs|images-werk)/g, 'C:\\zcbs\\$1');
+    // Staat er een nieuwere build klaar, dan is de draaiende voorbeeldbuild 57 en die op GitHub 58; anders zijn ze gelijk.
+    const newer = document.body.innerText.includes('Er staat een nieuwere build klaar');
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -78,6 +80,12 @@ async function rewrite(page) {
         });
       }
       t = t.replace(/\buser1\b/g, 'Carla');
+      // De pagina Versie toont de echte build; in de handleiding staan voorbeeldwaarden, zodat ze niet bij elke build verouderen.
+      t = t.replace(/\bbuild \d+ · \d{1,2} \S+ \d{4} \d\d:\d\d/g, newer ? 'build 57 · 2 nov 2026 20:34' : 'build 58 · 2 nov 2026 21:02')
+        .replace(/commit [0-9a-f]{7}/g, 'commit 9eedbee')
+        .replace(/^(\s*)Build \d+(\s*)$/, '$1Build 58$2')
+        .replace(/· gebouwd \d{1,2} \S+ \d{4} \d\d:\d\d/g, '· gebouwd 2 nov 2026 21:02')
+        .replace(/Laatst gecontroleerd: \d{1,2} \S+ \d{4} \d\d:\d\d/g, 'Laatst gecontroleerd: 2 nov 2026 21:10');
       if (t !== n.nodeValue) n.nodeValue = t;
     }
   });
@@ -85,6 +93,8 @@ async function rewrite(page) {
 
 async function shot(page, name, targets = [], opts = {}) {
   await page.waitForLoadState('networkidle').catch(() => {});
+  // Het buildnummer onderin het menu hoort niet op de plaatjes: dat verandert bij elke build.
+  await page.addStyleTag({ content: '.side .build{visibility:hidden}' }).catch(() => {});
   await page.evaluate(() => document.querySelectorAll('.doc-mark, .doc-badge').forEach((e) => e.remove()));
   await rewrite(page);
   if (opts.scrollTo) await page.locator(opts.scrollTo).first().evaluate((el, top) => el.scrollIntoView({ block: top ? 'start' : 'center' }), !!opts.top);

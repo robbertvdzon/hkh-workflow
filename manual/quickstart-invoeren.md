@@ -66,7 +66,7 @@ Bovenaan het scherm staan zeven stappen; de nummers hieronder zijn dezelfde.
 
    ![Stap 7: klik op Uitvoeren (1)](afbeeldingen/invoeren-7-backup.jpg)
 
-**Klaar.** Je ziet een overzicht met wat er is gemaakt en waar het staat. Zie je later wat je verwerkt hebt? Kijk bij **Bekijk wat al verwerkt is**.
+**Klaar.** Je ziet een overzicht met wat er is gemaakt en waar het staat. Wil je de nieuwe records meteen invullen? Ga dan naar **ZCBS records aanpassen**: onder **Recent toegevoegd** staan ze bovenaan.
    Nog meer scans? Klik op **Nieuwe bestanden verwerken**.
 
    ![Klaar: de bestanden staan op het archief. Klik op Nieuwe bestanden verwerken voor de volgende (1)](afbeeldingen/invoeren-klaar.jpg)

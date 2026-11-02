@@ -1,6 +1,6 @@
 # Handleiding voor de beheerder: Instellingen
 
-Deze handleiding beschrijft de pagina **Instellingen** van de hkh-workflow-app en de pagina's die erbij horen: **Beheer** (inloggen als beheerder), **Instellingen > Sessies** en de technische pagina **/test**. Ze is bedoeld voor de beheerder die de app op de server inricht en onderhoudt. Carla, Jelly en de andere gebruikers komen op deze pagina's niet.
+Deze handleiding beschrijft de pagina **Instellingen** van de hkh-workflow-app en de pagina's die erbij horen: **Beheer** (inloggen als beheerder), **Instellingen > Sessies**, **Instellingen > Versie** (welke build draait en bijwerken) en de technische pagina **/test**. Ze is bedoeld voor de beheerder die de app op de server inricht en onderhoudt. Carla, Jelly en de andere gebruikers komen op deze pagina's niet.
 
 De tekst is gebaseerd op de broncode van de app. Waar iets alleen uit de code is gelezen en nog niet is gecontroleerd op de echte HKH-server, staat dat erbij.
 
@@ -14,12 +14,13 @@ De tekst is gebaseerd op de broncode van de app. Waar iets alleen uit de code is
 6. [De omgevingscontrole in fase 1 van Nieuwe bestanden](#6-de-omgevingscontrole-in-fase-1-van-nieuwe-bestanden)
 7. [Systeeminstellingen buiten het scherm](#7-systeeminstellingen-buiten-het-scherm-applicationproperties-en-omgevingsvariabelen)
 8. [Sessies](#8-sessies)
-9. [De technische pagina /test](#9-de-technische-pagina-test)
-10. [Meldingen aan het workflow-logboek](#10-meldingen-aan-het-workflow-logboek)
-11. [Aanbevolen waarden: macOS-server of Windows](#11-aanbevolen-waarden-macos-server-of-windows)
-12. [Tabel: veld naar waar gebruikt](#12-tabel-veld-naar-waar-gebruikt)
-13. [Problemen en oplossingen](#13-problemen-en-oplossingen)
-14. [Wat niet is bevestigd](#14-wat-niet-is-bevestigd)
+9. [Versie en bijwerken](#9-versie-en-bijwerken)
+10. [De technische pagina /test](#10-de-technische-pagina-test)
+11. [Meldingen aan het workflow-logboek](#11-meldingen-aan-het-workflow-logboek)
+12. [Aanbevolen waarden: macOS-server of Windows](#12-aanbevolen-waarden-macos-server-of-windows)
+13. [Tabel: veld naar waar gebruikt](#13-tabel-veld-naar-waar-gebruikt)
+14. [Problemen en oplossingen](#14-problemen-en-oplossingen)
+15. [Wat niet is bevestigd](#15-wat-niet-is-bevestigd)
 
 ---
 
@@ -33,11 +34,14 @@ De app is een wrapper rond ZCBS, het systeem achter de archieven van de Historis
 | Instellingen | `/instellingen` | alleen de beheerder |
 | Ftp-verbinding testen | `/instellingen/ftp-test` (knop op de pagina Instellingen) | alleen de beheerder |
 | Sessies | `/instellingen/sessies` | alleen de beheerder |
-| Technische pagina Test | `/test` | alleen de beheerder (een deel van de onderliggende stappen ook voor een ingelogde ZCBS-gebruiker, zie hoofdstuk 9) |
+| Versie (welke build draait, bijwerken) | `/instellingen/versie` | alleen de beheerder |
+| Technische pagina Test | `/test` | alleen de beheerder (een deel van de onderliggende stappen ook voor een ingelogde ZCBS-gebruiker, zie hoofdstuk 10) |
 
 Wie een pagina voor de beheerder opent zonder als beheerder ingelogd te zijn, wordt doorgestuurd naar `/beheer`. Na het inloggen komt hij terug op de pagina waar hij heen wilde.
 
-Het menu links toont onderaan, onder het kopje **Beheer**, de links **Instellingen** en **Sessies** en de knop **Uitloggen als beheerder**, maar alleen als je als beheerder bent ingelogd. Anders staat er één link **Beheer**. Er is geen menu-item voor de pagina `/test`; die open je door het adres in te typen.
+Het menu links toont onderaan, onder het kopje **Beheer**, de links **Instellingen**, **Sessies** en **Versie** en de knop **Uitloggen als beheerder**, maar alleen als je als beheerder bent ingelogd. Anders staat er één link **Beheer**. Er is geen menu-item voor de pagina `/test`; die open je door het adres in te typen.
+
+Helemaal onderin het menu staat, voor iedereen en klein, de **build** die draait: bijvoorbeeld "build 57 · 2 nov 2026 20:34" (de tijd van de build, in Nederlandse tijd). Houd je de muis erboven, dan zie je de versie en de commit. Zie hoofdstuk 9.
 
 ---
 
@@ -89,6 +93,7 @@ Naast het instellingenbestand staan nog andere bestanden van de app (alleen ter 
 | `hkh-workflow-verwerkt.tsv` | het verwerkt-log (wat al op het archief is gezet); zonder pad komt het naast het instellingenbestand (`hkh.workflow.processed-log`) |
 | `hkh-workflow-inloggen.key` | sleutel voor het "onthoud mijn login"-cookie van ZCBS-gebruikers; niet in git zetten |
 | `logs/` | een logbestand per programma-run (`hkh.workflow.log-dir`) |
+| `updates/` | waar een nieuwe versie van de app klaarstaat voor de service (`hkh.workflow.update-dir`, zie hoofdstuk 9) |
 
 ---
 
@@ -103,7 +108,7 @@ Klik je op **Opslaan**, dan gebeurt dit in deze volgorde:
    - de mappen met scans: elke regel wordt getrimd en lege regels verdwijnen;
    - de resolutie: staat er iets anders dan 1, 2, 3, 6, 7 of 8, dan wordt het 6;
    - het ftp-wachtwoord wordt niet getrimd en niet gecontroleerd (zie 5.9).
-4. De app schrijft het bestand (zie hoofdstuk 3) en onthoudt de nieuwe instellingen. Is er echt iets veranderd, dan meldt hij dat aan het workflow-logboek (hoofdstuk 10).
+4. De app schrijft het bestand (zie hoofdstuk 3) en onthoudt de nieuwe instellingen. Is er echt iets veranderd, dan meldt hij dat aan het workflow-logboek (hoofdstuk 11).
 5. De pagina komt terug met "Instellingen opgeslagen."
 
 **Opslaan wordt nooit geblokkeerd.** De app controleert niet of een map of programma bestaat voordat hij opslaat. Na het opslaan zie je onder de velden een rode of gele waarschuwing als iets ontbreekt of niet klopt (de tekst staat per veld in hoofdstuk 5). Een waarschuwing betekent dus niet dat opslaan mislukte, maar dat de app er later op vastloopt als je het niet herstelt.
@@ -398,6 +403,10 @@ Een aantal instellingen staat niet op de pagina Instellingen maar in de configur
 | `hkh.workflow.test-zcbs-url` | (geen vaste naam in application.properties) | `http://localhost:8081` | Adres van de test-ZCBS als de test-keuze aan staat (zie 5.6). |
 | `hkh.workflow.test-ftp-host` | idem | `localhost` | Ftp-server van de test-ZCBS. |
 | `hkh.workflow.test-ftp-port` | idem | `21` | Poort van die ftp-server. |
+| `hkh.workflow.update-dir` | `HKH_WORKFLOW_UPDATE_DIR` | `updates` | De map waarin de app een nieuwe versie klaarzet voor de service (hoofdstuk 9). |
+| `hkh.workflow.update-repo` | `HKH_WORKFLOW_UPDATE_REPO` | `robbertvdzon/hkh-workflow` | De GitHub-repository waar de builds als Release staan. |
+| `hkh.workflow.update-cron` | `HKH_WORKFLOW_UPDATE_CRON` | `0 0 0 * * *` | Wanneer de nachtelijke update draait (Spring-cron, Nederlandse tijd); alleen om te testen te wijzigen. |
+| `hkh.service` | `HKH_SERVICE` | niet gezet | Door de Windows-service gezet (`1`): de app mag zichzelf dan bijwerken (hoofdstuk 9). |
 | `hkh.workflow.session-timeout-minutes` | `HKH_WORKFLOW_SESSION_TIMEOUT_MINUTES` | `120` | **Heeft geen werking meer**, zie hieronder. |
 
 **Het beheerderswachtwoord**
@@ -408,7 +417,7 @@ Een aantal instellingen staat niet op de pagina Instellingen maar in de configur
 
 **De test-ZCBS-adressen** staan niet in de meegeleverde `application.properties`. Zet ze in een `application.properties` naast de jar (`hkh.workflow.test-zcbs-url=...`). Als omgevingsvariabele werkt de standaardomzetting van Spring Boot (`HKH_WORKFLOW_TEST_ZCBS_URL`, `HKH_WORKFLOW_TEST_FTP_HOST`, `HKH_WORKFLOW_TEST_FTP_PORT`); die schrijfwijze is niet apart op de server uitgeprobeerd.
 
-**Het workflow-logboek** (`admin-log-url`): zie hoofdstuk 10. De meldingen gaan op een eigen draad; een traag of onbereikbaar logboek houdt de app nooit op. Een leeg adres betekent dat er niets wordt gemeld (zo staat het in de code en de README). Of een lege omgevingsvariabele de standaardwaarde ook echt vervangt, is niet uitgeprobeerd; zet het leeg maken bij voorkeur in `application.properties`.
+**Het workflow-logboek** (`admin-log-url`): zie hoofdstuk 11. De meldingen gaan op een eigen draad; een traag of onbereikbaar logboek houdt de app nooit op. Een leeg adres betekent dat er niets wordt gemeld (zo staat het in de code en de README). Of een lege omgevingsvariabele de standaardwaarde ook echt vervangt, is niet uitgeprobeerd; zet het leeg maken bij voorkeur in `application.properties`.
 
 **Sessietimeout:** `hkh.workflow.session-timeout-minutes` staat nog in `application.properties` en in de README ("Na zoveel minuten zonder activiteit komt een in gebruik zijnde collectie vrij"). In de huidige code wordt deze eigenschap door niets meer gelezen (er is geen slot per collectie meer). Instellen heeft dus geen effect; een doorloop blijft staan tot de gebruiker hem afrondt of de beheerder hem stopt (hoofdstuk 8).
 
@@ -452,7 +461,76 @@ De stand van een doorloop wordt elke vijf seconden bewaard in `sessie.json` in d
 
 ---
 
-## 9. De technische pagina /test
+## 9. Versie en bijwerken
+
+![De pagina Versie](afbeeldingen/versie.jpg)
+
+Open **Instellingen > Versie** (menu: **Versie**, onder **Sessies**; adres `/instellingen/versie`). De pagina laat zien welke build van de app draait en of er een nieuwere klaarstaat, en laat de app zichzelf bijwerken. Ze heeft een link **← Instellingen** terug.
+
+**Wat een build is.** Elke wijziging die op GitHub in de hoofdlijn (`main`) komt, wordt automatisch gebouwd en getest. Slaagt dat, dan zet GitHub er een **Release** van klaar, genummerd met een oplopend **buildnummer** (build 57, build 58, ...), met de app (`hkh-workflow.jar`) en een controlebestand (`.sha256`). De repository is openbaar, dus de server heeft geen inlog nodig om te downloaden. Een build die de tests niet haalt, komt er niet. Er blijven de laatste 20 builds staan.
+
+**Welke build draait.** Onderaan het menu staat klein "build 57 · 2 nov 2026 20:34" (de tijd waarop de build is gemaakt, in Nederlandse tijd); met de muis erboven zie je de versie en de commit. De app toont "lokale build" als hij zonder buildnummer is gebouwd (bijvoorbeeld door een ontwikkelaar) en "ontwikkelversie" als hij niet uit een gebouwde jar draait. Het buildnummer staat ook in het workflow-logboek bij elke melding.
+
+### 9.1 De blokken van de pagina
+
+| Blok | Wat je ziet |
+|---|---|
+| **Deze installatie** | Het buildnummer en de bouwtijd, de versie en de commit. Draait de app niet als Windows-service, dan staat er: "De app draait niet als Windows-service; bijwerken vanuit dit scherm is dan uitgezet." |
+| **Op GitHub** | "Nog niet gecontroleerd." of de nieuwste build ("Build 58 · gebouwd 2 nov 2026 21:02") met "Er staat een nieuwere build klaar." of "Je draait de nieuwste build.", en "Laatst gecontroleerd: ...". Is GitHub niet bereikbaar: "GitHub is niet bereikbaar: ..."; staat er niets: "Er staat geen build klaar op GitHub." De knoppen **Controleer nu** en **Nu bijwerken** staan hier. |
+| **Elke nacht bijwerken** | Het keuzevakje "Elke nacht om 00:00 bijwerken naar de nieuwste build" met de knop **Opslaan** (zie 9.3). |
+| **Recent** | De laatste (maximaal 20) gebeurtenissen rond het bijwerken, nieuwste boven, bijvoorbeeld "02-11 00:00  Nachtelijke controle." |
+
+**Controleer nu** vraagt GitHub (de openbare lijst met builds van onze repository) naar de nieuwste build. Dat verandert niets aan de app.
+
+### 9.2 Nu bijwerken
+
+**Nu bijwerken** is aan te klikken als de app als service draait, er een nieuwere build is, er geen programma of upload loopt en er niet al een update bezig is. Je krijgt eerst de vraag "De app nu bijwerken? De app start opnieuw en is een halve minuut niet bereikbaar. Wie bezig is met een bevestiging of formulier, moet daarna opnieuw inloggen." Daarna gebeurt dit:
+
+1. De app controleert nog eens of er een nieuwere build is en of er niets loopt.
+2. Hij **downloadt** de nieuwe jar naar de map `updates`. Op de pagina staat de voortgang ("De nieuwe versie wordt gedownload: 52% (19 van 37 MB)"); de pagina ververst zichzelf. Op een trage verbinding kan dit een paar minuten duren; je kunt de pagina openlaten.
+3. Hij **controleert** het bestand: de sha256 moet gelijk zijn aan die van de Release, en het buildnummer in de jar moet dat van de Release zijn.
+4. Hij kijkt vlak voor de herstart **nog eens** of er geen programma of upload is gestart (het downloaden duurt even).
+5. De pagina zegt "De app wordt opnieuw gestart." De app sluit binnen een paar seconden af met een speciale code (10); het startscript van de service (`run.ps1`) ziet dat, zet de nieuwe jar neer en start de app. Duurt dat langer dan 90 seconden of start de nieuwe versie niet goed, dan zet het script **automatisch de vorige versie terug**. De pagina laadt zelf opnieuw zodra de app terug is.
+6. Na de herstart moet je **opnieuw inloggen als beheerder** (de beheerderslogin staat in het geheugen). Gebruikers met een "onthoud mijn login"-cookie worden vanzelf weer ingelogd. De stand van de doorlopen van Nieuwe bestanden blijft bewaard (`sessie.json`).
+
+**Wat de app nooit doet:** bijwerken terwijl een programma (`pdf2zcbs.exe`, `images.exe`) of een stap als de upload of de back-up loopt, want die overleeft een herstart niet. Een doorloop die alleen wacht op een bevestiging van de gebruiker telt niet als bezig; die overleeft de herstart, maar de gebruiker moet dan wel opnieuw inloggen. Is er wel iets bezig, dan staat er "Er loopt nu een programma of upload (*naam* in *collectie*). Bijwerken kan pas als die klaar is." en is de knop uit; **Sessies** (hoofdstuk 8) laat zien wie het is.
+
+Gaat er iets mis tijdens het klaarzetten, dan verandert er niets aan de draaiende app. De pagina toont een rode melding "Bijwerken is niet gelukt. Klaarzetten van build N mislukt: ..." en je kunt het opnieuw proberen.
+
+### 9.3 Elke nacht bijwerken
+
+Staat het keuzevakje aan (standaard), dan werkt de app zichzelf **elke nacht om 00:00 (Nederlandse tijd)** bij als er dan een nieuwere build is, op dezelfde manier als bij **Nu bijwerken**. Is er om 00:00 nog iemand bezig met een programma of upload, dan probeert de app het **elke 10 minuten opnieuw tot 03:00**. Lukt het dan nog niet, dan slaat hij die nacht over en wacht hij tot de volgende. Op de pagina staat dan bij de gebeurtenissen "Nachtelijke update overgeslagen ...", en tijdens zo'n poging "Er loopt nu een nachtelijke poging." Zet je het vakje uit en klik je op **Opslaan**, dan blijft de app zoals hij is tot jij bijwerkt. Die keuze wordt bewaard in het instellingenbestand (`nightlyUpdate`) en gemeld aan het workflow-logboek ("Nachtelijke update aangezet" of "uitgezet").
+
+Omdat elke wijziging op `main` een build wordt en de nachtelijke update altijd de nieuwste neemt, hoort `main` altijd een goede versie te zijn; werk aan nieuwe dingen gebeurt in aparte branches die pas na controle naar `main` gaan.
+
+### 9.4 Wat er nodig is
+
+- De app draait als **Windows-service** met het startscript uit `tools/windows-server` (zie het bestand `README.md` daar). De service zet `HKH_SERVICE=1`; zonder die variabele is bijwerken vanuit de pagina uit, want afsluiten zou de app dan alleen maar stoppen.
+- De server kan `api.github.com` en `github.com` bereiken (https).
+- De map `updates` (standaard `updates` in de map waaruit de service de app start, bijvoorbeeld `C:\zcbs-workflow\updates`; `hkh.workflow.update-dir`) is beschrijfbaar voor het account van de service.
+- Het account van de service mag zijn eigen map `app` schrijven (daar verwisselt `run.ps1` de jar).
+
+**Handmatig bijwerken (als GitHub niet bereikbaar is).** Zet een `hkh-workflow.jar` (met eventueel een `hkh-workflow.jar.sha256` ernaast) in `updates`, eerst onder een tijdelijke naam (`hkh-workflow.jar.part`) en daarna hernoemd, en herstart de service (`Restart-Service hkh-workflow`). Het startscript controleert het bestand, plaatst het en draait terug als het niet start.
+
+**Terugdraaien.** Het startscript bewaart de vorige jar als `app\previous.jar` en schrijft wat het doet in `logs\update.log`. Een jar die niet geldig was of niet gezond werd, staat in `updates\mislukt\`.
+
+### 9.5 Meldingen en wat te doen
+
+| Melding | Oorzaak | Wat te doen |
+|---|---|---|
+| Bijwerken kan alleen als de app als Windows-service draait (zie tools/windows-server). | `HKH_SERVICE` ontbreekt: de app draait niet onder de service. | Draai de app als service, of werk met de hand bij. |
+| Je draait al de nieuwste build (N). | Er is niets nieuwers. | Niets. |
+| Er loopt nog een programma of upload (...). Wacht tot die klaar is. | Een gebruiker draait een programma of upload. | Wacht, of kijk bij Sessies wie het is. |
+| De nieuwe versie wordt al gedownload. / De app wordt al opnieuw gestart. | Er is al een update bezig. | Wacht tot de pagina vanzelf verder gaat. |
+| GitHub is niet bereikbaar: ... | Geen internet of GitHub is storing. | Later opnieuw proberen; controleer de verbinding van de server. |
+| Er staat geen build klaar op GitHub. | Er is (nog) geen Release gevonden. | Wacht tot de bouw klaar is, of meld het aan de ontwikkelaar. |
+| Bijwerken is niet gelukt. Klaarzetten van build N mislukt: de sha256 van het gedownloade bestand klopt niet | De download is onderweg beschadigd. | Opnieuw proberen. |
+| ... het bestand blijkt build X te zijn en niet build N | De Release bevat een ander bestand dan beloofd. | Niet doorzetten; meld het aan de ontwikkelaar. |
+| ... bij deze build staat geen sha256 | De Release is niet compleet. | Een volgende build afwachten. |
+
+---
+
+## 10. De technische pagina /test
 
 De pagina `/test` is de technische weergave voor de beheerder: je verwerkt de pdf's in de invoermap stap voor stap (hernoemen, `pdf2zcbs.exe`, `images.exe`, upload, back-up en opruimen), met alle knoppen, de console en de logbestanden. Carla gebruikt hiervoor de pagina Nieuwe bestanden. Er is geen link in het menu; open `/test` met het adres.
 
@@ -466,7 +544,7 @@ De instellingen die de technische pagina gebruikt zijn dezelfde als op de pagina
 
 ---
 
-## 10. Meldingen aan het workflow-logboek
+## 11. Meldingen aan het workflow-logboek
 
 De app meldt (als `hkh.workflow.admin-log-url` is ingevuld) aan het workflow-logboek van hkh-admin:
 
@@ -497,7 +575,7 @@ De app meldt (als `hkh.workflow.admin-log-url` is ingevuld) aan het workflow-log
 
 ---
 
-## 11. Aanbevolen waarden: macOS-server of Windows
+## 12. Aanbevolen waarden: macOS-server of Windows
 
 De echte `pdf2zcbs.exe` en `images.exe` zijn Windows-programma's. Op een Mac draait de app alleen met de nep-versies uit `tools/mock/` (Perl-scripts). De paden hieronder zijn voorbeelden; pas ze aan op de server.
 
@@ -525,7 +603,7 @@ Tips voor een Windows-service:
 
 ---
 
-## 12. Tabel: veld naar waar gebruikt
+## 13. Tabel: veld naar waar gebruikt
 
 | Veld (label op het scherm) | Naam in het opslagbestand | Waar de app het gebruikt |
 |---|---|---|
@@ -542,6 +620,7 @@ Tips voor een Windows-service:
 | Back-upmap voor 100pct (per collectie) | `collections.<collectie>.backup100pctFolder` | stap Back-up; fase 1 regel 5; waarschuwing op Instellingen en /test |
 | Back-upmap voor de pdf's (per collectie) | `collections.<collectie>.backupPdfFolder` | stap Back-up; fase 1 regel 5; waarschuwing |
 | (niet op het scherm) | `collection`, `ftpUser`, `ftpBaseDir`, `ftpHost`, `ftpPort`, `zcbsBaseUrl` | afgeleid; ZCBS-script `/cgi-bin/archief.pl`, ftp-mappen `/public_html/archief/ocr` en `/pdf` |
+| (niet op Instellingen, maar op Versie) | `nightlyUpdate` | de nachtelijke update (hoofdstuk 9); standaard aan |
 | `hkh.workflow.admin-password` | (configuratie) | inloggen op `/beheer` |
 | `hkh.workflow.admin-log-url` | (configuratie) | meldingen aan het workflow-logboek |
 | `hkh.workflow.test-zcbs-url`, `test-ftp-host`, `test-ftp-port` | (configuratie) | adres van de test-ZCBS als `useTestZcbs` aan staat |
@@ -549,10 +628,11 @@ Tips voor een Windows-service:
 | `hkh.workflow.processed-log` | (configuratie) | het verwerkt-log |
 | `hkh.workflow.console-charset` | (configuratie) | tekens van de programma-uitvoer |
 | `hkh.workflow.log-dir` | (configuratie) | logbestanden per programma-run |
+| `hkh.workflow.update-dir`, `update-repo`, `update-cron`, `hkh.service` | (configuratie) | bijwerken van de app (hoofdstuk 9) |
 
 ---
 
-## 13. Problemen en oplossingen
+## 14. Problemen en oplossingen
 
 | Probleem | Mogelijke oorzaak | Oplossing |
 |---|---|---|
@@ -584,7 +664,7 @@ Tips voor een Windows-service:
 
 ---
 
-## 14. Wat niet is bevestigd
+## 15. Wat niet is bevestigd
 
 Alles in deze handleiding komt uit de code en de projectdocumentatie van de app. Het volgende is **niet op de echte HKH-server uitgeprobeerd**:
 
@@ -592,7 +672,7 @@ Alles in deze handleiding komt uit de code en de projectdocumentatie van de app.
 - de werking van omgevingsvariabelen voor `test-zcbs-url`, `test-ftp-host` en `test-ftp-port` en van een lege `HKH_WORKFLOW_ADMIN_LOG_URL` (standaardgedrag van Spring Boot);
 - het effect van een gewijzigd pad voor een map met scans op de weergave "al verwerkt" (afgeleid uit de code van het verwerkt-log);
 - welke ftp-server de echte `images.exe` kiest als `useTestZcbs` aan staat (de meting van 30 oktober 2026 zegt dat de server in het programma is ingebouwd);
-- de waarden voor Windows en macOS in hoofdstuk 11 zijn voorbeelden en aanbevelingen, geen vastgelegde HKH-configuratie.
+- de waarden voor Windows en macOS in hoofdstuk 12 zijn voorbeelden en aanbevelingen, geen vastgelegde HKH-configuratie.
 
 **Verouderde teksten in de bestaande documentatie** (de code wint):
 

@@ -1,6 +1,6 @@
 # Handleidingen ZcbsServer
 
-Stand: 1 november 2026. Twee soorten documenten: **quickstarts** voor medewerkers (alleen wat je klikt) en **handleidingen** met alle details
+Stand: 2 november 2026. Twee soorten documenten: **quickstarts** voor medewerkers (alleen wat je klikt) en **handleidingen** met alle details
 en controles. De specificaties en het ontwerp staan in [../docs](../docs/README.md).
 
 ## Voor medewerkers
@@ -15,8 +15,8 @@ en controles. De specificaties en het ontwerp staan in [../docs](../docs/README.
 | Onderwerp | Lees | Als pdf |
 |---|---|---|
 | Nieuwe bestanden in ZCBS zetten: elke fase, elke controle, wat te doen bij een melding | [invoeren.md](invoeren.md) | [pdf/invoeren.pdf](pdf/invoeren.pdf) |
-| Records aanpassen: kiezen, formulier, opslaan, conflicten | [records-aanpassen.md](records-aanpassen.md) | [pdf/records-aanpassen.pdf](pdf/records-aanpassen.pdf) |
-| Instellingen en beheer (voor de beheerder) | [instellingen.md](instellingen.md) | [pdf/instellingen.pdf](pdf/instellingen.pdf) |
+| Records aanpassen: een record openen, de lijst Recent toegevoegd, formulier, opslaan, conflicten | [records-aanpassen.md](records-aanpassen.md) | [pdf/records-aanpassen.pdf](pdf/records-aanpassen.pdf) |
+| Instellingen, Sessies, Versie en bijwerken (voor de beheerder) | [instellingen.md](instellingen.md) | [pdf/instellingen.pdf](pdf/instellingen.pdf) |
 
 De plaatjes staan in [afbeeldingen](afbeeldingen/) en zijn gemaakt met het script in [../tools/docs](../tools/docs/README.md), net als de pdf's. Verandert de app, maak ze dan opnieuw.
 

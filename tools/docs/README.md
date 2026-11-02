@@ -9,14 +9,18 @@ app opnieuw te maken zijn. Alles draait alleen op de lokale testomgeving met fic
 `manual/afbeeldingen/`. `schermen.cjs` bevat de hulpfuncties (inloggen, markeren, bewaren). Tijdelijke mappen van de test worden op het scherm vervangen door
 `K:\…` en `\\server\werkmap\…`, en de testgebruiker heet daar Carla; de app zelf verandert niet.
 
-Voorbereiding (eenmalig en bij elke nieuwe ronde):
+Voorbereiding (bij elke nieuwe ronde): `tools/docs/voorbereiden.sh` zet alles klaar en start de app op poort 9010. Het script
 
-1. Start de test-ZCBS (`tools/docker`) en de app op poort 9010 met de test-ZCBS, de nep-programma's (`tools/mock`), een leeg verwerkt-log en de meldingen aan hkh-admin uit
-   (`HKH_WORKFLOW_ADMIN_LOG_URL=` leeg). Gebruik een eigen kopie van de instellingen en de mappen, niet die van de echte installatie.
-2. Zet in de eerste map met scans een submap `Kerkplein` met `kerkplein_1950.pdf`, `kerkplein_1962.pdf`, `raadhuis_voorgevel.pdf` en `markt_1935.jpg`, en een submap
-   `Schoolfoto's` met `school_001.pdf`, `school_002.pdf` en `klas_foto.jpg`. De bestanden mogen nog niet als verwerkt zijn aangemerkt.
-3. De testgebruiker van de test-ZCBS staat in `ZCBS_USER` en `ZCBS_PASSWORD` (standaard de lokale testgebruiker) en het beheerderswachtwoord van de lokale app in
-   `ADMIN_PASSWORD`.
+1. controleert dat de test-ZCBS in Docker (`tools/docker/zcbs`, poort 8081 en ftp 21) draait;
+2. maakt in een werkmap (standaard `/private/tmp/hkh-docs`) de mappen, de nep-programma's (`tools/mock`), de scans (`Kerkplein` met `kerkplein_1950.pdf`, `kerkplein_1962.pdf`,
+   `raadhuis_voorgevel.pdf` en `markt_1935.jpg`, en `Schoolfoto's` met `school_001.pdf`, `school_002.pdf` en `klas_foto.jpg`), een eigen instellingenbestand en een leeg verwerkt-log;
+3. downloadt de nieuwste release-jar van GitHub (`gh release download`; of geef zelf een jar mee) en start hem met de meldingen aan hkh-admin uit en beheerderswachtwoord `abc`.
+
+Bouw voor de screenshots niet met `mvn` in dezelfde map als iemand anders: gebruik de release-jar. De testgebruiker van de test-ZCBS staat in `ZCBS_USER` en `ZCBS_PASSWORD`
+(standaard de lokale testgebruiker) en het beheerderswachtwoord in `ADMIN_PASSWORD`. De bestanden mogen nog niet als verwerkt zijn aangemerkt; het script begint daarom steeds met een leeg log.
+`tools/docs/voorbereiden.sh --stop` stopt de app weer.
+
+Het buildnummer onderin het menu wordt op de plaatjes verborgen en op de pagina Versie vervangen door voorbeeldwaarden, zodat de handleiding niet bij elke build verouderd is.
 
 ```bash
 NODE_PATH=$(npm root -g) node tools/docs/maak-screenshots.cjs

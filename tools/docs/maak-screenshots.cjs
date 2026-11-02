@@ -107,28 +107,34 @@ async function chooseFiles(page, folder = 'Kerkplein', files = KERKPLEIN) {
   await waitFor(page, 'staan nu op het archief');
   const range = (await page.locator('main').innerText()).match(/(\d+) t\/m (\d+)/g)?.pop()?.match(/(\d+) t\/m (\d+)/);
   await shot(page, 'invoeren-klaar', [{ text: 'Nieuwe bestanden verwerken', n: 1 }], { scrollTo: 'h2:has-text("Klaar")', top: true });
-  await page.goto(BASE + '/verwerkt');
-  await shot(page, 'verwerkt', []);
-
   // ---------- Records aanpassen ----------
+  // De lijst "Recent toegevoegd" komt uit het verwerkt-log: de records van hierboven staan er nu in (nieuwste eerst).
+  const first = range ? range[1] : '99102';
   await page.goto(BASE + '/records');
-  await page.fill('#nummers', range ? `${range[1]}-${range[2]}` : '99102-99105');
-  await shot(page, 'records-1-kiezen', [{ sel: '#nummers', n: 1 }, { text: 'Toon deze records', n: 2 }]);
-  await page.click('button:has-text("Toon deze records")');
-  await page.waitForLoadState('networkidle');
-  await shot(page, 'records-2-lijst', [{ text: 'Pdf', n: 1 }, { text: 'Open in ZCBS', n: 2 }, { text: 'Bewerk', n: 3 }], { scrollTo: 'main .table', top: false });
-  await page.locator('main button:has-text("Pdf")').first().click();
+  await page.waitForSelector('#lijst .rec', { timeout: 60000 });
+  await page.waitForFunction(() => !document.querySelector('#lijst .loading'), null, { timeout: 60000 });
+  await page.fill('#openrec input[name=nummer]', first);
+  await shot(page, 'records-1-kiezen', [
+    { sel: '#openrec input[name=nummer]', n: 1 }, { sel: '#openrec [data-act=scan]', n: 2 },
+    { sel: '#openrec button[type=submit]', n: 3 }, { sel: '#openrec [data-act=zcbs]', n: 4 },
+  ], { scrollTo: 'h1', top: true });
+  await shot(page, 'records-2-lijst', [
+    { sel: '.filters a:nth-child(1)', n: 1 }, { sel: '.filters a:nth-child(2)', n: 2 }, { sel: '.filters a:nth-child(3)', n: 3 },
+    { sel: '#lijst .rec .acts button[data-viewer]', n: 4 }, { sel: '#lijst .rec .acts a:not([target])', n: 5 }, { sel: '#lijst .rec .acts a[target]', n: 6 },
+  ], { scrollTo: '.recent', top: true });
+  await page.locator('#lijst .rec .acts button[data-viewer]').first().click();
   await page.waitForTimeout(900);
   await shot(page, 'records-2-popup', []);
   await page.click('#viewer-close').catch(() => {});
-  await page.locator('a.btn:has-text("Bewerk")').first().click();
+  await page.locator('#lijst .rec .acts a:not([target])').first().click();
   await page.waitForLoadState('networkidle');
   await page.fill('input[name=a5]', 'Kerkplein met de oude kerk, 1950');
   await shot(page, 'records-3-formulier', [{ sel: 'input[name=a5]', n: 1 }], { scrollTo: 'h1', top: true });
-  await shot(page, 'records-3-opslaan', [{ text: 'Opslaan en volgende', n: 1 }, { text: 'Opslaan', n: 2 }, { text: 'Volgende zonder opslaan', n: 3 }], { scrollTo: 'button:has-text("Opslaan en volgende")' });
-  await page.locator('main button:has-text("Opslaan")').first().click();
+  await shot(page, 'records-3-opslaan', [{ text: 'Open in ZCBS', n: 3 }, { text: 'Opslaan', n: 1 }, { text: 'Annuleren', n: 2 }], { scrollTo: '.selbar' });
+  await page.locator('.selbar button:has-text("Opslaan")').first().click();
   await page.waitForLoadState('networkidle');
-  await shot(page, 'records-4-opgeslagen', [], { scrollTo: 'main .alert-ok', top: true });
+  await page.waitForSelector('a:has-text("Volgende om te beschrijven")', { timeout: 60000 }).catch(() => {});
+  await shot(page, 'records-4-opgeslagen', [{ text: 'Volgende om te beschrijven', n: 1 }], { scrollTo: '.alert-ok', top: true });
 
   // ---------- Beheerder ----------
   await page.goto(BASE + '/beheer');
@@ -147,6 +153,12 @@ async function chooseFiles(page, folder = 'Kerkplein', files = KERKPLEIN) {
   ];
   for (const [name, legend] of sections) await shot(page, name, [], { element: `fieldset:has(legend:has-text("${legend}")), section:has(h2:has-text("${legend}"))` });
   await shot(page, 'instellingen-0-boven', [], { scrollTo: 'h1', top: true });
+
+  // De pagina Versie: eerst "Controleer nu", zodat het blok "Op GitHub" gevuld is (de app vraagt de openbare Releases van onze eigen repository op).
+  await page.goto(BASE + '/instellingen/versie');
+  await page.click('button:has-text("Controleer nu")');
+  await page.waitForLoadState('networkidle');
+  await shot(page, 'versie', [{ text: 'Controleer nu', n: 1 }, { text: 'Nu bijwerken', n: 2 }, { sel: 'input[name=aan]', n: 3 }]);
 
   // Sessies met iemand die bezig is: begin een nieuwe doorloop tot en met de nummers.
   await nieuw(page);
