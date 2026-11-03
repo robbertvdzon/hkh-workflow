@@ -26,6 +26,7 @@ data class ProcessedFile(
     val folder: String,
     val name: String,
 ) {
+    val dateText: String get() = at.format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", java.util.Locale.forLanguageTag("nl")))
 }
 
 /**
