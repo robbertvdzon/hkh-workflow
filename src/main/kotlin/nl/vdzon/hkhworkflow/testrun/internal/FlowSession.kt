@@ -372,52 +372,16 @@ class FlowSession(
 
     // ---- Resten van een eerdere run ----
 
-    /**
-     * Wat er nog in de mappen van pdf2zcbs.exe en images.exe staat van een eerdere run (of van handwerk): pdf's naast pdf2zcbs, de uitvoer in
-     * `output` (behalve `log` en `updates.txt`), de bestanden in `images` en de resultaten in `small`, `large` en `100pct`.
-     */
-    fun leftovers(): List<Leftover> {
-        val l = Layout(settings(), input)
-        fun regular(dir: Path, deep: Boolean, skip: (Path) -> Boolean = { false }): List<Path> {
-            if (!Files.isDirectory(dir)) return emptyList()
-            return runCatching {
-                if (deep) Files.walk(dir).use { w -> w.filter { Files.isRegularFile(it) && !skip(it) }.sorted().toList() }
-                else dir.listDirectoryEntries().filter { it.isRegularFile() && !skip(it) }.sortedBy { it.name }
-            }.getOrDefault(emptyList())
-        }
-        return buildList {
-            // Wat al in de invoermap staat zonder dat Carla het in deze doorloop koos, is van een eerdere keer.
-            input.invoer()?.takeIf { run == null && inputAcceptedFor != input.user }?.let { dir ->
-                regular(dir, true) { it.name == "herkomst.tsv" }.takeIf { it.isNotEmpty() }
-                    ?.let { add(Leftover("invoer", "je gekozen bestanden", dir, it)) }
-            }
-            // De kopieën met het recordnummer van een doorloop die niet is afgemaakt (in een doorloop horen ze er juist te staan).
-            input.werk()?.takeIf { run == null }?.let { dir ->
-                regular(dir, true).takeIf { it.isNotEmpty() }?.let { add(Leftover("werk", "de kopieën met recordnummer", dir, it)) }
-            }
-            l.p2z?.let { dir ->
-                regular(dir, false) { !it.extension.equals("pdf", ignoreCase = true) }.takeIf { it.isNotEmpty() }?.let { add(Leftover("pdf2zcbs", "pdf2zcbs: pdf's in de map van het programma", dir, it)) }
-                val out = dir.resolve("output")
-                regular(out, true) { out.relativize(it).getName(0).toString() == "log" || it.name == "updates.txt" }.takeIf { it.isNotEmpty() }
-                    ?.let { add(Leftover("pdf2zcbs", "pdf2zcbs: de map output", dir, it)) }
-            }
-            l.img?.let { dir ->
-                regular(dir.resolve("images"), false).takeIf { it.isNotEmpty() }?.let { add(Leftover("images", "images.exe: bronbestanden in de map images", dir, it)) }
-                listOf("small", "large", "100pct").forEach { sub ->
-                    regular(dir.resolve(sub), true).takeIf { it.isNotEmpty() }?.let { add(Leftover("images", "images.exe: de map $sub", dir, it)) }
-                }
-            }
-        }
-    }
+    private val leftoverFolders = LeftoverFolders(input)
+
+    /** Wat er nog staat van een eerdere run (of van handwerk), zie [LeftoverFolders]. */
+    fun leftovers(): List<Leftover> = leftoverFolders.find(settings(), runActive = run != null, inputAccepted = inputAcceptedFor == input.user)
 
     /** De map waar resten naartoe gaan: de instelling (met een submap per gebruiker en collectie), of de map `resten` van de gebruiker. */
-    fun leftoversTarget(): Path? {
-        return input.resten()
-    }
+    fun leftoversTarget(): Path? = input.resten()
 
     /**
-     * Ruimt de resten op: verplaatst ze naar een submap met datum en tijd van [leftoversTarget] (en behoudt de mapstructuur), of verwijdert ze.
-     * Alleen de bestanden uit [leftovers]; lege mappen daaronder verdwijnen. Alleen als er geen doorloop of programma bezig is.
+     * Ruimt de resten op: verplaatst ze naar een submap met datum en tijd, of verwijdert ze. Alleen als er geen doorloop of programma bezig is.
      * @return een melding over wat er gebeurd is, of waarom het niet kan.
      */
     @Synchronized
@@ -426,41 +390,9 @@ class FlowSession(
         if (exeRunner.isRunning()) return "Er draait nog een programma."
         val items = leftovers()
         if (items.isEmpty()) return "Er stond niets meer om op te ruimen."
-        val total = items.sumOf { it.files.size }
-        val target = if (move) {
-            val root = leftoversTarget() ?: return "Stel eerst de invoermap of de map voor resten in bij Instellingen."
-            root.resolve(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")))
-        } else null
-        try {
-            items.forEach { item ->
-                val area = item.area
-                item.files.forEach { file ->
-                    check(file.toAbsolutePath().normalize().startsWith(item.base.toAbsolutePath().normalize())) { "Weigert iets buiten de map van het programma aan te raken: $file" }
-                    if (target != null) {
-                        val dest = target.resolve(area).resolve(item.base.relativize(file).toString())
-                        Files.createDirectories(dest.parent)
-                        Files.move(file, dest)
-                    } else Files.delete(file)
-                }
-            }
-            val l = Layout(settings(), input)
-            listOfNotNull(l.p2zOutput(), l.img?.resolve("small"), l.img?.resolve("large"), l.img?.resolve("100pct"), input.werk()).forEach { pruneEmptyDirs(it) }
-            if (items.any { it.area == "invoer" }) {
-                inputAcceptedFor = null
-                input.invoer()?.resolve("herkomst.tsv")?.let { Files.deleteIfExists(it) }
-            }
-        } catch (e: Exception) {
-            log.warn("Resten opruimen mislukt: {}", e.message)
-            return "Opruimen is niet helemaal gelukt: ${e.message ?: e.javaClass.simpleName}. Controleer de mappen van de programma's."
-        }
-        log.info("{} bestanden van een eerdere run {}", total, if (target != null) "verplaatst naar $target" else "verwijderd")
-        return if (target != null) "$total bestanden verplaatst naar $target." else "$total bestanden verwijderd."
-    }
-
-    /** Verwijdert lege (sub)mappen onder [dir], en [dir] zelf als die leeg is. */
-    private fun pruneEmptyDirs(dir: Path) {
-        if (!Files.isDirectory(dir)) return
-        Files.walk(dir).use { w -> w.sorted(Comparator.reverseOrder()).filter { Files.isDirectory(it) }.toList() }.forEach { runCatching { Files.deleteIfExists(it) } }
+        val outcome = leftoverFolders.clear(items, move, settings())
+        if (outcome.inputCleared) inputAcceptedFor = null
+        return outcome.message
     }
 
     /** Een nieuwe test begint schoon: een nog lopend programma wordt gestopt en de console leeggemaakt. */
@@ -484,7 +416,7 @@ class FlowSession(
         }
         try {
             val settings = settings()
-            val problems = problems(current, step, settings)
+            val problems = stepChecks.problems(current, step, settings, input)
             check(problems.isEmpty()) { problems.joinToString("\n") }
             if (step.type == StepType.IMAGES && !step.attempted) numbersTaken(step)?.let { error(it) }
             step.attempted = true
@@ -550,131 +482,6 @@ class FlowSession(
         change(step)
     }
 
-    // ---- Locaties van alle bestanden die de stappen aanmaken of nodig hebben ----
-
-    private class Layout(val s: WorkflowSettings, folders: WorkFolders) {
-        /** De mappen van deze gebruiker voor de programma's; daarin staat een kopie van het programma uit de hoofdmap. */
-        val p2z: Path? = folders.pdf2zcbs()
-        val img: Path? = folders.images()
-
-        /** Het programma zelf, in de map van de gebruiker. */
-        fun p2zExe(): Path? = p2z?.resolve(Path.of(s.pdf2zcbsExe).fileName)
-        fun imgExe(): Path? = img?.resolve(Path.of(s.imagesExe).fileName)
-        val backup: Path? = s.backup100pctFolder().trim().takeIf { it.isNotEmpty() }?.let { Path.of(it) }
-        val backupPdf: Path? = s.backupPdfFolder().trim().takeIf { it.isNotEmpty() }?.let { Path.of(it) }
-
-        fun p2zOutput(): Path? = p2z?.resolve("output")
-        fun ocr(f: TestFile): Path? = p2zOutput()?.resolve("ocr")?.resolve("${f.number}.txt")
-        fun pdf(f: TestFile): Path? = p2zOutput()?.resolve("pdf")?.resolve("${f.number}.pdf")
-        fun p2zSmall(f: TestFile): Path? = p2zOutput()?.resolve("small")?.resolve("${f.number}.jpg")
-        fun p2zLarge(f: TestFile): Path? = p2zOutput()?.resolve("large")?.resolve("${f.number}.jpg")
-        fun imgIn(f: TestFile): Path? = img?.resolve("images")?.resolve("${f.number}.jpg")
-        fun imgSmall(f: TestFile): Path? = img?.resolve("small")?.resolve("${f.number}.jpg")
-        fun imgLarge(f: TestFile): Path? = img?.resolve("large")?.resolve("${f.number}.jpg")
-        fun img100(f: TestFile): Path? = img?.resolve("100pct")?.resolve("${f.number}.jpg")
-        fun backupOf(f: TestFile): Path? = backup?.resolve("${f.number}.jpg")
-        fun backupPdfOf(f: TestFile): Path? = backupPdf?.resolve("${f.number}.pdf")
-        fun p2zInput(f: TestFile): Path? = p2z?.resolve("${f.number}.pdf")
-    }
-
-    /** Bestaat het bestand en is het niet leeg? Een tekstbestand mag leeg zijn: een pagina zonder tekst geeft een lege tekst (dat zie je dan bij het controleren). */
-    private fun Path?.present(allowEmpty: Boolean = false): Boolean =
-        this != null && Files.isRegularFile(this) && (allowEmpty || runCatching { Files.size(this) > 0 }.getOrDefault(false))
-
-    private fun names(list: List<String>, max: Int = 8): String =
-        list.take(max).joinToString() + if (list.size > max) " en ${list.size - max} andere" else ""
-
-    // ---- Controles vooraf: wat houdt een stap nu tegen? ----
-
-    private fun problems(current: TestRun, step: Step, s: WorkflowSettings): List<String> {
-        val l = Layout(s, input)
-        val batch = step.activeFiles.map { it.number }.toSet()
-        return when (step.type) {
-            StepType.RENAME -> buildList {
-                val f = step.file
-                if (!Files.exists(f.original)) add("Origineel niet gevonden: ${f.original}")
-                if (Files.exists(current.workDir.resolve(f.newName))) add("${f.newName} bestaat al in ${current.workDir}.")
-            }
-
-            StepType.PDF2ZCBS -> buildList {
-                exeProblem("pdf2zcbs.exe", s.pdf2zcbsExe)?.let { add(it) }
-                step.activeFiles.forEach { if (!Files.exists(current.workDir.resolve(it.newName))) add("Werkbestand ontbreekt: ${current.workDir.resolve(it.newName)} (is de hernoem-stap gedaan?)") }
-                val dir = l.p2z ?: return@buildList
-                if (Files.isDirectory(dir)) {
-                    val strangers = dir.listDirectoryEntries().filter { it.isRegularFile() && it.extension.equals("pdf", true) && it.nameWithoutExt() !in batch }.map { it.name }.sorted()
-                    if (strangers.isNotEmpty()) add("In $dir staan nog andere pdf's die pdf2zcbs.exe ook zou verwerken: ${names(strangers)}. Verwijder die eerst.")
-                    val out = dir.resolve("output")
-                    if (Files.isDirectory(out)) {
-                        val old = Files.walk(out).use { w ->
-                            w.filter { Files.isRegularFile(it) }
-                                .filter { out.relativize(it).getName(0).toString() != "log" && it.name != "updates.txt" }
-                                .filter { it.extension.lowercase() in setOf("txt", "pdf", "jpg", "jpeg") && it.nameWithoutExt() !in batch }
-                                .map { out.relativize(it).toString() }.sorted().toList()
-                        }
-                        if (old.isNotEmpty()) add("In $out staan resultaten van een vorige run: ${names(old)}. pdf2zcbs.exe wist die map bij de start. Zet ze eerst veilig of verwijder de map.")
-                    }
-                }
-            }
-
-            StepType.IMAGES -> buildList {
-                if (current.gated && StepType.PDF2ZCBS !in current.reviewed) add("Controleer eerst de bestanden van pdf2zcbs.exe en bevestig dat ze goed zijn.")
-                exeProblem("images.exe", s.imagesExe)?.let { add(it) }
-                step.files.forEach {
-                    if (it.isImage) {
-                        if (!current.workDir.resolve(it.newName).present()) add("Werkbestand ontbreekt: ${current.workDir.resolve(it.newName)} (is de hernoem-stap gedaan?)")
-                    } else if (!l.p2zLarge(it).present()) add("Large-jpg van pdf2zcbs ontbreekt: ${l.p2zLarge(it) ?: "(pdf2zcbs.exe niet ingesteld)"} (is de pdf2zcbs-stap gedaan?)")
-                }
-                val dir = l.img ?: return@buildList
-                val ours = batch.map { "$it.jpg" }.toSet()
-                val input = dir.resolve("images")
-                if (Files.isDirectory(input)) {
-                    val strangers = input.listDirectoryEntries().filter { it.isRegularFile() && it.name !in ours }.map { it.name }.sorted()
-                    if (strangers.isNotEmpty()) add("In $input staan nog andere bestanden die images.exe ook zou verwerken: ${names(strangers)}. Verwijder die eerst.")
-                }
-                listOf("small", "large", "100pct").forEach { sub ->
-                    val derived = dir.resolve(sub)
-                    if (Files.isDirectory(derived)) {
-                        val old = derived.listDirectoryEntries().filter { it.isRegularFile() && it.name !in ours }.map { it.name }.sorted()
-                        if (old.isNotEmpty()) add("In $derived staan resultaten van een vorige run: ${names(old)}. Die zouden opnieuw worden geüpload. Ruim eerst op.")
-                    }
-                }
-            }
-
-            StepType.UPLOAD -> buildList {
-                if (current.gated && StepType.IMAGES !in current.reviewed) add("Controleer eerst de bestanden van images.exe en bevestig dat ze goed zijn.")
-                if (s.ftpHost.isBlank()) add("Ftp-host is niet ingesteld (Instellingen).")
-                if (s.ftpUser.isBlank()) add("Ftp-gebruiker is niet ingesteld (Instellingen).")
-                if (s.ftpPassword.isEmpty()) add("Ftp-wachtwoord is niet ingesteld (Instellingen, bij FTP-wachtwoord).")
-                if (s.collection.isBlank()) add("Collectie is niet ingesteld (Instellingen).")
-                step.activeFiles.forEach {
-                    if (!l.ocr(it).present(allowEmpty = true)) add("Tekstbestand ontbreekt: ${l.ocr(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")
-                    if (!l.pdf(it).present()) add("Pdf ontbreekt: ${l.pdf(it) ?: "(pdf2zcbs.exe niet ingesteld)"}")
-                }
-            }
-
-            StepType.CLEANUP -> buildList {
-                if (l.p2z == null || l.img == null) add("Stel eerst de paden van pdf2zcbs.exe en images.exe in.")
-                if (s.backup100pctFolder().isBlank()) add("Stel eerst de back-upmap voor de 100pct in (Instellingen).")
-                else if (!Files.isDirectory(Path.of(s.backup100pctFolder()))) add("Back-upmap voor de 100pct bestaat niet: ${s.backup100pctFolder()}")
-                val hasPdfs = step.files.any { !it.isImage }
-                if (hasPdfs && s.backupPdfFolder().isBlank()) add("Stel eerst de back-upmap voor de pdf's in (Instellingen).")
-                else if (hasPdfs && !Files.isDirectory(Path.of(s.backupPdfFolder()))) add("Back-upmap voor de pdf's bestaat niet: ${s.backupPdfFolder()}")
-                step.files.forEach {
-                    if (!l.img100(it).present()) add("100pct ontbreekt, dus geen back-up mogelijk: ${l.img100(it) ?: "(images.exe niet ingesteld)"}")
-                    if (!it.isImage && !current.workDir.resolve(it.newName).present()) add("De pdf met recordnummer ontbreekt, dus geen back-up mogelijk: ${current.workDir.resolve(it.newName)}")
-                }
-            }
-        }
-    }
-
-    private fun exeProblem(label: String, setting: String): String? = when {
-        setting.isBlank() -> "Stel eerst het pad naar $label in."
-        !Files.isRegularFile(Path.of(setting)) -> "$label niet gevonden: $setting"
-        else -> null
-    }
-
-    private fun Path.nameWithoutExt(): String = name.substringBeforeLast('.')
-
     // ---- De stappen ----
 
     private fun rename(current: TestRun, step: Step) {
@@ -687,7 +494,7 @@ class FlowSession(
 
     private fun runPdf2zcbs(current: TestRun, step: Step, s: WorkflowSettings, mode: RunMode, auto: Boolean) {
         syncPrograms()
-        val l = Layout(s, input)
+        val l = FlowLayout(s, input)
         val dir = l.p2z!!
         val copies = step.activeFiles.map { current.workDir.resolve(it.newName) to dir.resolve(it.newName) }
         val expected = step.activeFiles.flatMap {
@@ -706,7 +513,7 @@ class FlowSession(
             }
         }
         syncPrograms()
-        val l = Layout(s, input)
+        val l = FlowLayout(s, input)
         val dir = l.img!!
         // Een pdf geeft de large-jpg van pdf2zcbs door; een afbeelding gaat zelf rechtstreeks naar images.exe.
         val copies = step.files.map { (if (it.isImage) current.workDir.resolve(it.newName) else l.p2zLarge(it)!!) to l.imgIn(it)!! }
@@ -815,7 +622,7 @@ class FlowSession(
     }
 
     private fun upload(step: Step, s: WorkflowSettings) {
-        val l = Layout(s, input)
+        val l = FlowLayout(s, input)
         val items = step.activeFiles.flatMap {
             listOf(
                 UploadItem(l.ocr(it)!!, s.remoteOcrDir(), "${it.number}.txt"),
@@ -845,7 +652,7 @@ class FlowSession(
      * er in het verwerkt-log te staan wat er klaar is.
      */
     private fun cleanup(current: TestRun, step: Step, s: WorkflowSettings) {
-        val l = Layout(s, input)
+        val l = FlowLayout(s, input)
         step.status = StepStatus.RUNNING
         var copied = 0
         step.files.forEach { f ->
@@ -910,222 +717,19 @@ class FlowSession(
 
     // ---- Wat de gebruiker te zien krijgt ----
 
+    private val stepChecks = StepChecks()
+    private val views = FlowViews(input, ftpService, stepChecks)
+
+    /** De stand voor de pagina, of null als er nog geen doorloop is. */
     @Synchronized
-    fun view(): TestRunView? {
-        val current = run ?: return null
-        val s = settings()
-        val next = current.nextStep()
+    fun view(): TestRunView? = run?.let { views.view(it, settings()) }
 
-        fun toView(step: Step): StepView {
-            val isNext = step.id == next?.id
-            return StepView(
-                id = step.id,
-                type = step.type.name,
-                typeLabel = step.type.label,
-                fileCount = step.files.size,
-                status = step.status.name,
-                statusLabel = step.status.label,
-                message = step.message,
-                question = step.question,
-                current = isNext,
-                usesExe = step.type.usesExe,
-                plan = if (isNext) plan(current, step, s) else emptyList(),
-                problems = if (isNext && step.status == StepStatus.PENDING) problems(current, step, s) else emptyList(),
-                warnings = if (isNext) warnings(current, step) else emptyList(),
-            )
-        }
+    /** Een bestand uit de uitvoer, alleen voor nummers van deze doorloop. */
+    fun resultFile(kind: String, number: String): Path? = run?.let { views.resultFile(it, settings(), kind, number) }
 
-        val rows = current.files.map { file ->
-            FileRowView(
-                originalName = file.originalName,
-                newName = file.newName,
-                number = file.number,
-                by = file.by,
-                cells = StepType.entries.map { type -> toView(current.steps.first { it.type == type && it.files.contains(file) }) },
-                checks = checkGroups(current, file, s),
-            )
-        }
-        return TestRunView(
-            startNumber = current.startNumber,
-            testFolder = current.testFolder.toString(),
-            workDir = current.workDir.toString(),
-            fileCount = current.files.size,
-            doneCount = current.steps.count { it.finished },
-            totalCount = current.steps.size,
-            rows = rows,
-            stepTypes = StepType.entries.map { it.label },
-            next = next?.let(::toView),
-        )
-    }
-
-    private fun warnings(current: TestRun, step: Step): List<String> = buildList {
-        val s = settings()
-        if (step.type == StepType.CLEANUP && current.steps.first { it.type == StepType.UPLOAD }.status == StepStatus.SKIPPED && current.files.any { !it.isImage }) {
-            add("De upload is overgeslagen. Na het opruimen zijn de tekst en pdf's weg, tenzij je ze zelf op de server hebt gezet.")
-        }
-    }
-
-    private fun plan(current: TestRun, step: Step, s: WorkflowSettings): List<String> {
-        val l = Layout(s, input)
-        val n = step.files.size
-        val unset = "(niet ingesteld)"
-        return when (step.type) {
-            StepType.RENAME -> listOf("Maakt een kopie van ${step.file.originalName} als ${current.workDir.resolve(step.file.newName)}.", "Het origineel blijft staan.")
-            StepType.PDF2ZCBS -> listOf(
-                "Zet ${step.activeFiles.size} bestand(en) uit ${current.workDir} in ${l.p2z ?: unset}.",
-                "Start ${l.p2zExe() ?: unset} één keer in die map.",
-                "Verwacht per bestand in ${l.p2zOutput() ?: unset}: tekst, pdf, small en large.",
-            )
-            StepType.IMAGES -> listOf(
-                "Zet de large-jpg's van pdf2zcbs uit ${l.p2zOutput()?.resolve("large") ?: unset} (en de gekozen afbeeldingen zelf) in ${l.img?.resolve("images") ?: unset}.",
-                "Start ${l.imgExe() ?: unset} één keer. Handmatig typ je zelf de antwoorden; de app stelt de vaste antwoorden voor.",
-                "Automatisch geeft de app de vaste antwoorden: uploaden naar de server ja, records aanmaken ja, collectie ${s.collection}, resolutie ${s.imagesResolution()}.",
-                "Er wordt nooit overschreven en niets verwijderd: de vragen daarover beantwoordt de app zelf met nee (ook bij handmatig), zodat de mappen small, large, 100pct en images blijven staan.",
-                "Verwacht per bestand in ${l.img ?: unset}: small, large en 100pct.",
-            )
-            StepType.UPLOAD -> listOf(
-                "Verbindt met ftp://${s.ftpHost.ifBlank { unset }} als ${s.ftpUser.ifBlank { unset }}.",
-                "Tekst: ${step.activeFiles.size} bestand(en) naar ${s.remoteOcrDir()}",
-                "Pdf: ${step.activeFiles.size} bestand(en) naar ${s.remotePdfDir()}",
-                "Eerst een controle: de mappen bestaan en geen enkel bestand bestaat al. Er wordt niets overschreven, aangemaakt of verwijderd.",
-            )
-            StepType.CLEANUP -> listOf(
-                "Kopieert de $n 100pct-afbeeldingen naar ${s.backup100pctFolder().ifBlank { unset }}.",
-                "Kopieert de ${step.files.count { !it.isImage }} pdf's met hun recordnummer naar ${s.backupPdfFolder().ifBlank { unset }}.",
-                "Verwijdert daarna ${l.p2zOutput() ?: unset}, ${l.img?.resolve("small") ?: unset}, large en 100pct, de bronbestanden in ${l.img?.resolve("images") ?: unset}, log-*.txt in ${l.img ?: unset} en de $n kopieën in de invoermap.",
-                "De bestanden op K: blijven staan. De tekst en pdf's in output zijn dan weg: die moeten op de server staan (stap Upload).",
-                "Zet de bestanden in het verwerkt-log, zodat je later kunt zien wat al op het archief staat.",
-            )
-        }
-    }
-
-    private fun checkGroups(current: TestRun, file: TestFile, s: WorkflowSettings): List<CheckGroupView> {
-        val l = Layout(s, input)
-        fun stepOf(type: StepType) = current.steps.first { it.type == type && it.files.contains(file) }
-        val cleaned = stepOf(StepType.CLEANUP).status == StepStatus.DONE
-
-        fun local(type: StepType, label: String, path: Path?): CheckView {
-            val status = stepOf(type).status
-            val state = when {
-                status == StepStatus.PENDING -> "PENDING"
-                path.present(allowEmpty = label == "tekst") -> "OK"
-                status == StepStatus.RUNNING -> "PENDING" // wordt nog gemaakt: niet alarmerend rood
-                else -> "MISSING"
-            }
-            return CheckView(label, state, path?.toString().orEmpty())
-        }
-
-        fun remote(label: String, remotePath: String): CheckView {
-            val up = stepOf(StepType.UPLOAD)
-            val state = when {
-                remotePath in up.uploaded -> "OK"
-                up.status == StepStatus.PENDING || up.status == StepStatus.RUNNING -> "PENDING"
-                else -> "MISSING"
-            }
-            return CheckView(label, state, remotePath)
-        }
-
-        return buildList {
-            if (!cleaned && !file.isImage) {
-                add(CheckGroupView("pdf2zcbs", listOf(
-                    local(StepType.PDF2ZCBS, "tekst", l.ocr(file)),
-                    local(StepType.PDF2ZCBS, "pdf", l.pdf(file)),
-                    local(StepType.PDF2ZCBS, "small", l.p2zSmall(file)),
-                    local(StepType.PDF2ZCBS, "large", l.p2zLarge(file)),
-                )))
-            }
-            if (!cleaned) {
-                add(CheckGroupView("images", listOf(
-                    local(StepType.IMAGES, "small", l.imgSmall(file)),
-                    local(StepType.IMAGES, "large", l.imgLarge(file)),
-                    local(StepType.IMAGES, "100pct", l.img100(file)),
-                )))
-            }
-            if (!file.isImage) add(CheckGroupView("server", listOf(
-                remote("tekst", s.remoteOcrDir() + "/" + file.number + ".txt"),
-                remote("pdf", s.remotePdfDir() + "/" + file.number + ".pdf"),
-            )))
-            add(CheckGroupView("back-up", listOfNotNull(
-                run {
-                    val st = stepOf(StepType.CLEANUP).status
-                    val path = l.backupOf(file)
-                    CheckView("100pct", when { path.present() -> "OK"; st == StepStatus.PENDING -> "PENDING"; else -> "MISSING" }, path?.toString().orEmpty())
-                },
-                run {
-                    if (file.isImage) return@run null
-                    val st = stepOf(StepType.CLEANUP).status
-                    val path = l.backupPdfOf(file)
-                    CheckView("pdf", when { path.present() -> "OK"; st == StepStatus.PENDING -> "PENDING"; else -> "MISSING" }, path?.toString().orEmpty())
-                },
-            )))
-        }
-    }
-
-    /** Een bestand van de uitvoer van pdf2zcbs of images.exe om te bekijken: alleen voor de nummers van de huidige flow en alleen als het bestaat. */
+    /** De gemaakte bestanden van pdf2zcbs of images, om te controleren. */
     @Synchronized
-    fun resultFile(kind: String, number: String): Path? {
-        val current = run ?: return null
-        val file = current.files.firstOrNull { it.number == number } ?: return null
-        val l = Layout(settings(), input)
-        val path = when (kind) {
-            "pdf" -> l.pdf(file)
-            "tekst" -> l.ocr(file)
-            "p2z-small" -> l.p2zSmall(file)
-            "p2z-large" -> l.p2zLarge(file)
-            "small" -> l.imgSmall(file)
-            "large" -> l.imgLarge(file)
-            "100pct" -> l.img100(file)
-            else -> null
-        }
-        return path?.takeIf { it.present(allowEmpty = kind == "tekst") }
-    }
-
-    /**
-     * De bestanden die pdf2zcbs.exe of images.exe voor de gebruiker heeft gemaakt, om te controleren: per bestand de soort, de grootte en (bij een afbeelding) de afmeting.
-     * Een leeg tekstbestand (een pagina zonder herkende tekst) staat er met een opmerking bij.
-     */
-    @Synchronized
-    fun producedFiles(type: StepType): List<ProducedFile> {
-        val current = run ?: return emptyList()
-        val kinds = when (type) {
-            StepType.PDF2ZCBS -> listOf("tekst" to "tekst", "pdf" to "pdf", "p2z-small" to "small", "p2z-large" to "large")
-            StepType.IMAGES -> listOf("small" to "small", "large" to "large", "100pct" to "100pct")
-            else -> return emptyList()
-        }
-        val files = if (type == StepType.PDF2ZCBS) current.files.filter { !it.isImage } else current.files
-        return files.flatMap { f ->
-            kinds.mapNotNull { (kind, label) ->
-                val path = resultFile(kind, f.number) ?: return@mapNotNull null
-                val bytes = runCatching { Files.size(path) }.getOrDefault(0)
-                val resolution = if (kind == "tekst" || kind == "pdf") "" else imageSize(path)
-                val note = when {
-                    kind == "tekst" && bytes == 0L -> "leeg: geen tekst gevonden"
-                    kind != "tekst" && kind != "pdf" && resolution.isEmpty() -> "geen geldige afbeelding"
-                    else -> ""
-                }
-                ProducedFile(f.number, kind, label, readableSize(bytes), resolution, note)
-            }
-        }
-    }
-
-    private fun readableSize(bytes: Long): String = when {
-        bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> "${(bytes + 512) / 1024} kB"
-        else -> "%.1f MB".format(java.util.Locale.forLanguageTag("nl"), bytes / 1024.0 / 1024.0)
-    }
-
-    /** "1654 × 2339 px" voor een afbeelding, zonder haar helemaal te lezen; leeg als dat niet lukt. */
-    private fun imageSize(path: Path): String = runCatching {
-        javax.imageio.ImageIO.createImageInputStream(path.toFile()).use { stream ->
-            val readers = javax.imageio.ImageIO.getImageReaders(stream)
-            if (!readers.hasNext()) return@runCatching ""
-            val reader = readers.next()
-            try {
-                reader.input = stream
-                "${reader.getWidth(0)} × ${reader.getHeight(0)} px"
-            } finally { reader.dispose() }
-        }
-    }.getOrDefault("")
+    fun producedFiles(type: StepType): List<ProducedFile> = run?.let { views.producedFiles(it, settings(), type) }.orEmpty()
 
     private companion object {
         /** Wat in de invoermap als gekozen bestand telt: pdf's en jpg's (een png is bij het kiezen een jpg geworden). */

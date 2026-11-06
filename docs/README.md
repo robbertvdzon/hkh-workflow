@@ -27,6 +27,7 @@ Stand: 1 november 2026.
 |---|---|
 | [technisch-ontwerp.md](technisch-ontwerp.md) | Architectuur, modules, meerdere gebruikers, bewaarde bestanden, verbindingen, bouwen en testen |
 | [specs.md](specs.md) | Techniek, modules, routes en instellingen zoals gebouwd, bevindingen uit het testen, besluitenlogboek, status |
+| [modules.md](modules.md) | De afspraken over modules (kleine interface, implementatie in `internal`), DTO's en tests |
 | [integratietests.md](integratietests.md) | De Cucumber-scenario's tegen de hele app, de nagebouwde ZCBS in Docker en het ijkpunt met de echte ZCBS |
 | [zcbs-edit-formulier.md](zcbs-edit-formulier.md) | Hoe het bewerkformulier van ZCBS in elkaar zit (velden, a0, vergrendeling, opslaan) |
 | [zcbs-api.openapi.yaml](zcbs-api.openapi.yaml) | De HTTP-aanroepen naar ZCBS als OpenAPI-beschrijving |

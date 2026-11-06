@@ -17,26 +17,25 @@ Stand: 1 november 2026. Wat er functioneel gebeurt staat in [functioneel-ontwerp
 
 ## 2. Modules (Spring Modulith)
 
-Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDependencies = {...})` zonder wildcards; `ModulithArchitectureTest` dwingt dat af.
-Controllers staan in een `api`-subpackage.
+Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDependencies = {...})` zonder wildcards. De root van een module bevat alleen een kleine interface en domeinklassen; de implementatie staat in `internal` en de controllers in `api`. De afspraken staan in [modules.md](modules.md); `ModulithArchitectureTest` en `ModuleApiConventionTest` dwingen ze af.
 
 | Module | Mag gebruiken | Inhoud |
 |---|---|---|
-| `settings` | – | `WorkflowSettings`, `CollectionSettings`, `SettingsService` (JSON lezen/schrijven, opschonen), `WorkflowProperties` (properties), `SettingsChanged`; `api/SettingsController` |
-| `exerunner` | – | `ExeRunner`: start één extern programma tegelijk, leest uitvoer, stuurt invoer, vaste antwoorden, logbestand per run |
-| `ftp` | settings | `FtpService`: ftp-upload zoals images.exe, nooit overschrijven; `api/FtpController` (verbinding testen) |
-| `zcbs` | settings | `ZcbsClient` (HTTP naar `/cgi-bin/<collectie>.pl`, cookies in het geheugen), `ZcbsPages` (antwoorden herkennen), `FormParser`/`ItemForm`, `RecordRebuilder` (controle tegen veld `a0`), `FreeNumbers` |
-| `adminlog` | settings | `AdminLogClient` (meldingen aan hkh-admin), `SnapshotSanitizer`, `SettingsChangeReporter`, `AppLogAppender`/`AppLogSpool`/`AppLogShipper` (app-log), `AppVersion` |
-| `items` | adminlog, zcbs, settings | `ItemEditService` (facade), `EditSession` (de ZCBS-sessie en het bewerken van één gebruiker), `Current` (wie is aan het woord), `RememberLogin`, `EditLogReporter`; `api/ItemsController` |
-| `testrun` | adminlog, settings, exerunner, ftp, items, zcbs | `TestRunService` (registry van doorlopen), `FlowSession` (één doorloop: fasen, controles, stappen), `WorkFolders`, `ProgramFiles`, `SourceFilesService`, `ProcessedLog`, `FlowState` (bewaarde stand), `ExeAnswers`, `FlowLogReporter`; `api/NewFilesController`, `api/TestController` |
-| `update` | adminlog, settings, testrun | `UpdateService` (kijkt op GitHub of er een nieuwere build is, zet de jar klaar in `updates/`, laat de app met exitcode 10 herstarten, nachtelijke controle), `ReleaseSource`/`GitHubReleases` (de Releases van de repository), `FlowActivity` (loopt er een programma of upload?), `SpringRestarter` |
-| `ux` | adminlog, settings, items, testrun, update | `CurrentContextFilter`, `WebConfig` (wie waar mag komen), `AdminAccess`; `api/ShellController`, `api/SessionsController`, `api/UpdateController` |
+| `settings` | – | De instellingen: `SettingsService`, `WorkflowSettings`, `WorkflowProperties`, `SettingsChanged`. `internal`: `DefaultSettingsService`, `SettingsFile` (het bestand op schijf). `api`: `SettingsController` |
+| `exerunner` | – | `ExeRunner`: start één extern programma tegelijk, leest uitvoer, stuurt invoer, vaste antwoorden, logbestand per run. `internal`: `ProcessExeRunner` |
+| `ftp` | settings | `FtpService`: ftp-upload zoals images.exe, nooit overschrijven. `internal`: `DefaultFtpService`. `api`: `FtpController` |
+| `zcbs` | settings | `ZcbsClient`, `ItemForm`, `Page`, `FreeNumbers`, `ZcbsText`. `internal`: `HttpZcbsClient` (HTTP naar `/cgi-bin/<collectie>.pl`, cookies in het geheugen), `ZcbsPages` (antwoorden herkennen), `FormParser`, `RecordRebuilder` (controle tegen veld `a0`) |
+| `adminlog` | settings | `AdminLog`, `SessionReport`, `SnapshotSanitizer`, `AppVersion`. `internal`: `AdminLogClient`, `SettingsChangeReporter`, `AppLogAppender`/`AppLogSpool`/`AppLogShipper` (app-log) |
+| `items` | adminlog, zcbs, settings | `ZcbsSession` (de inlog, voor andere modules), `LoginCookie`, `Current` (wie is aan het woord), `NewRecordsSource`. `internal`: `ItemEditService`, `EditSession` (de sessie en het bewerken van één gebruiker), `RecentRecords`, `RememberLogin`, `EditLogReporter`. `api`: `ItemsController` |
+| `testrun` | adminlog, settings, exerunner, ftp, items, zcbs | `RunningFlows`. `internal`: `TestRunService` (register van doorlopen), `FlowSession` (één doorloop), `StepChecks` (wat houdt een stap tegen), `FlowViews` (wat de gebruiker ziet), `LeftoverFolders`, `FlowLayout`, `WorkFolders`, `ProgramFiles`, `SourceFilesService`, `ProcessedLog`, `FlowLogReporter`. `api`: `NewFilesController`, `TestController`, `SessionsController` |
+| `update` | adminlog, settings, testrun | Geen openbare kant. `internal`: `UpdateService` (kijkt op GitHub of er een nieuwere build is, zet de jar klaar, herstart met exitcode 10), `GitHubReleases`. `api`: `UpdateController` |
+| `ux` | adminlog, settings, items | Geen openbare kant. `internal`: `CurrentContextFilter`, `WebConfig` (wie waar mag komen), `AdminAccess`. `api`: `ShellController` |
 
 ## 3. Wie is aan het woord: meerdere gebruikers
 
 - **`Current`** is een `ThreadLocal` met de gebruiker en de collectie van het lopende verzoek. `CurrentContextFilter` vult hem uit de HTTP-sessie (`zcbsUser`, `collectie`).
   Achtergronddraden zetten hem zelf met `Current.runAs(user, collection) { … }`.
-- **`ItemEditService`** is een facade over een register van `EditSession`s (sleutel: naam in kleine letters). Elke aanroep gaat naar de sessie van de gebruiker die aan het woord is.
+- **`ItemEditService`** (voor andere modules: `ZcbsSession`) is een facade over een register van `EditSession`s (sleutel: naam in kleine letters). Elke aanroep gaat naar de sessie van de gebruiker die aan het woord is.
   Een `EditSession` bewaart de inlog per collectie (`ZcbsClient` per collectie waar de gebruiker rechten heeft), de gekozen records en hun status.
 - **`TestRunService`** is een register van `FlowSession`s met sleutel `<gebruiker in kleine letters>/<collectie>`. **Er is geen slot per collectie** (besluit 1 november 2026);
   twee gebruikers in dezelfde collectie hebben dus twee doorlopen met eigen `ExeRunner`, eigen mappen en eigen stand. `active()` voedt de pagina Sessies, `stop()` stopt een doorloop.
