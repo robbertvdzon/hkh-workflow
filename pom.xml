@@ -25,6 +25,7 @@
         <kotlin.version>2.2.21</kotlin.version>
         <spring-modulith.version>2.0.0</spring-modulith.version>
         <commons-net.version>3.11.1</commons-net.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
         <ftpserver.version>1.2.0</ftpserver.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -111,6 +112,13 @@
             <groupId>org.apache.ftpserver</groupId>
             <artifactId>ftpserver-core</artifactId>
             <version>${ftpserver.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- De echte ZCBS in Docker voor de integratietests (src/test/resources/zcbs-docker) -->
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -18,3 +18,7 @@ tools/mock/images-werk/images-mock.ini
 tools/mock/images-werk/log-*.txt
 oude-tests
 hkh-workflow-inloggen.key
+
+# Code van de echte ZCBS hoort nooit in deze publieke repository (ook niet als testdata)
+objecten.pl
+cfg-cbs*.pl

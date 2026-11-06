@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lokale ZCBS</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #eaf3fb; color: #1d2b36; margin: 0; }
+  main { max-width: 38rem; margin: 12vh auto; padding: 0 1.25rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 .5rem; }
+  p { line-height: 1.55; }
+  .knoppen { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1.75rem 0 1rem; }
+  a.knop { display: inline-block; padding: .8rem 1.4rem; border-radius: .5rem; background: #1f6fb2; color: #fff; text-decoration: none; font-weight: 600; }
+  a.knop:hover, a.knop:focus { background: #175a92; }
+  a.knop.tweede { background: #fff; color: #1f6fb2; border: 2px solid #1f6fb2; }
+  a.knop.tweede:hover, a.knop.tweede:focus { background: #dcebf8; }
+  small { color: #51606c; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Welkom bij de lokale ZCBS</h1>
+  <p>Dit is een testomgeving met de ZCBS-software van de Historische Kring Heemskerk, draaiend op deze computer.
+     Wat je hier doet, heeft geen invloed op de echte server.</p>
+  <div class="knoppen">
+    <a class="knop" href="/cgi-bin/archief.pl">Naar het archief</a>
+    <a class="knop tweede" href="/cgi-bin/archief.pl?user=reset">Inloggen</a>
+  </div>
+  <small>Het archief staat op <code>/cgi-bin/archief.pl</code>. "Inloggen" opent het inlogscherm.</small>
+</main>
+</body>
+</html>
