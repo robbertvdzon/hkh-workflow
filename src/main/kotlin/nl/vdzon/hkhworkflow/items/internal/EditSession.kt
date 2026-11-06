@@ -228,8 +228,8 @@ class EditSession(private val settingsService: SettingsService, private val clie
                 }
                 r.baseline = form
                 r.fresh = null
-                r.title = form.control("a5")?.value.orEmpty()
-                form.control("a21")?.value?.let { r.online = it.isNotBlank() && it != "0" }
+                r.title = form.title
+                form.online?.let { r.online = it }
                 r.openedAt = LocalTime.now()
                 if (r.status != EditStatus.OPGESLAGEN) r.status = EditStatus.BEZIG
                 r.message = null
@@ -370,8 +370,8 @@ class EditSession(private val settingsService: SettingsService, private val clie
         r.baseline = after
         r.fresh = null
         r.draft = null
-        r.title = after.control("a5")?.value.orEmpty()
-        after.control("a21")?.value?.let { r.online = it.isNotBlank() && it != "0" }
+        r.title = after.title
+        after.online?.let { r.online = it }
         r.status = EditStatus.OPGESLAGEN
         r.message = null
         return SaveOutcome.Saved

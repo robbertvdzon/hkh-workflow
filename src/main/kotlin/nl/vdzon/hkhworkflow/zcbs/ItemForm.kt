@@ -30,6 +30,12 @@ class ItemForm(val number: String, val posts: List<Post>, val controls: List<Con
     val a0: String get() = posts.firstOrNull { it.name == "a0" }?.value.orEmpty()
     val a0Fields: List<String> get() = a0.split("\t")
 
+    /** De titel in het formulier. */
+    val title: String get() = control("a5")?.value.orEmpty()
+
+    /** Staat het record op internet? Null als het formulier dat niet toont. */
+    val online: Boolean? get() = control("a21")?.value?.let { it.isNotBlank() && it != "0" }
+
     fun control(name: String): Control? = controls.firstOrNull { it.name == name }
 
     fun values(name: String): List<String> = posts.filter { it.name == name }.map { it.value }

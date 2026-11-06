@@ -20,6 +20,19 @@ import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.databind.node.ObjectNode
+/** De melding van een inlogpoging zoals het workflow-logboek die verwacht (`POST /api/workflow-log/logins`). */
+data class LoginMessage(val user: String, val success: Boolean, val method: String, val detail: String?, val appVersion: String, val computer: String, val source: String) {
+    fun toJson(mapper: ObjectMapper): ObjectNode = mapper.createObjectNode().apply {
+        put("user", user)
+        put("success", success)
+        put("method", method)
+        detail?.let { put("detail", it) }
+        put("appVersion", appVersion)
+        put("computer", computer)
+        put("source", source)
+    }
+}
+
 /** Zet het uitvoeren van geplande taken aan (de meldingen aan het workflow-logboek lopen daarop). */
 @org.springframework.context.annotation.Configuration
 @org.springframework.scheduling.annotation.EnableScheduling
@@ -101,15 +114,7 @@ class AdminLogClient(
             lastFailure[key] = now
             if (lastFailure.size > 200) lastFailure.entries.removeIf { now - it.value > DUPLICATE_FAILURE_MILLIS }
         }
-        val body = mapper.createObjectNode().apply {
-            put("user", user.orEmpty())
-            put("success", success)
-            put("method", method)
-            detail?.let { put("detail", it.take(300)) }
-            put("appVersion", appVersion)
-            put("computer", computer)
-            put("source", source())
-        }
+        val body = LoginMessage(user.orEmpty(), success, method, detail?.take(300), appVersion, computer, source()).toJson(mapper)
         synchronized(logins) { if (logins.size < MAX_QUEUED_LOGINS) logins.addLast(Outgoing("/api/workflow-log/logins", body)) }
         schedule()
     }

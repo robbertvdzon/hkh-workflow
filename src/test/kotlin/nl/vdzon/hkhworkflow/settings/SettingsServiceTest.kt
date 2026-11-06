@@ -25,6 +25,13 @@ class SettingsServiceTest {
     }
 
     @Test
+    fun `de keuze voor de nachtelijke update blijft bewaard`() {
+        val file = dir.resolve("settings.json")
+        DefaultSettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString())).save(WorkflowSettings(nightlyUpdate = false))
+        assertEquals(false, DefaultSettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString())).get().nightlyUpdate)
+    }
+
+    @Test
     fun `de keuze voor het ftp-wachtwoord in het logboek blijft bewaard`() {
         val file = dir.resolve("settings.json")
         val service = DefaultSettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString()))

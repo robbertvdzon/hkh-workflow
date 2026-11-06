@@ -1,5 +1,6 @@
 package nl.vdzon.hkhworkflow.items.api
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.servlet.http.HttpSession
 import nl.vdzon.hkhworkflow.adminlog.AdminLog
@@ -26,6 +27,10 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
+
+/** Het antwoord voor de knop Open bij het invoerveld: het bestand van een record, of een [error]. */
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class MediaResponse(val kind: String? = null, val url: String? = null, val title: String? = null, val error: String? = null)
 
 /** Inloggen bij ZCBS en de pagina's om records te bewerken via het ZCBS-formulier. */
 @Controller
@@ -135,12 +140,12 @@ class ItemsController(
     /** Het bestand van een record voor de knop Open bij het invoerveld: `{kind, url}` of `{error}`. */
     @GetMapping("/records/media")
     @ResponseBody
-    fun media(@RequestParam("nummer", defaultValue = "") number: String): Map<String, String> {
+    fun media(@RequestParam("nummer", defaultValue = "") number: String): MediaResponse {
         val clean = number.trim()
-        if (!clean.matches(Regex("\\d{1,9}"))) return mapOf("error" to "Vul één recordnummer in, bijvoorbeeld 11934.")
+        if (!clean.matches(Regex("\\d{1,9}"))) return MediaResponse(error = "Vul één recordnummer in, bijvoorbeeld 11934.")
         val padded = items.padded(clean)
-        val media = items.mediaOf(padded) ?: return mapOf("error" to "Bij record $padded staat geen pdf of afbeelding op de site.")
-        return mapOf("kind" to media.kind, "url" to media.url, "title" to "Record $padded")
+        val media = items.mediaOf(padded) ?: return MediaResponse(error = "Bij record $padded staat geen pdf of afbeelding op de site.")
+        return MediaResponse(kind = media.kind, url = media.url, title = "Record $padded")
     }
 
     /**

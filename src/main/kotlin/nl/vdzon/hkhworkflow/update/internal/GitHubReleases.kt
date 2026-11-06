@@ -36,14 +36,7 @@ class GitHubReleases(
     }
 
     internal fun parse(json: String): Release? =
-        mapper.readTree(json).mapNotNull { node ->
-            if (node.path("draft").asBoolean(false) || node.path("prerelease").asBoolean(false)) return@mapNotNull null
-            val tag = node.path("tag_name").asString("")
-            val number = TAG.matchEntire(tag)?.groupValues?.get(1)?.toIntOrNull() ?: return@mapNotNull null
-            val assets = node.path("assets").associate { it.path("name").asString("") to it.path("browser_download_url").asString("") }
-            val jar = assets[JAR]?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            Release(number, tag, node.path("published_at").asString("").let { runCatching { Instant.parse(it) }.getOrNull() }, jar, assets[SHA]?.takeIf { it.isNotBlank() })
-        }.maxByOrNull { it.number }
+        mapper.readTree(json).mapNotNull { GitHubRelease.of(it).toRelease() }.maxByOrNull { it.number }
 
     override fun text(url: String): String {
         val response = client.send(request(url, "*/*"), HttpResponse.BodyHandlers.ofString())
@@ -78,6 +71,27 @@ class GitHubReleases(
     companion object {
         const val JAR = "hkh-workflow.jar"
         const val SHA = "hkh-workflow.jar.sha256"
-        private val TAG = Regex("build-(\\d+)")
+        internal val TAG = Regex("build-(\\d+)")
+    }
+}
+
+/** Een release zoals de GitHub-API hem geeft, met alleen wat de app gebruikt. [Release] is wat de app ermee doet. */
+data class GitHubRelease(val tagName: String, val publishedAt: String, val draft: Boolean, val prerelease: Boolean, val assets: Map<String, String>) {
+    /** @return de build, of null als dit geen bruikbare build is: een concept, een andere tag of zonder jar. */
+    fun toRelease(): Release? {
+        if (draft || prerelease) return null
+        val number = GitHubReleases.TAG.matchEntire(tagName)?.groupValues?.get(1)?.toIntOrNull() ?: return null
+        val jar = assets[GitHubReleases.JAR]?.takeIf { it.isNotBlank() } ?: return null
+        return Release(number, tagName, runCatching { java.time.Instant.parse(publishedAt) }.getOrNull(), jar, assets[GitHubReleases.SHA]?.takeIf { it.isNotBlank() })
+    }
+
+    companion object {
+        fun of(node: tools.jackson.databind.JsonNode) = GitHubRelease(
+            tagName = node.path("tag_name").asString(""),
+            publishedAt = node.path("published_at").asString(""),
+            draft = node.path("draft").asBoolean(false),
+            prerelease = node.path("prerelease").asBoolean(false),
+            assets = node.path("assets").associate { it.path("name").asString("") to it.path("browser_download_url").asString("") },
+        )
     }
 }
