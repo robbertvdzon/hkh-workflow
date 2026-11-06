@@ -49,7 +49,7 @@ class RememberLogin(properties: WorkflowProperties) : LoginCookie {
         text.substringBefore('\n') to text.substringAfter('\n')
     }.getOrNull()
 
-    fun remember(response: HttpServletResponse, name: String, password: String) {
+    override fun remember(response: HttpServletResponse, name: String, password: String) {
         response.addCookie(cookie(encrypt(name.trim(), password), MAX_AGE))
     }
 

@@ -4,8 +4,7 @@ Feature: The administrator
   Scenario: The settings are closed without the administrator password
     When someone tries the administrator password "fout"
     Then the administrator sees "Dat wachtwoord klopt niet"
-    When the administrator opens "/instellingen"
-    Then the administrator is on "/beheer"
+    And the settings are closed for this person
 
   Scenario: The administrator tests the ftp connection with the server
     Given the administrator is logged in
@@ -31,9 +30,9 @@ Feature: The administrator
     When Carla starts adding new files
     Then the administrator sees Carla among the sessions
     When the administrator stops the session of Carla
-    Then the administrator sees "De doorloop is gestopt"
+    Then the administrator does not see Carla among the sessions any more
 
   Scenario: The administrator can clear the logs of the programs
     Given the administrator is logged in
     When the administrator deletes all program logs
-    Then the administrator sees "logbestanden verwijderd"
+    Then there are no program logs left

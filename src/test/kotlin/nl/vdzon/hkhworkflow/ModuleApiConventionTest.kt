@@ -27,6 +27,7 @@ class ModuleApiConventionTest {
         "FreeNumbers", // de vrije recordnummers
         "ZcbsText", // welke tekens en woorden ZCBS weigert
         "UnencodableException",
+        "ApiProblem", // een fout van de REST-API
     )
     private val stereotype = Regex("""(?m)^@(Service|Component|Controller|RestController|ControllerAdvice|Configuration|Repository)\b""")
     private val plainType = Regex("""(?m)^(?:(?:public|open|abstract|final)\s+)*(class|object)\s+(\w+)""")

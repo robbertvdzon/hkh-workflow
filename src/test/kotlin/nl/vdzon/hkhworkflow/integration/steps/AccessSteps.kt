@@ -6,13 +6,14 @@ import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import nl.vdzon.hkhworkflow.integration.Browser
-import nl.vdzon.hkhworkflow.integration.Page
+import nl.vdzon.hkhworkflow.integration.Api
+import nl.vdzon.hkhworkflow.integration.ApiResponse
 import nl.vdzon.hkhworkflow.integration.TestEnvironment
 
 class AccessSteps {
-    private val visitor by lazy { Browser(World.baseUrl) }
+    private val visitor by lazy { Api(World.baseUrl) }
 
     @Given("{word} may edit records in ZCBS")
     fun mayEdit(name: String) { World.actor(name, "1") }
@@ -33,40 +34,60 @@ class AccessSteps {
     }
 
     @When("{word} logs out")
-    fun logsOut(name: String) {
-        val actor = World.actor(name)
-        actor.browser.submit(actor.page.form("/zcbs/logout"))
-    }
+    fun logsOut(name: String) { assertEquals(204, World.actor(name).api.delete("/api/session").status) }
 
     @When("{word} chooses the collection {string}")
-    fun chooses(name: String, collection: String) { World.actor(name).browser.get("/collectie/$collection") }
+    fun chooses(name: String, collection: String) { World.actor(name).api.get("/api/collections/$collection/flow") }
 
-    @When("a visitor opens {string}")
-    fun visitorOpens(path: String) { World.lastPage = visitor.get(path) }
+    @Then("{word} can work in the collection {string}")
+    fun canWork(name: String, collection: String) = assertEquals(200, World.actor(name).api.read("/api/collections/$collection/flow").status)
 
-    @Then("the visitor is sent to {string}")
-    fun visitorSentTo(path: String) = assertEquals(path, World.lastPage!!.path, World.lastPage!!.text)
+    @When("a visitor asks for {string}")
+    fun visitorAsks(path: String) { World.lastResponse = visitor.get(path) }
 
-    @Then("the visitor sees {string}")
-    fun visitorSees(text: String) = assertTrue(World.lastPage!!.text.contains(text), World.lastPage!!.text)
+    @Then("the visitor is told to log in")
+    fun visitorToldToLogIn() {
+        assertEquals(401, World.lastResponse!!.status, World.lastResponse.toString())
+        assertEquals("not-logged-in", World.lastResponse!!.code)
+    }
+
+    @Then("the visitor gets a problem with the code {string} and a message to show")
+    fun visitorProblem(code: String) {
+        val response = World.lastResponse!!
+        assertEquals(code, response.code, response.toString())
+        assertTrue(response.headers["content-type"]!!.first().startsWith("application/problem+json"), response.headers.toString())
+        assertEquals(response.status, response["status"])
+        assertTrue((response["detail"] as String).isNotBlank())
+    }
+
+    @Then("the description of the API has {string}")
+    fun described(path: String) {
+        val response = World.lastResponse!!
+        assertEquals(200, response.status, response.toString())
+        @Suppress("UNCHECKED_CAST")
+        val paths = response["paths"] as Map<String, Map<String, Map<String, Any?>>>
+        val operations = paths[path] ?: error("$path staat niet in de beschrijving: ${paths.keys}")
+        val parameters = operations.values.first()["parameters"].toString()
+        assertTrue(parameters.contains("collection"), parameters)
+    }
 
     @Then("{word} sees {string}")
-    fun sees(name: String, text: String) = World.actor(name).page.let { assertTrue(it.text.contains(text), "\"$text\" niet op ${it.path}:\n${it.text}") }
+    fun sees(name: String, text: String) = World.actor(name).last.let { assertTrue(it.body.contains(text), "\"$text\" niet in $it") }
 
-    @Then("{word} does not see {string}")
-    fun doesNotSee(name: String, text: String) = World.actor(name).page.let { assertFalse(it.text.contains(text), "\"$text\" toch op ${it.path}:\n${it.text}") }
+    @Then("{word} is refused with {string}")
+    fun refused(name: String, code: String) = World.actor(name).last.let { assertEquals(code, it.code, it.toString()) }
 
     @Then("{word} can choose the collection {string}")
-    fun canChoose(name: String, collection: String) = assertTrue(collectionLink(World.actor(name).page, collection), World.actor(name).page.text)
+    fun canChoose(name: String, collection: String) = assertTrue(available(World.actor(name), collection), World.actor(name).api.read("/api/session").toString())
 
     @Then("{word} cannot choose the collection {string}")
-    fun cannotChoose(name: String, collection: String) = assertFalse(collectionLink(World.actor(name).page, collection), World.actor(name).page.text)
+    fun cannotChoose(name: String, collection: String) = assertFalse(available(World.actor(name), collection))
 
     @When("{word} comes back after a restart of the app")
     fun comesBack(name: String) {
         val actor = World.actor(name)
-        actor.browser.forgetSession()
-        actor.browser.get("/collectie")
+        actor.api.forgetSession()
+        actor.api.get("/api/session")
     }
 
     @Then("the workflow log hears that {word} was logged in again from the cookie")
@@ -76,12 +97,8 @@ class AccessSteps {
         }
     }
 
-    @Then("{word} is back on the start page")
-    fun backOnStart(name: String) {
-        val page = World.actor(name).browser.get("/")
-        assertEquals("/", page.path)
-        assertTrue(page.hasForm("/zcbs/login"), page.text)
-    }
+    @Then("{word} is not logged in")
+    fun notLoggedIn(name: String) = assertNull(World.actor(name).api.read("/api/session")["user"])
 
     @Then("the workflow log hears of a successful login by {word}")
     fun reportedOk(name: String) = awaitLogin(World.actor(name).account, success = true)
@@ -96,13 +113,13 @@ class AccessSteps {
         }
     }
 
-    private fun collectionLink(page: Page, collection: String) = page.doc.select("a[href]").any { it.attr("href").endsWith("/collectie/$collection") }
+    @Suppress("UNCHECKED_CAST")
+    private fun available(actor: Actor, collection: String): Boolean =
+        (actor.api.read("/api/session")["collections"] as List<Map<String, Any?>>).any { it["name"] == collection && it["available"] == true }
 
     companion object {
-        fun login(actor: Actor, password: String = actor.password): Page {
-            val start = actor.browser.get("/")
-            return actor.browser.submit(start.form("/zcbs/login"), mapOf("naam" to listOf(actor.account), "wachtwoord" to listOf(password)))
-        }
+        fun login(actor: Actor, password: String = actor.password): ApiResponse =
+            actor.api.post("/api/session", mapOf("name" to actor.account, "password" to password))
     }
 }
 

@@ -141,6 +141,7 @@ class TestRunService(
     fun markDone(stepId: Int) = current().markDone(stepId)
     fun retry(stepId: Int) = current().retry(stepId)
     fun view(): TestRunView? = current().view()
+    fun stepId(type: StepType): Int? = current().stepId(type)
     fun resultFile(kind: String, number: String): Path? = current().resultFile(kind, number)
     fun producedFiles(type: StepType): List<ProducedFile> = current().producedFiles(type)
 }

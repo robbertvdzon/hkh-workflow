@@ -58,7 +58,7 @@ class ItemEditService(private val settingsService: SettingsService, private val 
         return error
     }
 
-    fun logout() {
+    override fun logout() {
         val current = Current.user() ?: return
         sessions.remove(key(current))?.logout()
         Current.set(Current.Context(null, Current.collection()))
@@ -79,6 +79,7 @@ class ItemEditService(private val settingsService: SettingsService, private val 
     override fun freeNumbers(): FreeNumbers? = session()?.freeNumbers()
     override fun missingInZcbs(numbers: List<String>): List<String> = session()?.missingInZcbs(numbers) ?: numbers
     fun chooseRecords(input: String): ChooseResult = session()?.chooseRecords(input) ?: ChooseResult(0, emptyList(), NOT_LOGGED_IN)
+    fun addRecord(number: String): ChooseResult = session()?.addRecord(number) ?: ChooseResult(0, emptyList(), NOT_LOGGED_IN)
     fun open(number: String): OpenOutcome = session()?.open(number) ?: OpenOutcome.NeedsLogin
     fun preview(number: String, values: Map<String, List<String>>): PreviewOutcome = session()?.preview(number, values) ?: PreviewOutcome.Failed(NOT_LOGGED_IN)
     fun later(number: String) { session()?.later(number) }

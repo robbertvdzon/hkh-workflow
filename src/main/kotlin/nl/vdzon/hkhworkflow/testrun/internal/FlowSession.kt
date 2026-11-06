@@ -724,6 +724,9 @@ class FlowSession(
     @Synchronized
     fun view(): TestRunView? = run?.let { views.view(it, settings()) }
 
+    /** Het id van de stap van dit soort; de stappen na het hernoemen zijn er één keer per doorloop. */
+    fun stepId(type: StepType): Int? = run?.steps?.firstOrNull { it.type == type }?.id
+
     /** Een bestand uit de uitvoer, alleen voor nummers van deze doorloop. */
     fun resultFile(kind: String, number: String): Path? = run?.let { views.resultFile(it, settings(), kind, number) }
 

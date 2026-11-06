@@ -184,6 +184,18 @@ class EditSession(private val settingsService: SettingsService, private val clie
         return ChooseResult(existing.size, missing, null)
     }
 
+    /**
+     * Zet één record klaar om te bewerken, naast de records die al openstaan: zo kun je er in twee tabbladen tegelijk aan werken. Het gekozen record komt
+     * vooraan in [records].
+     */
+    @Synchronized
+    fun addRecord(number: String): ChooseResult {
+        val before = batch
+        val result = chooseRecords(number)
+        if (result.error == null) batch = (batch + before.filter { old -> batch.none { it.number == old.number } }).take(MAX_RECORDS)
+        return result
+    }
+
     private fun parseNumbers(input: String, width: Int): List<String> {
         val result = linkedSetOf<String>()
         for (token in input.split(Regex("[,;\\s]+")).filter { it.isNotBlank() }) {

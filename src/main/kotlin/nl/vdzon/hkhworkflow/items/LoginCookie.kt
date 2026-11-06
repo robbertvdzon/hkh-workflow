@@ -8,5 +8,8 @@ interface LoginCookie {
     /** De naam en het wachtwoord uit het cookie, of null als het er niet is of niet te lezen is. */
     fun read(request: HttpServletRequest): Pair<String, String>?
 
+    /** Onthoudt de naam en het wachtwoord in een versleuteld cookie. */
+    fun remember(response: HttpServletResponse, name: String, password: String)
+
     fun forget(response: HttpServletResponse)
 }

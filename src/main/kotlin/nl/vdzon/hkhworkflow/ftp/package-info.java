@@ -1,2 +1,2 @@
-@org.springframework.modulith.ApplicationModule(allowedDependencies = {"settings"})
+@org.springframework.modulith.ApplicationModule(allowedDependencies = {"settings", "restapi"})
 package nl.vdzon.hkhworkflow.ftp;

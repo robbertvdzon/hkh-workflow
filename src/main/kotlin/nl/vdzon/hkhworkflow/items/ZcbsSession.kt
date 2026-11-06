@@ -18,6 +18,9 @@ interface ZcbsSession {
      */
     fun login(name: String, pw: String): String?
 
+    /** Logt de gebruiker die aan het woord is uit bij ZCBS. */
+    fun logout()
+
     /** De collecties waar de gebruiker rechten heeft. */
     fun rights(): List<String>
 

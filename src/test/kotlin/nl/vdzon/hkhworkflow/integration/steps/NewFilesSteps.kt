@@ -11,6 +11,8 @@ import nl.vdzon.hkhworkflow.integration.TestEnvironment
 
 class NewFilesSteps {
     private val zcbs get() = TestEnvironment.zcbs
+    private val flow = "/api/collections/archief/flow"
+    private var liveConsole = ""
 
     private fun names(list: String) = list.split(",").map { it.trim() }
 
@@ -39,81 +41,77 @@ class NewFilesSteps {
     @When("{word} starts adding new files")
     fun startsAdding(name: String) {
         val actor = World.actor(name)
-        actor.browser.get("/collectie/archief")
-        actor.browser.get("/nieuw")
-        actor.browser.click(actor.page.button("Alles in orde"))
+        assertEquals(200, actor.api.post("$flow/start").status, actor.last.toString())
     }
 
     @When("{word} opens the page for new files")
-    fun opensPage(name: String) {
-        val actor = World.actor(name)
-        actor.browser.get("/collectie/archief")
-        actor.browser.get("/nieuw")
-    }
+    fun opensPage(name: String) { World.actor(name).api.get(flow) }
 
     @When("{word} picks {string} from {word}")
-    fun picks(name: String, files: String, scanner: String) {
-        val actor = World.actor(name)
-        val page = actor.browser.get("/nieuw?bron=$scanner")
-        actor.browser.submit(page.form("/nieuw/kopieer"), mapOf("files" to names(files)))
-    }
+    fun picks(name: String, files: String, scanner: String) { World.actor(name).api.put("$flow/files", mapOf("source" to scanner, "names" to names(files))) }
 
     @When("{word} picks nothing from {word}")
-    fun picksNothing(name: String, scanner: String) {
-        val actor = World.actor(name)
-        val page = actor.browser.get("/nieuw?bron=$scanner")
-        actor.browser.submit(page.form("/nieuw/kopieer"))
-    }
+    fun picksNothing(name: String, scanner: String) { World.actor(name).api.put("$flow/files", mapOf("source" to scanner, "names" to emptyList<String>())) }
 
+    @Suppress("UNCHECKED_CAST")
     @Then("{word} cannot pick {string} from {word} any more")
     fun cannotPick(name: String, file: String, scanner: String) {
-        val box = World.actor(name).browser.get("/nieuw?bron=$scanner").doc.selectFirst("input[name=files][value=$file]") ?: error("$file staat niet in de lijst")
-        assertTrue(box.hasAttr("disabled"), "$file is nog te kiezen")
+        val files = World.actor(name).api.read("$flow/sources/$scanner/entries")["files"] as List<Map<String, Any?>>
+        val row = files.firstOrNull { it["name"] == file } ?: error("$file staat niet in de lijst")
+        assertTrue(row["processed"] != null, "$file is nog te kiezen")
     }
 
+    @Then("{word} has chosen only {string}")
+    fun chosen(name: String, file: String) = assertEquals(listOf(file), World.actor(name).api.read("$flow/files").list.map { it["name"] })
+
     @Then("{word} is offered {word} as the first number")
-    fun offered(name: String, number: String) = assertEquals(number, World.actor(name).page.doc.selectFirst("input#start")?.attr("value"), World.actor(name).page.text)
+    fun offered(name: String, number: String) = assertEquals(number, World.actor(name).api.read("$flow/numbers")["suggestion"])
 
     @When("{word} accepts the offered numbers")
     fun acceptsNumbers(name: String) {
         val actor = World.actor(name)
-        actor.browser.submit(actor.page.form("/nieuw/voorbereiden"))
+        actor.api.put("$flow/numbers", mapOf("start" to actor.api.read("$flow/numbers")["suggestion"]))
+        assertEquals(200, actor.last.status, actor.last.toString())
     }
 
     @When("{word} chooses {word} as the first number")
-    fun choosesNumber(name: String, number: String) {
-        val actor = World.actor(name)
-        actor.browser.submit(actor.page.form("/nieuw/voorbereiden"), mapOf("start" to listOf(number)))
-    }
+    fun choosesNumber(name: String, number: String) { World.actor(name).api.put("$flow/numbers", mapOf("start" to number)) }
 
     @When("{word} runs pdf2zcbs")
-    fun runsPdf2zcbs(name: String) = runProgram(World.actor(name))
+    fun runsPdf2zcbs(name: String) = run(World.actor(name), "pdf2zcbs")
 
     @When("{word} runs images")
-    fun runsImages(name: String) = runProgram(World.actor(name))
+    fun runsImages(name: String) = run(World.actor(name), "images")
 
-    @When("{word} tries again")
-    fun triesAgain(name: String) {
+    @When("{word} runs pdf2zcbs and follows the console live")
+    fun runsLive(name: String) {
         val actor = World.actor(name)
-        actor.browser.click(actor.page.button("Opnieuw"))
-        waitUntilIdle(actor)
+        actor.api.post("$flow/steps/pdf2zcbs/run", mapOf("answers" to "auto"))
+        liveConsole = actor.api.read("$flow/console/events").body
     }
+
+    @Then("the live console ended with the program finished")
+    fun liveEnded() {
+        assertTrue(liveConsole.contains("event:console"), liveConsole)
+        assertTrue(liveConsole.trim().lines().last { it.startsWith("data:") }.contains("\"running\":false"), liveConsole)
+    }
+
+    @When("{word} retries pdf2zcbs")
+    fun retries(name: String) { assertEquals(200, World.actor(name).api.post("$flow/steps/pdf2zcbs/retry").status) }
 
     /** Handmatig uitvoeren: elke vraag afwachten in het log en dan antwoorden, zoals iemand aan de console. Het wachtwoord en de veiligheidsvragen (nooit overschrijven of wissen) beantwoordt de app zelf. */
     @When("{word} runs images by hand")
     fun runsImagesByHand(name: String) {
         val actor = World.actor(name)
-        actor.browser.click(actor.page.button("Handmatig uitvoeren"))
+        assertEquals(200, actor.api.post("$flow/steps/images/run", mapOf("answers" to "manual")).status, actor.last.toString())
         val answers = listOf(
             "indien OK" to "a", "Kies 1,2,3" to "6", "UPLOADEN" to "j", "Nummer, naam" to "4", "FTP wachtwoord" to null, "Kies de ZCBS" to "archief",
             "OVERSCHRIJVEN" to null, "AANMAKEN" to "j", "aangemaakte mappen" to null, "met bron images" to null, "PC-bestand" to "j", "DOS-window" to "",
         )
-        val control = actor.browser
         answers.forEach { (question, answer) ->
-            Await.until("de vraag \"$question\"", seconds = 30) { control.get("/test/log").body.contains(question) }
-            if (answer != null) control.post("/test/console/input", listOf("line" to answer))
+            Await.until("de vraag \"$question\"", seconds = 30) { actor.api.read("$flow/console/log").body.contains(question) }
+            if (answer != null) assertEquals(204, actor.api.post("$flow/console/input", mapOf("line" to answer)).status)
         }
-        actor.browser.get("/nieuw")
         waitUntilIdle(actor)
     }
 
@@ -124,16 +122,10 @@ class NewFilesSteps {
     }
 
     @When("{word} moves the leftovers away")
-    fun movesLeftovers(name: String) {
-        val actor = World.actor(name)
-        actor.browser.click(actor.page.button("Verplaats ze"))
-    }
+    fun movesLeftovers(name: String) { assertEquals(200, World.actor(name).api.post("$flow/leftovers/move").status) }
 
     @When("{word} deletes the leftovers")
-    fun deletesLeftovers(name: String) {
-        val actor = World.actor(name)
-        actor.browser.click(actor.page.button("Verwijder ze"))
-    }
+    fun deletesLeftovers(name: String) { assertEquals(200, World.actor(name).api.delete("$flow/leftovers").status) }
 
     @Then("the file {string} is gone from the folder of pdf2zcbs of {word}")
     fun fileGone(file: String, name: String) =
@@ -141,83 +133,108 @@ class NewFilesSteps {
 
     @Then("{word} can look at {string} from {word} before choosing it")
     fun canLook(name: String, file: String, scanner: String) {
-        val browser = World.actor(name).browser
-        val view = browser.get("/nieuw/bron/bestand?bron=$scanner&naam=$file")
+        val api = World.actor(name).api
+        val view = api.read("$flow/sources/$scanner/file?name=$file")
         assertEquals(200, view.status)
         assertTrue(view.body.startsWith("%PDF"), "Geen pdf")
-        val info = browser.get("/nieuw/bron/info?bron=$scanner")
-        assertTrue(info.body.contains(file), info.body)
-        browser.get("/nieuw")
+        val details = api.read("$flow/sources/$scanner/details")
+        assertTrue(details.body.contains(file), details.body)
     }
 
     @When("{word} approves the result")
-    fun approves(name: String) {
-        val actor = World.actor(name)
-        actor.browser.click(actor.page.button("Ja, goed"))
+    fun approves(name: String) = approve(World.actor(name))
+
+    private fun approve(actor: Actor) {
+        val step = when (phase(actor)) { 4 -> "pdf2zcbs"; 5 -> "images"; else -> error("Niets te controleren in fase ${phase(actor)}") }
+        assertEquals(200, actor.api.post("$flow/steps/$step/approve").status, actor.last.toString())
     }
 
     @When("{word} runs the upload")
-    fun runsUpload(name: String) = runStep(World.actor(name))
+    fun runsUpload(name: String) = run(World.actor(name), "upload")
 
     @When("{word} runs the backup")
-    fun runsBackup(name: String) = runStep(World.actor(name))
+    fun runsBackup(name: String) = run(World.actor(name), "backup")
 
     @When("{word} starts over")
-    fun startsOver(name: String) {
-        val actor = World.actor(name)
-        actor.browser.post("/nieuw/opnieuw")
-    }
+    fun startsOver(name: String) { assertEquals(204, World.actor(name).api.delete(flow).status) }
 
     /** Alle stappen na de nummers, zonder iets bijzonders. */
     @When("{word} finishes all the steps")
     fun finishes(name: String) {
         val actor = World.actor(name)
         var guard = 0
-        while (!actor.page.text.contains("bestanden staan nu op het archief") && !actor.page.text.contains("bestand staat nu op het archief") && guard++ < 12) {
+        while (actor.api.read(flow)["finished"] != true && guard++ < 12) {
+            val state = actor.api.read(flow)
             when {
-                actor.page.buttonOrNull("Ja, goed") != null -> actor.browser.click(actor.page.button("Ja, goed"))
-                actor.page.buttonOrNull("Automatisch uitvoeren") != null -> runProgram(actor)
-                actor.page.buttonOrNull("Uitvoeren") != null -> runStep(actor)
-                else -> error("Niets te doen op de pagina:\n${actor.page.text}")
+                state["review"] == true -> approve(actor)
+                else -> run(actor, mapOf(4 to "pdf2zcbs", 5 to "images", 6 to "upload", 7 to "backup").getValue(state["phase"] as Int))
             }
         }
-        val failed = actor.page.doc.select(".problem, .alert-err").text()
-        assertTrue(actor.page.text.contains("op het archief"), "De flow is niet afgemaakt: $failed\n${actor.page.text}")
+        assertEquals(true, actor.api.read(flow)["finished"], "De flow is niet afgemaakt: ${actor.api.read("$flow/steps")}")
     }
 
-    private fun runProgram(actor: Actor) {
-        actor.browser.click(actor.page.button("Automatisch uitvoeren"))
+    private fun run(actor: Actor, step: String) {
+        assertEquals(200, actor.api.post("$flow/steps/$step/run", mapOf("answers" to "auto")).status, actor.last.toString())
         waitUntilIdle(actor)
     }
 
-    private fun runStep(actor: Actor) {
-        actor.browser.click(actor.page.button("Uitvoeren"))
-        waitUntilIdle(actor)
-    }
-
-    /** Wacht tot het programma of de stap klaar is, door de pagina te verversen zoals de browser dat doet. */
+    /** Wacht tot het programma of de stap klaar is, en kijkt dan hoe de stappen ervoor staan. */
     private fun waitUntilIdle(actor: Actor) {
-        // Alleen verversen zolang de pagina zegt dat het nog bezig is: de pagina "Klaar" is maar één keer te zien.
-        if (!actor.page.text.contains("Bezig…")) return
-        Await.until("einde van de stap op /nieuw", seconds = 60) { !actor.browser.get("/nieuw").text.contains("Bezig…") }
+        Await.until("einde van de stap", seconds = 60) { actor.api.read(flow)["running"] == false }
+        actor.api.get("$flow/steps")
     }
+
+    private fun phase(actor: Actor) = actor.api.read(flow)["phase"] as Int
 
     @Then("{word} has reached step {int}")
-    fun reached(name: String, step: Int) {
-        val heading = World.actor(name).page.doc.select("h2").first()?.text().orEmpty()
-        assertTrue(heading.startsWith("$step."), "Op stap \"$heading\" in plaats van $step:\n${World.actor(name).page.text}")
+    fun reached(name: String, step: Int) = assertEquals(step, phase(World.actor(name)), World.actor(name).last.toString())
+
+    @Then("{word} has finished")
+    fun finished(name: String) {
+        val api = World.actor(name).api
+        assertEquals(true, api.read(flow)["finished"], api.read("$flow/steps").toString())
+        assertTrue(api.read("$flow/summary").list.isNotEmpty())
     }
+
+    @Then("{word} is asked to check what {word} made")
+    fun asksReview(name: String, step: String) {
+        val api = World.actor(name).api
+        assertEquals(true, api.read(flow)["review"], api.read("$flow/steps").toString())
+        assertEquals(mapOf("pdf2zcbs" to 4, "images" to 5).getValue(step), api.read(flow)["phase"])
+        assertTrue(api.read("$flow/results?step=$step").list.isNotEmpty())
+    }
+
+    @Then("{word} is not asked to check anything")
+    fun noReview(name: String) = assertEquals(false, World.actor(name).api.read(flow)["review"])
+
+    @Then("the step {word} has failed for {word}")
+    fun stepFailed(step: String, name: String) = assertEquals("FAILED", stepStatus(name, step))
+
+    @Then("the step {word} is waiting for {word}")
+    fun stepWaiting(step: String, name: String) = assertEquals("PENDING", stepStatus(name, step))
+
+    private fun stepStatus(name: String, step: String) = World.actor(name).api.read("$flow/steps").list.first { it["name"] == step }["status"]
+
+    @Suppress("UNCHECKED_CAST")
+    private fun checks(name: String) = World.actor(name).api.read("$flow/checks")["checks"] as List<Map<String, Any?>>
 
     @Then("the check {string} is red for {word}")
     fun checkRed(check: String, name: String) {
-        val row = World.actor(name).page.doc.select(".envlist li").firstOrNull { it.text().contains(check) } ?: error("Geen controle \"$check\":\n${World.actor(name).page.text}")
-        assertTrue(row.hasClass("bad"), row.text())
+        val row = checks(name).firstOrNull { (it["label"] as String).contains(check) } ?: error("Geen controle \"$check\": ${checks(name)}")
+        assertEquals(false, row["ok"], row.toString())
+    }
+
+    @Then("{word} has to fix the red checks first")
+    fun mustFix(name: String) {
+        val api = World.actor(name).api
+        assertEquals(false, api.read("$flow/checks")["allOk"])
+        assertEquals("checks-failed", api.post("$flow/start").code, api.last.toString())
     }
 
     @Then("all checks are green for {word}")
     fun allGreen(name: String) {
-        val rows = World.actor(name).page.doc.select(".envlist li")
-        assertTrue(rows.isNotEmpty() && rows.all { it.hasClass("ok") }, rows.filter { !it.hasClass("ok") }.joinToString("\n") { it.text() })
+        val rows = checks(name)
+        assertTrue(rows.isNotEmpty() && rows.all { it["ok"] == true }, rows.filter { it["ok"] != true }.toString())
     }
 
     @Given("someone else already used number {word} in ZCBS")
@@ -280,25 +297,9 @@ class NewFilesSteps {
         }
     }
 
-    @Then("{word} sees the produced file {string} for record {word}")
-    fun seesProduced(name: String, kind: String, number: String) {
-        val page = World.actor(name).page
-        assertTrue(page.text.contains(number) && page.text.contains(kind), page.text)
-    }
-
     @Then("{word} can view the {word} result of record {word}")
-    fun canViewResult(name: String, kind: String, number: String) {
-        val actor = World.actor(name)
-        val status = actor.browser.get("/nieuw/resultaat/$kind/$number").status
-        actor.browser.get("/nieuw")
-        assertEquals(200, status)
-    }
+    fun canViewResult(name: String, kind: String, number: String) = assertEquals(200, World.actor(name).api.read("$flow/results/$number/$kind").status)
 
     @Then("{word} cannot view the {word} result of record {word}")
-    fun cannotViewResult(name: String, kind: String, number: String) {
-        val actor = World.actor(name)
-        val status = actor.browser.get("/nieuw/resultaat/$kind/$number").status
-        actor.browser.get("/nieuw")
-        assertEquals(404, status)
-    }
+    fun cannotViewResult(name: String, kind: String, number: String) = assertEquals(404, World.actor(name).api.read("$flow/results/$number/$kind").status)
 }

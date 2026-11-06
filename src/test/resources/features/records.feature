@@ -8,14 +8,14 @@ Feature: Changing records in ZCBS
     When Carla opens record 99003 for editing
     Then Carla sees the title "Kerkstraat 1960, de kerk van Heemskerk" in the form
     When Carla saves the title "De kerk aan de Kerkstraat, 1960"
-    Then Carla sees "99003 is opgeslagen"
+    Then record 99003 is saved for Carla
     And ZCBS has the title "De kerk aan de Kerkstraat, 1960" for record 99003
     And ZCBS stored the title of record 99003 as last changed by Carla
 
   Scenario: Special characters survive the round trip
     When Carla opens record 99003 for editing
     And Carla saves the title "Café \"De Zon\" & één ëi"
-    Then Carla sees "99003 is opgeslagen"
+    Then record 99003 is saved for Carla
     When Carla opens record 99003 for editing
     Then Carla sees the title "Café \"De Zon\" & één ëi" in the form
 
@@ -27,7 +27,7 @@ Feature: Changing records in ZCBS
   Scenario: Saving without changes sends nothing
     When Carla opens record 99003 for editing
     And Carla saves the form without changes
-    Then Carla sees "Er is niets gewijzigd"
+    Then Carla is told that nothing changed
     And record 99003 is unchanged in ZCBS
 
   Scenario: Preview shows what will change
@@ -39,8 +39,7 @@ Feature: Changing records in ZCBS
   Scenario: Cancelling leaves the record as it was
     When Carla opens record 99003 for editing
     And Carla cancels editing
-    Then Carla sees "Recent toegevoegd"
-    And record 99003 is unchanged in ZCBS
+    Then record 99003 is unchanged in ZCBS
 
   Scenario: A record that does not exist
     When Carla opens record 12345 for editing
@@ -53,15 +52,15 @@ Feature: Changing records in ZCBS
   Scenario: A record somebody else has open is locked
     Given Bob has opened record 99003 for editing
     When Carla opens record 99003 for editing
-    Then Carla sees "Bob"
+    Then Carla is refused with "record-locked"
+    And Carla sees "Bob"
     And Carla sees "minuten"
-    And Carla sees "Probeer opnieuw"
 
   Scenario: Somebody changed another field in ZCBS: both changes stay
     When Carla opens record 99003 for editing
     And someone changes the keyword of record 99003 to "kerk" directly in ZCBS
     And Carla saves the title "Mijn titel"
-    Then Carla sees "99003 is opgeslagen"
+    Then record 99003 is saved for Carla
     And ZCBS has the title "Mijn titel" for record 99003
     And ZCBS has the keyword "kerk" for record 99003
 
@@ -69,7 +68,8 @@ Feature: Changing records in ZCBS
     When Carla opens record 99003 for editing
     And someone changes the title of record 99003 to "Hun titel" directly in ZCBS
     And Carla saves the title "Mijn titel"
-    Then Carla sees "Hun titel"
+    Then Carla is refused with "edit-conflict"
+    And Carla sees "Hun titel"
     And ZCBS has the title "Hun titel" for record 99003
     When Carla keeps her own version of the conflict
     Then ZCBS has the title "Mijn titel" for record 99003
@@ -85,13 +85,15 @@ Feature: Changing records in ZCBS
   Scenario: A word that ZCBS refuses is stopped before anything is sent
     When Carla opens record 99003 for editing
     And Carla saves the title "De UNION van werknemers"
-    Then Carla sees "UNION"
+    Then Carla is refused with "save-blocked"
+    And Carla sees "UNION"
     And record 99003 is unchanged in ZCBS
 
   Scenario: A character that ZCBS cannot store is stopped before anything is sent
     When Carla opens record 99003 for editing
     And Carla saves the title "Prijs € 5"
-    Then Carla sees "€"
+    Then Carla is refused with "save-blocked"
+    And Carla sees "€"
     And record 99003 is unchanged in ZCBS
 
   @alleen-nabouw
@@ -99,14 +101,14 @@ Feature: Changing records in ZCBS
     When Carla opens record 99003 for editing
     And all ZCBS sessions expire
     And Carla saves the title "Na een verlopen sessie"
-    Then Carla sees "99003 is opgeslagen"
+    Then record 99003 is saved for Carla
     And ZCBS has the title "Na een verlopen sessie" for record 99003
 
   Scenario: Someone who may only read in ZCBS cannot edit
     Given Rob may only read records in ZCBS
     When Rob logs in
     And Rob opens record 99003 for editing
-    Then Rob does not see "Opslaan"
+    Then Rob cannot edit the record
     And record 99003 is unchanged in ZCBS
 
   Scenario: Opening the scan of a record

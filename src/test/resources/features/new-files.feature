@@ -15,11 +15,11 @@ Feature: Putting new files in ZCBS
     And Carla is offered 99068 as the first number
     When Carla accepts the offered numbers
     And Carla runs pdf2zcbs
-    Then Carla sees "Dit heeft pdf2zcbs.exe gemaakt"
+    Then Carla is asked to check what pdf2zcbs made
     And Carla can view the tekst result of record 99068
     When Carla approves the result
     And Carla runs images
-    Then Carla sees "Dit heeft images.exe gemaakt"
+    Then Carla is asked to check what images made
     And ZCBS has a record 99068 that still has to be described
     And ZCBS has a record 99069 that still has to be described
     And the server has the images of record 99068
@@ -28,7 +28,7 @@ Feature: Putting new files in ZCBS
     Then the server has the pdf, the text and the images of record 99068
     And the server has the pdf, the text and the images of record 99069
     When Carla runs the backup
-    Then Carla sees "op het archief"
+    Then Carla has finished
     And the backup has the pdf and the image of record 99068
     And the backup has the pdf and the image of record 99069
     And the originals "kerk.pdf, school.pdf" of Jelly are still there
@@ -85,7 +85,7 @@ Feature: Putting new files in ZCBS
     When Rob logs in
     And Rob opens the page for new files
     Then the check "vrije recordnummers" is red for Rob
-    And Rob sees "Los eerst de rode punten op"
+    And Rob has to fix the red checks first
 
   Scenario: pdf2zcbs reports success but did not make the files
     Given Jelly scanned "kapot.pdf"
@@ -93,9 +93,12 @@ Feature: Putting new files in ZCBS
     And Carla picks "kapot.pdf" from Jelly
     And Carla accepts the offered numbers
     And Carla runs pdf2zcbs
-    Then Carla sees "99068"
-    And Carla does not see "Dit heeft pdf2zcbs.exe gemaakt"
+    Then the step pdf2zcbs has failed for Carla
+    And Carla sees "99068"
+    And Carla is not asked to check anything
     And ZCBS has no record 99068
+    When Carla retries pdf2zcbs
+    Then the step pdf2zcbs is waiting for Carla
 
   Scenario: Somebody used one of my numbers in the meantime: images does not start
     When Carla starts adding new files
@@ -105,8 +108,9 @@ Feature: Putting new files in ZCBS
     And Carla approves the result
     And someone else already used number 99068 in ZCBS
     And Carla runs images
-    Then Carla sees "99068"
-    And Carla does not see "Dit heeft images.exe gemaakt"
+    Then the step images has failed for Carla
+    And Carla sees "99068"
+    And Carla is not asked to check anything
     And the server has no files of record 99068
 
   Scenario: The upload never overwrites a file on the server
@@ -139,7 +143,8 @@ Feature: Putting new files in ZCBS
     And Bob picks "bob.pdf" from Ria
     Then Carla has reached step 3
     And Bob has reached step 3
-    And Bob sees "1"
+    And Bob has chosen only "bob.pdf"
+    And Carla has chosen only "kerk.pdf"
 
   Scenario: images run by hand, answering the questions in the console
     When Carla starts adding new files
@@ -148,7 +153,7 @@ Feature: Putting new files in ZCBS
     And Carla runs pdf2zcbs
     And Carla approves the result
     And Carla runs images by hand
-    Then Carla sees "Dit heeft images.exe gemaakt"
+    Then Carla is asked to check what images made
     And ZCBS has a record 99068 that still has to be described
     And the server has the images of record 99068
 
@@ -160,6 +165,27 @@ Feature: Putting new files in ZCBS
     And Carla finishes all the steps
     Then the server has the images of record 99068
     And the originals "plattegrond.png" of Ria are still there
+
+  Scenario: Following a program live in the console
+    When Carla starts adding new files
+    And Carla picks "kerk.pdf" from Jelly
+    And Carla accepts the offered numbers
+    And Carla runs pdf2zcbs and follows the console live
+    Then the live console ended with the program finished
+
+  Scenario: The next record to describe follows the one just done
+    When Carla starts adding new files
+    And Carla picks "kerk.pdf, school.pdf" from Jelly
+    And Carla accepts the offered numbers
+    And Carla finishes all the steps
+    Then Carla is pointed to record 99069 as the next to describe after 99068
+
+  Scenario: Files cannot be chosen again once the numbers are given
+    When Carla starts adding new files
+    And Carla picks "kerk.pdf" from Jelly
+    And Carla accepts the offered numbers
+    And Carla picks "school.pdf" from Jelly
+    Then Carla is refused with "wrong-phase"
 
   Scenario: Looking at a scan before choosing it
     When Carla starts adding new files
@@ -177,7 +203,7 @@ Feature: Putting new files in ZCBS
     Given Carla left the file "oud.pdf" in the folder of pdf2zcbs
     When Carla opens the page for new files
     Then the check "werk van een eerdere keer" is red for Carla
-    And Carla sees "Los eerst de rode punten op"
+    And Carla has to fix the red checks first
     When Carla moves the leftovers away
     Then all checks are green for Carla
     And the file "oud.pdf" is gone from the folder of pdf2zcbs of Carla
