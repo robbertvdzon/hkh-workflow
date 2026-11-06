@@ -10,10 +10,13 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import nl.vdzon.hkhworkflow.items.ItemEditService
-import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
+import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
+import nl.vdzon.hkhworkflow.testrun.internal.ProcessedFile
+import nl.vdzon.hkhworkflow.testrun.internal.ProcessedLog
+import nl.vdzon.hkhworkflow.testrun.internal.SourceFilesService
+import nl.vdzon.hkhworkflow.testrun.internal.WorkFolders
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
@@ -36,7 +39,7 @@ class SourceFilesServiceTest {
         val inbox = Files.createDirectories(dir.resolve("werkmap"))
         Files.createDirectories(dir.resolve("werkmap/Test/archief/invoer"))
         val props = WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString())
-        val settings = SettingsService(ObjectMapper(), props)
+        val settings = DefaultSettingsService(ObjectMapper(), props)
         settings.save(WorkflowSettings(testFolder = inbox.toString(), sourceFolders = "Jelly=$jelly\nRia=$ria"))
         processed = ProcessedLog(settings, props)
         return SourceFilesService(settings, processed, WorkFolders(settings, "Test", "archief"))

@@ -1,30 +1,30 @@
 package nl.vdzon.hkhworkflow.items.api
 
-import nl.vdzon.hkhworkflow.adminlog.AdminLogClient
-import nl.vdzon.hkhworkflow.items.Change
-import nl.vdzon.hkhworkflow.items.ConflictRow
-import nl.vdzon.hkhworkflow.items.EditLogReporter
-import nl.vdzon.hkhworkflow.items.Current
-import nl.vdzon.hkhworkflow.items.EditStatus
-import nl.vdzon.hkhworkflow.items.ItemEditService
-import nl.vdzon.hkhworkflow.items.OpenOutcome
-import nl.vdzon.hkhworkflow.items.PreviewOutcome
-import nl.vdzon.hkhworkflow.items.RecentRecord
-import nl.vdzon.hkhworkflow.items.RecentRecords
-import nl.vdzon.hkhworkflow.items.RecentScope
-import nl.vdzon.hkhworkflow.items.SaveOutcome
-import nl.vdzon.hkhworkflow.zcbs.ControlKind
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.servlet.http.HttpSession
-import nl.vdzon.hkhworkflow.items.RememberLogin
+import nl.vdzon.hkhworkflow.adminlog.AdminLog
+import nl.vdzon.hkhworkflow.items.Current
+import nl.vdzon.hkhworkflow.items.internal.Change
+import nl.vdzon.hkhworkflow.items.internal.ConflictRow
+import nl.vdzon.hkhworkflow.items.internal.EditLogReporter
+import nl.vdzon.hkhworkflow.items.internal.EditStatus
+import nl.vdzon.hkhworkflow.items.internal.ItemEditService
+import nl.vdzon.hkhworkflow.items.internal.OpenOutcome
+import nl.vdzon.hkhworkflow.items.internal.PreviewOutcome
+import nl.vdzon.hkhworkflow.items.internal.RecentRecord
+import nl.vdzon.hkhworkflow.items.internal.RecentRecords
+import nl.vdzon.hkhworkflow.items.internal.RecentScope
+import nl.vdzon.hkhworkflow.items.internal.RememberLogin
+import nl.vdzon.hkhworkflow.items.internal.SaveOutcome
+import nl.vdzon.hkhworkflow.zcbs.ControlKind
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.util.MultiValueMap
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /** Inloggen bij ZCBS en de pagina's om records te bewerken via het ZCBS-formulier. */
@@ -32,7 +32,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class ItemsController(
     private val items: ItemEditService,
     private val remember: RememberLogin,
-    private val adminLog: AdminLogClient,
+    private val adminLog: AdminLog,
     private val editLog: EditLogReporter,
     private val recent: RecentRecords,
 ) {

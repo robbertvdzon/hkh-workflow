@@ -4,11 +4,11 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpSession
 import nl.vdzon.hkhworkflow.adminlog.AppVersion
 import nl.vdzon.hkhworkflow.items.Current
-import nl.vdzon.hkhworkflow.items.ItemEditService
+import nl.vdzon.hkhworkflow.items.ZcbsSession
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
-import nl.vdzon.hkhworkflow.ux.AdminAccess
-import nl.vdzon.hkhworkflow.ux.CurrentContextFilter
+import nl.vdzon.hkhworkflow.ux.internal.AdminAccess
+import nl.vdzon.hkhworkflow.ux.internal.CurrentContextFilter
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.ControllerAdvice
@@ -20,7 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /** Wat elke pagina in het menu nodig heeft: wie er is ingelogd, en of dat de beheerder is. */
 @ControllerAdvice
-class ShellAdvice(private val items: ItemEditService, private val admin: AdminAccess, private val settingsService: SettingsService) {
+class ShellAdvice(private val items: ZcbsSession, private val admin: AdminAccess, private val settingsService: SettingsService) {
     @ModelAttribute("zcbsUser")
     fun zcbsUser(): String? = items.user
 
@@ -56,7 +56,7 @@ data class CollectionChoice(val name: String, val enabled: Boolean, val hint: St
  */
 @Controller
 class ShellController(
-    private val items: ItemEditService,
+    private val items: ZcbsSession,
     private val admin: AdminAccess,
     private val settingsService: SettingsService,
 ) {

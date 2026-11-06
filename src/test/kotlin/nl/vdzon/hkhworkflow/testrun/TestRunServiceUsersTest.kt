@@ -6,17 +6,24 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import nl.vdzon.hkhworkflow.ftp.FtpService
+import nl.vdzon.hkhworkflow.exerunner.RunMode
+import nl.vdzon.hkhworkflow.exerunner.internal.ProcessExeRunnerFactory
+import nl.vdzon.hkhworkflow.ftp.internal.DefaultFtpService
 import nl.vdzon.hkhworkflow.items.Current
-import nl.vdzon.hkhworkflow.items.ItemEditService
+import nl.vdzon.hkhworkflow.items.internal.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
+import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
+import nl.vdzon.hkhworkflow.testrun.internal.ProcessedLog
+import nl.vdzon.hkhworkflow.testrun.internal.TestRunService
+import nl.vdzon.hkhworkflow.testrun.internal.WorkFolders
+import nl.vdzon.hkhworkflow.zcbs.internal.HttpZcbsClientFactory
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
@@ -33,7 +40,7 @@ class TestRunServiceUsersTest {
         Current.set(null)
         work = Files.createDirectories(dir.resolve("werkmap"))
         val properties = WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString())
-        settings = SettingsService(ObjectMapper(), properties)
+        settings = DefaultSettingsService(ObjectMapper(), properties)
         settings.save(WorkflowSettings(testFolder = work.toString(), collection = "archief"))
     }
 
@@ -43,7 +50,7 @@ class TestRunServiceUsersTest {
     private fun service(): TestRunService {
         val mapper = ObjectMapper()
         val processed = ProcessedLog(settings, WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString()))
-        return TestRunService(settings, FtpService(settings), ItemEditService(settings), processed, "UTF-8", dir.resolve("logs").toString(), mapper)
+        return TestRunService(settings, DefaultFtpService(settings), ItemEditService(settings, HttpZcbsClientFactory()), processed, ProcessExeRunnerFactory("UTF-8", dir.resolve("logs").toString()), mapper)
     }
 
     /** Zet een pdf in de invoermap van [user] in [collection], zoals het kiezen van bestanden dat doet. */

@@ -10,6 +10,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.adminlog.internal.AppLogAppender
+import nl.vdzon.hkhworkflow.adminlog.internal.AppLogShipper
+import nl.vdzon.hkhworkflow.adminlog.internal.AppLogSpool
 import tools.jackson.databind.json.JsonMapper
 
 class AppLogAppenderTest {

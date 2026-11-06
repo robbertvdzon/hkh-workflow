@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
+import nl.vdzon.hkhworkflow.ux.internal.AdminAccess
 
 class AdminAccessTest {
     @Test

@@ -6,8 +6,10 @@ import java.time.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
+import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
+import nl.vdzon.hkhworkflow.testrun.internal.ProcessedFile
+import nl.vdzon.hkhworkflow.testrun.internal.ProcessedLog
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
@@ -17,7 +19,7 @@ class ProcessedLogTest {
 
     private fun log(processedLog: String = "verwerkt.tsv"): ProcessedLog {
         val props = WorkflowProperties(settingsFile = dir.resolve("config/s.json").toString(), processedLog = processedLog)
-        return ProcessedLog(SettingsService(ObjectMapper(), props), props)
+        return ProcessedLog(DefaultSettingsService(ObjectMapper(), props), props)
     }
 
     private fun entry(run: String, number: String, name: String, at: LocalDateTime = LocalDateTime.of(2026, 10, 30, 9, 0)) =

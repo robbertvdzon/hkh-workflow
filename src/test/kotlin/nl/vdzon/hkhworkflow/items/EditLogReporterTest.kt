@@ -11,9 +11,16 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import nl.vdzon.hkhworkflow.adminlog.AdminLogClient
-import nl.vdzon.hkhworkflow.settings.SettingsService
+import nl.vdzon.hkhworkflow.adminlog.internal.AdminLogClient
+import nl.vdzon.hkhworkflow.items.internal.BatchRecord
+import nl.vdzon.hkhworkflow.items.internal.Change
+import nl.vdzon.hkhworkflow.items.internal.EditLogReporter
+import nl.vdzon.hkhworkflow.items.internal.EditStatus
+import nl.vdzon.hkhworkflow.items.internal.ItemEditService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
+import nl.vdzon.hkhworkflow.settings.WorkflowSettings
+import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
+import nl.vdzon.hkhworkflow.zcbs.internal.HttpZcbsClientFactory
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.json.JsonMapper
 
@@ -39,9 +46,9 @@ class EditLogReporterTest {
     fun setUp() {
         Current.set(null)
         zcbs = nl.vdzon.hkhworkflow.zcbs.FakeZcbs()
-        val settings = SettingsService(mapper, WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
+        val settings = DefaultSettingsService(mapper, WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         settings.save(nl.vdzon.hkhworkflow.settings.WorkflowSettings(zcbsBaseUrl = zcbs.baseUrl, collection = "archief"))
-        items = ItemEditService(settings)
+        items = ItemEditService(settings, HttpZcbsClientFactory())
         assertNull(items.login("Test Beheerder", "Beheer1"))
         reporter = EditLogReporter(items, AdminLogClient(mapper, "http://127.0.0.1:${server.address.port}"), mapper)
     }

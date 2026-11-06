@@ -12,6 +12,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.adminlog.internal.AdminLogClient
+import nl.vdzon.hkhworkflow.adminlog.internal.AppLogShipper
+import nl.vdzon.hkhworkflow.adminlog.internal.AppLogSpool
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 

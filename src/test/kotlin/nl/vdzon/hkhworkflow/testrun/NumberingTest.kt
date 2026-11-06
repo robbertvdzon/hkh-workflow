@@ -1,6 +1,7 @@
 package nl.vdzon.hkhworkflow.testrun
 
 import kotlin.test.assertEquals
+import nl.vdzon.hkhworkflow.testrun.internal.sequenceNumbers
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 

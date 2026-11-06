@@ -11,6 +11,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import nl.vdzon.hkhworkflow.update.internal.GitHubReleases
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 

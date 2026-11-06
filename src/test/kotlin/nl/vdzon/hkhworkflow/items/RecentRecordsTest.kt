@@ -6,6 +6,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.items.internal.Media
+import nl.vdzon.hkhworkflow.items.internal.RecentRecords
+import nl.vdzon.hkhworkflow.items.internal.RecentScope
+import nl.vdzon.hkhworkflow.items.internal.isUndescribed
 
 class RecentRecordsTest {
     private val day = LocalDateTime.of(2026, 10, 31, 8, 0)

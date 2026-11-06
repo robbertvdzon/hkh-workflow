@@ -11,13 +11,23 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.exerunner.ExeRunner
 import nl.vdzon.hkhworkflow.exerunner.RunMode
-import nl.vdzon.hkhworkflow.items.ItemEditService
+import nl.vdzon.hkhworkflow.exerunner.internal.ProcessExeRunner
+import nl.vdzon.hkhworkflow.ftp.TestFtpServer
+import nl.vdzon.hkhworkflow.ftp.internal.DefaultFtpService
+import nl.vdzon.hkhworkflow.items.internal.ItemEditService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
-import nl.vdzon.hkhworkflow.ftp.FtpService
-import nl.vdzon.hkhworkflow.ftp.TestFtpServer
+import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
+import nl.vdzon.hkhworkflow.testrun.internal.FlowSession
+import nl.vdzon.hkhworkflow.testrun.internal.ProcessedLog
+import nl.vdzon.hkhworkflow.testrun.internal.ProgramFiles
+import nl.vdzon.hkhworkflow.testrun.internal.SourceFilesService
+import nl.vdzon.hkhworkflow.testrun.internal.StepType
+import nl.vdzon.hkhworkflow.testrun.internal.StepView
+import nl.vdzon.hkhworkflow.testrun.internal.WorkFolders
 import nl.vdzon.hkhworkflow.zcbs.FakeZcbs
+import nl.vdzon.hkhworkflow.zcbs.internal.HttpZcbsClientFactory
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -91,14 +101,14 @@ class TestRunServiceTest {
         server = TestFtpServer(serverRoot)
 
         val properties = WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString())
-        settings = SettingsService(ObjectMapper(), properties)
+        settings = DefaultSettingsService(ObjectMapper(), properties)
         save { it }
-        items = ItemEditService(settings)
-        runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        items = ItemEditService(settings, HttpZcbsClientFactory())
+        runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         processed = ProcessedLog(settings, properties)
         input = WorkFolders(settings, "Test Beheerder", "archief")
         sources = SourceFilesService(settings, processed, input)
-        service = FlowSession(settings, runner, FtpService(settings), items, sources, processed, input, "archief")
+        service = FlowSession(settings, runner, DefaultFtpService(settings), items, sources, processed, input, "archief")
         input.ensureAll()
         // Zoals bij het begin van de flow: de programma's staan in de map van de gebruiker.
         ProgramFiles.sync(p2zMaster.resolve("pdf2zcbs.sh").toString(), p2zDir)
@@ -777,7 +787,7 @@ class TestRunServiceTest {
         assertEquals(workBase.resolve("Test Beheerder/archief/resten"), service.leftoversTarget())
 
         val otherFolders = WorkFolders(settings, "Test Bewerker", "archief")
-        val other = FlowSession(settings, ExeRunner("UTF-8", dir.resolve("logs-b").toString()), FtpService(settings), items, SourceFilesService(settings, processed, otherFolders), processed, otherFolders, "archief")
+        val other = FlowSession(settings, ProcessExeRunner("UTF-8", dir.resolve("logs-b").toString()), DefaultFtpService(settings), items, SourceFilesService(settings, processed, otherFolders), processed, otherFolders, "archief")
         assertEquals(workBase.resolve("Test Bewerker/archief/invoer"), otherFolders.invoer())
         assertEquals(emptyList(), other.filesInTestFolder(), "de bestanden van de ander zijn niet de mijne")
         assertEquals(workBase.resolve("Test Bewerker/archief/resten"), other.leftoversTarget())

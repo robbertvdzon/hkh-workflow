@@ -1,0 +1,66 @@
+package nl.vdzon.hkhworkflow.ux.internal
+
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import nl.vdzon.hkhworkflow.adminlog.AdminLog
+import nl.vdzon.hkhworkflow.items.LoginCookie
+import nl.vdzon.hkhworkflow.items.ZcbsSession
+import org.springframework.context.annotation.Configuration
+import org.springframework.web.servlet.HandlerInterceptor
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+
+/**
+ * Wie waar mag komen. De pagina's van Carla vragen dat je bent ingelogd bij ZCBS; de instellingen en de technische pagina's
+ * vragen de beheerder. De stappen die de pagina Nieuwe bestanden en de technische pagina delen (de console, het uitvoeren van een
+ * stap) mogen met een van beide.
+ */
+@Configuration
+class WebConfig(
+    private val items: ZcbsSession,
+    private val admin: AdminAccess,
+    private val remember: LoginCookie,
+    private val adminLog: AdminLog,
+) : WebMvcConfigurer {
+
+    private val zcbsOnly = listOf("/collectie", "/nieuw", "/records")
+    private val adminOnly = listOf("/instellingen", "/test/runs", "/test/start", "/test/reset")
+    private val shared = listOf("/test")
+
+    private fun matches(path: String, prefix: String) = path == prefix || path.startsWith("$prefix/")
+
+    /** Na een herstart van de app: weer inloggen met wat in het cookie staat. Klopt het wachtwoord niet meer, dan gaat het cookie weg. */
+    private fun autoLogin(request: HttpServletRequest, response: HttpServletResponse, path: String) {
+        if (items.loggedIn() || path == "/zcbs/login" || path == "/zcbs/logout") return
+        val (name, password) = remember.read(request) ?: return
+        val error = items.login(name, password)
+        adminLog.login(name, error == null, "COOKIE", error)
+        if (error == null) request.session.setAttribute(CurrentContextFilter.USER, items.user)
+        else if (error.startsWith("Naam of wachtwoord")) remember.forget(response)
+    }
+
+    override fun addInterceptors(registry: InterceptorRegistry) {
+        registry.addInterceptor(object : HandlerInterceptor {
+            override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
+                val path = request.requestURI.removePrefix(request.contextPath)
+                autoLogin(request, response, path)
+                val isAdmin = admin.isAdmin(request.session)
+                val needsAdmin = adminOnly.any { matches(path, it) } || path == "/test"
+                val needsEither = !needsAdmin && shared.any { matches(path, it) }
+                val needsZcbs = zcbsOnly.any { matches(path, it) }
+                // Een verzoek van htmx (een stuk van de pagina dat later wordt opgehaald) volgt een redirect niet in de pagina, maar laat de hele pagina navigeren.
+                fun redirect(target: String) {
+                    if (request.getHeader("HX-Request") != null) { response.setHeader("HX-Redirect", request.contextPath + target); response.status = 200 }
+                    else response.sendRedirect(request.contextPath + target)
+                }
+                when {
+                    needsAdmin && !isAdmin -> redirect("/beheer?terug=" + java.net.URLEncoder.encode(path, Charsets.UTF_8))
+                    needsEither && !isAdmin && !items.loggedIn() -> redirect("/?inloggen=1")
+                    needsZcbs && !items.loggedIn() -> redirect("/?inloggen=1")
+                    else -> return true
+                }
+                return false
+            }
+        }).excludePathPatterns("/css/**", "/js/**", "/favicon*")
+    }
+}

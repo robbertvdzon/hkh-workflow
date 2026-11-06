@@ -3,7 +3,7 @@ package nl.vdzon.hkhworkflow.testrun.api
 import jakarta.servlet.http.HttpServletResponse
 import nl.vdzon.hkhworkflow.exerunner.RunMode
 import nl.vdzon.hkhworkflow.settings.SettingsService
-import nl.vdzon.hkhworkflow.testrun.TestRunService
+import nl.vdzon.hkhworkflow.testrun.internal.TestRunService
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model

@@ -2,6 +2,10 @@ package nl.vdzon.hkhworkflow.testrun
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import nl.vdzon.hkhworkflow.settings.WorkflowProperties
+import nl.vdzon.hkhworkflow.settings.WorkflowSettings
+import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
+import nl.vdzon.hkhworkflow.testrun.internal.WorkFolders
 
 class WorkFoldersTest {
     @Test
@@ -23,7 +27,7 @@ class WorkFoldersTest {
     @Test
     fun `elke gebruiker heeft per collectie eigen mappen onder de werkmap`() {
         val dir = java.nio.file.Files.createTempDirectory("werkmap")
-        val settings = nl.vdzon.hkhworkflow.settings.SettingsService(
+        val settings = nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService(
             tools.jackson.databind.ObjectMapper(), nl.vdzon.hkhworkflow.settings.WorkflowProperties(settingsFile = dir.resolve("s.json").toString()),
         )
         settings.save(nl.vdzon.hkhworkflow.settings.WorkflowSettings(testFolder = dir.toString()))

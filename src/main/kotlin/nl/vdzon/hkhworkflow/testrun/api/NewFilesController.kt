@@ -2,12 +2,12 @@ package nl.vdzon.hkhworkflow.testrun.api
 
 import java.nio.file.Files
 import nl.vdzon.hkhworkflow.ftp.FtpService
-import nl.vdzon.hkhworkflow.items.ItemEditService
+import nl.vdzon.hkhworkflow.items.ZcbsSession
 import nl.vdzon.hkhworkflow.settings.SettingsService
-import nl.vdzon.hkhworkflow.testrun.ProducedFile
-import nl.vdzon.hkhworkflow.testrun.CopyResult
-import nl.vdzon.hkhworkflow.testrun.StepType
-import nl.vdzon.hkhworkflow.testrun.TestRunService
+import nl.vdzon.hkhworkflow.testrun.internal.CopyResult
+import nl.vdzon.hkhworkflow.testrun.internal.ProducedFile
+import nl.vdzon.hkhworkflow.testrun.internal.StepType
+import nl.vdzon.hkhworkflow.testrun.internal.TestRunService
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
 import org.springframework.http.ContentDisposition
@@ -29,7 +29,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class NewFilesController(
     private val testRunService: TestRunService,
     private val settingsService: SettingsService,
-    private val itemEditService: ItemEditService,
+    private val itemEditService: ZcbsSession,
     private val ftpService: FtpService,
 ) {
     /** Een gekozen bestand in de invoermap, met de bronmap waar het vandaan kwam. */

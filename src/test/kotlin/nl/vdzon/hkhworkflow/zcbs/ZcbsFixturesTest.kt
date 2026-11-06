@@ -8,6 +8,10 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.zcbs.internal.FormParser
+import nl.vdzon.hkhworkflow.zcbs.internal.HttpZcbsClient
+import nl.vdzon.hkhworkflow.zcbs.internal.RecordRebuilder
+import nl.vdzon.hkhworkflow.zcbs.internal.ZcbsPages
 
 class ZcbsFixturesTest {
     @Test
@@ -167,11 +171,11 @@ class ZcbsFixturesTest {
         assertEquals(emptyList(), ZcbsText.unencodable("café ë ñ"))
         assertEquals(listOf('€', '日'), ZcbsText.unencodable("5 € 日"))
         val posts = listOf(Post("a5", "café ë"))
-        val (type, body) = ZcbsClient.multipart(posts)
+        val (type, body) = HttpZcbsClient.multipart(posts)
         assertTrue(type.startsWith("multipart/form-data; boundary="))
         assertTrue(String(body, StandardCharsets.ISO_8859_1).contains("café ë"))
         assertTrue(body.contains(0xE9.toByte()))
-        val e = assertFailsWith<UnencodableException> { ZcbsClient.multipart(listOf(Post("a6", "prijs € 5"))) }
+        val e = assertFailsWith<UnencodableException> { HttpZcbsClient.multipart(listOf(Post("a6", "prijs € 5"))) }
         assertEquals("a6", e.field)
     }
 

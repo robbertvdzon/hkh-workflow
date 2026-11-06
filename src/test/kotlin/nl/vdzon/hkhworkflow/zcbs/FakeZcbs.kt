@@ -6,6 +6,7 @@ import java.net.InetSocketAddress
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CopyOnWriteArrayList
+import nl.vdzon.hkhworkflow.zcbs.internal.RecordRebuilder
 
 /**
  * Een nagemaakte ZCBS voor de tests: dezelfde aanroepen en dezelfde soorten pagina's als de echte (de foutpagina's zijn

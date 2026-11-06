@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.exerunner.internal.ProcessExeRunner
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledOnOs
 import org.junit.jupiter.api.condition.OS
@@ -33,7 +34,7 @@ class ExeRunnerTest {
             printf 'Type return to exit'; read x; echo klaar
             """.trimIndent(),
         )
-        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         val done = CountDownLatch(1)
         var exit: Int? = -1
         runner.start(
@@ -58,7 +59,7 @@ class ExeRunnerTest {
     @Test
     fun `history lists finished runs newest first and clear empties the console`() {
         val exe = script("echo hallo")
-        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         repeat(2) { i ->
             val done = CountDownLatch(1)
             runner.start(exe, dir, "run $i", RunMode.IN_APP) { done.countDown() }
@@ -80,7 +81,7 @@ class ExeRunnerTest {
     @Test
     fun `stopAndWait kills a running program`() {
         val exe = script("printf 'wacht...'; read a; echo nooit")
-        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         runner.start(exe, dir, "hangt", RunMode.IN_APP) {}
         assertTrue(runner.isRunning())
         assertTrue(runner.stopAndWait(), "programma moet binnen de tijd stoppen")
@@ -92,7 +93,7 @@ class ExeRunnerTest {
 
     @Test
     fun `logs can be deleted one by one or all at once, except a running one`() {
-        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         val done = CountDownLatch(1)
         runner.start(script("echo klaar"), dir, "klaar", RunMode.IN_APP) { done.countDown() }
         assertTrue(done.await(10, TimeUnit.SECONDS))
@@ -121,7 +122,7 @@ class ExeRunnerTest {
             printf 'Type return to exit'; read x; echo klaar
             """.trimIndent(),
         )
-        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         val done = CountDownLatch(1)
         runner.start(
             exe, dir, "test", RunMode.IN_APP,
@@ -152,7 +153,7 @@ class ExeRunnerTest {
     @Test
     fun `automatische antwoorden tellen mee in de gegeven antwoorden maar niet als ingetypt`() {
         val exe = script("printf 'Splitsen? [J/N] '; read a; echo \"splitsen=\${'$'}a\"")
-        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         val done = CountDownLatch(1)
         runner.start(exe, dir, "auto", RunMode.IN_APP, autoAnswers = listOf(AutoAnswer("splitsen?", "n"))) { done.countDown() }
         assertTrue(done.await(10, TimeUnit.SECONDS))
@@ -169,7 +170,7 @@ class ExeRunnerTest {
             printf 'Type return to exit'; read x; echo klaar
             """.trimIndent(),
         )
-        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         val done = CountDownLatch(1)
         runner.start(
             exe, dir, "handmatig", RunMode.IN_APP,
@@ -205,7 +206,7 @@ class ExeRunnerTest {
             printf 'Type return to exit'; read x; echo klaar
             """.trimIndent(),
         )
-        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         val done = CountDownLatch(1)
         runner.start(
             exe, dir, "spaties", RunMode.IN_APP,
@@ -225,7 +226,7 @@ class ExeRunnerTest {
             printf 'Type return to exit'; read x; echo klaar
             """.trimIndent(),
         )
-        val runner = ExeRunner("UTF-8", dir.resolve("logs").toString())
+        val runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         val done = CountDownLatch(1)
         runner.start(
             exe, dir, "wachtwoord", RunMode.IN_APP,

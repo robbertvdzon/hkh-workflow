@@ -22,6 +22,15 @@ import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
+import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
+import nl.vdzon.hkhworkflow.update.internal.Activity
+import nl.vdzon.hkhworkflow.update.internal.AppRestarter
+import nl.vdzon.hkhworkflow.update.internal.EXIT_UPDATE
+import nl.vdzon.hkhworkflow.update.internal.Release
+import nl.vdzon.hkhworkflow.update.internal.ReleaseSource
+import nl.vdzon.hkhworkflow.update.internal.SpringRestarter
+import nl.vdzon.hkhworkflow.update.internal.UpdatePhase
+import nl.vdzon.hkhworkflow.update.internal.UpdateService
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
@@ -70,7 +79,7 @@ class UpdateServiceTest {
     @BeforeTest
     fun setUp() {
         updates = dir.resolve("updates")
-        settings = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
+        settings = DefaultSettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         settings.save(WorkflowSettings())
         restarts.clear()
     }

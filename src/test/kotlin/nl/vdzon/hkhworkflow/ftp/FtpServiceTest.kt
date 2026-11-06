@@ -5,9 +5,11 @@ import java.nio.file.Path
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.ftp.internal.DefaultFtpService
 import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
+import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -30,7 +32,7 @@ class FtpServiceTest {
         Files.createDirectories(serverRoot.resolve("public_html/archief/ocr"))
         Files.createDirectories(serverRoot.resolve("public_html/archief/pdf"))
         server = TestFtpServer(serverRoot)
-        settings = SettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
+        settings = DefaultSettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         settings.save(
             WorkflowSettings(
                 collection = "archief",
@@ -39,7 +41,7 @@ class FtpServiceTest {
                 ftpBaseDir = "/public_html",
             ).withFtpPassword(TestFtpServer.PASSWORD),
         )
-        service = FtpService(settings)
+        service = DefaultFtpService(settings)
     }
 
     @AfterEach

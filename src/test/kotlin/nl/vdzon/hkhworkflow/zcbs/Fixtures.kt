@@ -1,6 +1,7 @@
 package nl.vdzon.hkhworkflow.zcbs
 
 import java.nio.charset.StandardCharsets
+import nl.vdzon.hkhworkflow.zcbs.internal.FormParser
 
 /** Echte pagina's van de lokale ZCBS (tools/zcbs-local), in latin-1 opgeslagen zoals ZCBS ze stuurt. */
 object Fixtures {

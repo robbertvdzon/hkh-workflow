@@ -8,6 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.testrun.internal.ProgramFiles
 import org.junit.jupiter.api.io.TempDir
 
 class ProgramFilesTest {

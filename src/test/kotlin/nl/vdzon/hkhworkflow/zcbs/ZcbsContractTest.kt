@@ -7,6 +7,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.integration.ZcbsServer
+import nl.vdzon.hkhworkflow.zcbs.internal.HttpZcbsClient
+import nl.vdzon.hkhworkflow.zcbs.internal.RecordRebuilder
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 
@@ -23,7 +25,7 @@ class ZcbsContractTest {
         zcbs.reset()
     }
 
-    private fun client() = ZcbsClient(zcbs.baseUrl, ZcbsServer.SCRIPT)
+    private fun client() = HttpZcbsClient(zcbs.baseUrl, ZcbsServer.SCRIPT)
     private fun loggedIn(user: String = ZcbsServer.EDITOR, password: String = ZcbsServer.EDITOR_PASSWORD) =
         client().also { assertEquals(LoginOutcome.Ok, it.login(user, password)) }
 

@@ -1,11 +1,12 @@
 package nl.vdzon.hkhworkflow.items
 
-import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.items.internal.RememberLogin
+import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 
 class RememberLoginTest {
     private fun remember(dir: java.nio.file.Path) = RememberLogin(WorkflowProperties(settingsFile = dir.resolve("settings.json").toString()))

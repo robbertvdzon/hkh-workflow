@@ -9,6 +9,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import nl.vdzon.hkhworkflow.adminlog.internal.AdminLogClient
+import nl.vdzon.hkhworkflow.adminlog.internal.SettingsChangeReporter
 import nl.vdzon.hkhworkflow.settings.CollectionSettings
 import nl.vdzon.hkhworkflow.settings.SettingsChanged
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
