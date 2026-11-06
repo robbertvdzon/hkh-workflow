@@ -1,0 +1,2690 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "paths" : {
+    "/api/admin-session" : {
+      "delete" : {
+        "operationId" : "adminLogout",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "session-api-controller" ]
+      },
+      "post" : {
+        "operationId" : "adminLogin",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AdminLoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "session-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow" : {
+      "delete" : {
+        "operationId" : "reset",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      },
+      "get" : {
+        "operationId" : "get_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FlowResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/checks" : {
+      "get" : {
+        "operationId" : "checks",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ChecksResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/console" : {
+      "get" : {
+        "operationId" : "console",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsoleResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/console/events" : {
+      "get" : {
+        "operationId" : "consoleEvents",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "text/event-stream" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SseEmitter"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/console/input" : {
+      "post" : {
+        "operationId" : "consoleInput",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConsoleInputRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/console/log" : {
+      "get" : {
+        "operationId" : "consoleLog",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "text/plain;charset=UTF-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/console/stop" : {
+      "post" : {
+        "operationId" : "consoleStop",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/files" : {
+      "delete" : {
+        "operationId" : "clearFiles",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      },
+      "get" : {
+        "operationId" : "files",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ChosenFileResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      },
+      "put" : {
+        "operationId" : "chooseFiles",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChooseFilesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ChooseFilesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/leftovers" : {
+      "delete" : {
+        "operationId" : "deleteLeftovers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/leftovers/accept" : {
+      "post" : {
+        "operationId" : "acceptLeftovers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/leftovers/move" : {
+      "post" : {
+        "operationId" : "moveLeftovers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/numbers" : {
+      "get" : {
+        "operationId" : "numbers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NumbersResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      },
+      "put" : {
+        "operationId" : "assignNumbers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NumbersRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FlowResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/results" : {
+      "get" : {
+        "operationId" : "results",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "step",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ResultResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/results/{number}/{kind}" : {
+      "get" : {
+        "operationId" : "result",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "kind",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "download",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/sources" : {
+      "get" : {
+        "operationId" : "sources",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SourceResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/sources/{source}/details" : {
+      "get" : {
+        "operationId" : "details",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "source",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "path",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : ""
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/sources/{source}/entries" : {
+      "get" : {
+        "operationId" : "entries",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "source",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "path",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : ""
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntriesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/sources/{source}/file" : {
+      "get" : {
+        "operationId" : "sourceFile",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "source",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "path",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : ""
+          }
+        }, {
+          "in" : "query",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "download",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "binary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/start" : {
+      "post" : {
+        "operationId" : "start",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FlowResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/steps" : {
+      "get" : {
+        "operationId" : "steps",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/StepResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/steps/{step}/approve" : {
+      "post" : {
+        "operationId" : "approve",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "step",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FlowResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/steps/{step}/retry" : {
+      "post" : {
+        "operationId" : "retry",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "step",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StepResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/steps/{step}/run" : {
+      "post" : {
+        "operationId" : "run",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "step",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RunStepRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StepResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/flow/summary" : {
+      "get" : {
+        "operationId" : "summary",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SummaryResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/records" : {
+      "get" : {
+        "operationId" : "list",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "scope",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "mine"
+          }
+        }, {
+          "in" : "query",
+          "name" : "offset",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RecentRecordsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "records-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/records/next-to-describe" : {
+      "get" : {
+        "operationId" : "nextToDescribe",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "after",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NextRecordResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "records-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/records/{number}" : {
+      "put" : {
+        "operationId" : "save_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "records-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/records/{number}/edit" : {
+      "delete" : {
+        "operationId" : "cancel",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "records-api-controller" ]
+      },
+      "get" : {
+        "operationId" : "current",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EditResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "records-api-controller" ]
+      },
+      "post" : {
+        "operationId" : "open",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EditResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "records-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/records/{number}/edit/preview" : {
+      "post" : {
+        "operationId" : "preview",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ValuesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PreviewResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "records-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/records/{number}/media" : {
+      "get" : {
+        "operationId" : "media",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MediaInfo"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "records-api-controller" ]
+      }
+    },
+    "/api/collections/{collection}/records/{number}/open-in-zcbs" : {
+      "get" : {
+        "operationId" : "openInZcbs",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "text/html" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "records-api-controller" ]
+      }
+    },
+    "/api/program-logs" : {
+      "delete" : {
+        "operationId" : "deleteLogs",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DeletedLogsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-api-controller" ]
+      },
+      "get" : {
+        "operationId" : "logs",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ProgramLogResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-api-controller" ]
+      }
+    },
+    "/api/program-logs/{file}" : {
+      "delete" : {
+        "operationId" : "deleteLog",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "file",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "admin-api-controller" ]
+      },
+      "get" : {
+        "operationId" : "log",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "file",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "text/plain;charset=UTF-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-api-controller" ]
+      }
+    },
+    "/api/session" : {
+      "delete" : {
+        "operationId" : "logout",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "session-api-controller" ]
+      },
+      "get" : {
+        "operationId" : "session",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "session-api-controller" ]
+      },
+      "post" : {
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "session-api-controller" ]
+      }
+    },
+    "/api/sessions" : {
+      "get" : {
+        "operationId" : "sessions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-api-controller" ]
+      }
+    },
+    "/api/sessions/flows/{collection}/{user}" : {
+      "delete" : {
+        "operationId" : "stopFlow",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "user",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "admin-api-controller" ]
+      }
+    },
+    "/api/settings" : {
+      "get" : {
+        "operationId" : "get",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "settings-api-controller" ]
+      },
+      "put" : {
+        "operationId" : "save",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SettingsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "settings-api-controller" ]
+      }
+    },
+    "/api/settings/ftp-test" : {
+      "post" : {
+        "operationId" : "test",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FtpTestResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "ftp-api-controller" ]
+      }
+    },
+    "/api/version" : {
+      "get" : {
+        "operationId" : "get_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VersionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "version-api-controller" ]
+      }
+    },
+    "/api/version/check" : {
+      "post" : {
+        "operationId" : "check",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VersionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "version-api-controller" ]
+      }
+    },
+    "/api/version/nightly" : {
+      "put" : {
+        "operationId" : "nightly",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NightlyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VersionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "version-api-controller" ]
+      }
+    },
+    "/api/version/update" : {
+      "post" : {
+        "operationId" : "update",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VersionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "version-api-controller" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "ActiveFlowResponse" : {
+        "type" : "object",
+        "properties" : {
+          "collection" : {
+            "type" : "string"
+          },
+          "lastActive" : {
+            "type" : "string"
+          },
+          "phase" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "since" : {
+            "type" : "string"
+          },
+          "user" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "collection", "lastActive", "phase", "since", "user" ]
+      },
+      "AdminLoginRequest" : {
+        "type" : "object",
+        "properties" : {
+          "password" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "password" ]
+      },
+      "BuildResponse" : {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "details", "label" ]
+      },
+      "ChangeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "field" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "new" : {
+            "type" : "string"
+          },
+          "old" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "field", "label", "new", "old" ]
+      },
+      "CheckResponse" : {
+        "type" : "object",
+        "properties" : {
+          "detail" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "ok" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "detail", "id", "label", "ok" ]
+      },
+      "ChecksResponse" : {
+        "type" : "object",
+        "properties" : {
+          "allOk" : {
+            "type" : "boolean"
+          },
+          "checks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CheckResponse"
+            }
+          },
+          "leftovers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LeftoverResponse"
+            }
+          },
+          "leftoversTarget" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "allOk", "checks", "leftovers", "leftoversTarget" ]
+      },
+      "ChooseFilesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "names" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "source" ]
+      },
+      "ChooseFilesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "skipped" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "skipped" ]
+      },
+      "ChosenFileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "by" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "newName" : {
+            "type" : [ "string", "null" ]
+          },
+          "number" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "by", "name", "newName", "number" ]
+      },
+      "CollectionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "available" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "available", "name", "reason" ]
+      },
+      "CollectionSettingsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "backup100pctFolder" : {
+            "type" : "string"
+          },
+          "backupPdfFolder" : {
+            "type" : "string"
+          },
+          "imagesResolution" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "backup100pctFolder", "backupPdfFolder", "imagesResolution", "name" ]
+      },
+      "CollectionSettingsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "backup100pctFolder" : {
+            "type" : "string"
+          },
+          "backupPdfFolder" : {
+            "type" : "string"
+          },
+          "imagesResolution" : {
+            "type" : "string"
+          },
+          "implemented" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "backup100pctFolder", "backupPdfFolder", "imagesResolution", "implemented", "name" ]
+      },
+      "ConsoleInputRequest" : {
+        "type" : "object",
+        "properties" : {
+          "line" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ConsoleResponse" : {
+        "type" : "object",
+        "properties" : {
+          "auto" : {
+            "type" : "boolean"
+          },
+          "autoAnswered" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "autoStuck" : {
+            "type" : "boolean"
+          },
+          "exitCode" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "label" : {
+            "type" : [ "string", "null" ]
+          },
+          "output" : {
+            "type" : "string"
+          },
+          "question" : {
+            "type" : [ "string", "null" ]
+          },
+          "running" : {
+            "type" : "boolean"
+          },
+          "secondsSinceOutput" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "suggestion" : {
+            "type" : [ "string", "null" ]
+          },
+          "suspiciousSilence" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "running" ]
+      },
+      "CurrentBuildResponse" : {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "details", "label" ]
+      },
+      "DeletedLogsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "deleted" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "deleted" ]
+      },
+      "EditResponse" : {
+        "type" : "object",
+        "properties" : {
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FieldResponse"
+            }
+          },
+          "lockedUntil" : {
+            "type" : [ "string", "null" ]
+          },
+          "media" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/MediaInfo"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "number" : {
+            "type" : "string"
+          },
+          "ocrText" : {
+            "type" : [ "string", "null" ]
+          },
+          "openedAt" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "fields", "lockedUntil", "media", "number", "ocrText", "openedAt" ]
+      },
+      "EntriesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "crumbs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FolderResponse"
+            }
+          },
+          "files" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SourceFileResponse"
+            }
+          },
+          "folders" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FolderResponse"
+            }
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "crumbs", "files", "folders", "path", "source" ]
+      },
+      "FieldResponse" : {
+        "type" : "object",
+        "properties" : {
+          "help" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "TEXT", "TEXTAREA", "SELECT", "MULTI", "RADIO" ]
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "values" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "help", "kind", "label", "name", "options", "values" ]
+      },
+      "FlowResponse" : {
+        "type" : "object",
+        "properties" : {
+          "finished" : {
+            "type" : "boolean"
+          },
+          "phase" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "phases" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PhaseResponse"
+            }
+          },
+          "review" : {
+            "type" : "boolean"
+          },
+          "running" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "finished", "phase", "phases", "review", "running" ]
+      },
+      "FolderResponse" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "path" ]
+      },
+      "FtpFolderResponse" : {
+        "type" : "object",
+        "properties" : {
+          "exists" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : [ "string", "null" ]
+          },
+          "path" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "exists", "message", "path" ]
+      },
+      "FtpTestResponse" : {
+        "type" : "object",
+        "properties" : {
+          "folders" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FtpFolderResponse"
+            }
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "ok" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "folders", "message", "ok" ]
+      },
+      "LatestBuildResponse" : {
+        "type" : "object",
+        "properties" : {
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "publishedAt" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "number", "publishedAt" ]
+      },
+      "LeftoverResponse" : {
+        "type" : "object",
+        "properties" : {
+          "area" : {
+            "type" : "string"
+          },
+          "files" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "area", "files", "label" ]
+      },
+      "LoginRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "password" ]
+      },
+      "MediaInfo" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : [ "string", "null" ]
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "kind", "url" ]
+      },
+      "MessageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "message" ]
+      },
+      "NextRecordResponse" : {
+        "type" : "object",
+        "properties" : {
+          "number" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "number" ]
+      },
+      "NightlyRequest" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "enabled" ]
+      },
+      "NumbersRequest" : {
+        "type" : "object",
+        "properties" : {
+          "start" : {
+            "type" : "string"
+          }
+        }
+      },
+      "NumbersResponse" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "lastNumber" : {
+            "type" : [ "string", "null" ]
+          },
+          "ranges" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RangeResponse"
+            }
+          },
+          "suggestion" : {
+            "type" : [ "string", "null" ]
+          },
+          "width" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "count", "lastNumber", "ranges", "suggestion", "width" ]
+      },
+      "PhaseResponse" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : [ "string", "null" ]
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "note", "number", "state", "title" ]
+      },
+      "PreviewResponse" : {
+        "type" : "object",
+        "properties" : {
+          "blockers" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "changes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChangeResponse"
+            }
+          }
+        },
+        "required" : [ "blockers", "changes" ]
+      },
+      "ProcessedResponse" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string"
+          },
+          "number" : {
+            "type" : "string"
+          },
+          "user" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "date", "number", "user" ]
+      },
+      "ProgramLogResponse" : {
+        "type" : "object",
+        "properties" : {
+          "duration" : {
+            "type" : [ "string", "null" ]
+          },
+          "exitCode" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "file" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "running" : {
+            "type" : "boolean"
+          },
+          "startedAt" : {
+            "type" : [ "string", "null" ]
+          },
+          "stopped" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "duration", "exitCode", "file", "label", "running", "startedAt", "stopped" ]
+      },
+      "RangeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "fits" : {
+            "type" : "boolean"
+          },
+          "from" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "size" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          }
+        },
+        "required" : [ "fits", "from", "label", "size" ]
+      },
+      "RecentRecordResponse" : {
+        "type" : "object",
+        "properties" : {
+          "addedAt" : {
+            "type" : "string"
+          },
+          "addedBy" : {
+            "type" : "string"
+          },
+          "busyBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "media" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/MediaInfo"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "number" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : [ "string", "null" ]
+          },
+          "toDescribe" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "addedAt", "addedBy", "busyBy", "media", "number", "title", "toDescribe" ]
+      },
+      "RecentRecordsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RecentRecordResponse"
+            }
+          },
+          "more" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "items", "more" ]
+      },
+      "ResolutionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "label", "value" ]
+      },
+      "ResultResponse" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "number" : {
+            "type" : "string"
+          },
+          "onServer" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "originalName" : {
+            "type" : [ "string", "null" ]
+          },
+          "resolution" : {
+            "type" : "string"
+          },
+          "size" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "kind", "label", "note", "number", "onServer", "originalName", "resolution", "size" ]
+      },
+      "RunStepRequest" : {
+        "type" : "object",
+        "properties" : {
+          "answers" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SaveRequest" : {
+        "type" : "object",
+        "properties" : {
+          "onConflict" : {
+            "type" : [ "string", "null" ]
+          },
+          "values" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          }
+        }
+      },
+      "SaveResponse" : {
+        "type" : "object",
+        "properties" : {
+          "fields" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/FieldResponse"
+            }
+          },
+          "saved" : {
+            "type" : "boolean"
+          },
+          "unchanged" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "saved", "unchanged" ]
+      },
+      "SessionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "admin" : {
+            "type" : "boolean"
+          },
+          "build" : {
+            "$ref" : "#/components/schemas/BuildResponse"
+          },
+          "collections" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CollectionResponse"
+            }
+          },
+          "rights" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "user" : {
+            "type" : [ "string", "null" ]
+          },
+          "zcbs" : {
+            "$ref" : "#/components/schemas/ZcbsResponse"
+          }
+        },
+        "required" : [ "admin", "build", "collections", "rights", "user", "zcbs" ]
+      },
+      "SessionsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "flows" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ActiveFlowResponse"
+            }
+          },
+          "users" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "flows", "users" ]
+      },
+      "SettingsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "collections" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CollectionSettingsRequest"
+            }
+          },
+          "ftpPassword" : {
+            "type" : [ "string", "null" ]
+          },
+          "imagesExe" : {
+            "type" : "string"
+          },
+          "leftoversFolder" : {
+            "type" : "string"
+          },
+          "logFtpPassword" : {
+            "type" : "boolean"
+          },
+          "pdf2zcbsExe" : {
+            "type" : "string"
+          },
+          "perlioUnbuffered" : {
+            "type" : "boolean"
+          },
+          "sourceFolders" : {
+            "type" : "string"
+          },
+          "useTestZcbs" : {
+            "type" : "boolean"
+          },
+          "workFolder" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "collections", "imagesExe", "leftoversFolder", "logFtpPassword", "pdf2zcbsExe", "perlioUnbuffered", "sourceFolders", "useTestZcbs", "workFolder" ]
+      },
+      "SettingsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "collections" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CollectionSettingsResponse"
+            }
+          },
+          "ftpPasswordSet" : {
+            "type" : "boolean"
+          },
+          "ftpUser" : {
+            "type" : "string"
+          },
+          "imagesExe" : {
+            "type" : "string"
+          },
+          "leftoversFolder" : {
+            "type" : "string"
+          },
+          "logFtpPassword" : {
+            "type" : "boolean"
+          },
+          "pdf2zcbsExe" : {
+            "type" : "string"
+          },
+          "perlioUnbuffered" : {
+            "type" : "boolean"
+          },
+          "problems" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "resolutions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ResolutionResponse"
+            }
+          },
+          "settingsFile" : {
+            "type" : "string"
+          },
+          "sourceFolders" : {
+            "type" : "string"
+          },
+          "testZcbsUrl" : {
+            "type" : "string"
+          },
+          "useTestZcbs" : {
+            "type" : "boolean"
+          },
+          "workFolder" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "collections", "ftpPasswordSet", "ftpUser", "imagesExe", "leftoversFolder", "logFtpPassword", "pdf2zcbsExe", "perlioUnbuffered", "problems", "resolutions", "settingsFile", "sourceFolders", "testZcbsUrl", "useTestZcbs", "workFolder" ]
+      },
+      "SourceFileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "modified" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "processed" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ProcessedResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "sizeKb" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "kind", "modified", "name", "processed", "sizeKb" ]
+      },
+      "SourceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "path" ]
+      },
+      "SseEmitter" : {
+        "type" : "object",
+        "properties" : {
+          "timeout" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "StepResponse" : {
+        "type" : "object",
+        "properties" : {
+          "current" : {
+            "type" : "boolean"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "plan" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "problems" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "question" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PENDING", "RUNNING", "DONE", "SKIPPED", "FAILED" ]
+          },
+          "statusLabel" : {
+            "type" : "string"
+          },
+          "usesProgram" : {
+            "type" : "boolean"
+          },
+          "warnings" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "current", "label", "message", "name", "plan", "problems", "question", "status", "statusLabel", "usesProgram", "warnings" ]
+      },
+      "SummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "files" : {
+            "type" : "string"
+          },
+          "folder" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "place" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "count", "files", "folder", "kind", "place" ]
+      },
+      "ValuesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "values" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          }
+        }
+      },
+      "VersionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "busy" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "checkError" : {
+            "type" : [ "string", "null" ]
+          },
+          "checkedAt" : {
+            "type" : [ "string", "null" ]
+          },
+          "current" : {
+            "$ref" : "#/components/schemas/CurrentBuildResponse"
+          },
+          "downloadedBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "events" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "failure" : {
+            "type" : [ "string", "null" ]
+          },
+          "latest" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LatestBuildResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "newer" : {
+            "type" : "boolean"
+          },
+          "nightly" : {
+            "type" : "boolean"
+          },
+          "nightlyPending" : {
+            "type" : "boolean"
+          },
+          "percent" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "phase" : {
+            "type" : "string",
+            "enum" : [ "IDLE", "DOWNLOADING", "RESTARTING", "FAILED" ]
+          },
+          "runsAsService" : {
+            "type" : "boolean"
+          },
+          "totalBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "busy", "checkError", "checkedAt", "current", "downloadedBytes", "events", "failure", "latest", "newer", "nightly", "nightlyPending", "percent", "phase", "runsAsService", "totalBytes" ]
+      },
+      "ZcbsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "address" : {
+            "type" : "string"
+          },
+          "configured" : {
+            "type" : "boolean"
+          },
+          "realArchive" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "address", "configured", "realArchive" ]
+      }
+    }
+  }
+}

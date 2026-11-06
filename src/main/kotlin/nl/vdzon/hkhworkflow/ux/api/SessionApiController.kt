@@ -27,6 +27,7 @@ data class AdminLoginRequest(val password: String)
 data class SessionResponse(
     val user: String?,
     val admin: Boolean,
+    val rights: List<String>,
     val collections: List<CollectionResponse>,
     val zcbs: ZcbsResponse,
     val build: BuildResponse,
@@ -54,6 +55,7 @@ class SessionApiController(
         return SessionResponse(
             user = items.user,
             admin = admin.isAdmin(session),
+            rights = rights,
             collections = if (!items.loggedIn()) emptyList() else WorkflowSettings.ALL_COLLECTIONS.map {
                 when {
                     it !in rights -> CollectionResponse(it, false, "Geen rechten")

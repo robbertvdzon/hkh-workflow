@@ -85,6 +85,6 @@ class WebConfig(
                 }
                 return false
             }
-        }).excludePathPatterns("/css/**", "/js/**", "/favicon*")
+        }).excludePathPatterns("/css/**", "/js/**", "/favicon*", "/app", "/app/**")
     }
 }

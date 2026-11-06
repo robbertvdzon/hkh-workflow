@@ -4,6 +4,8 @@ import com.github.tomakehurst.wiremock.client.WireMock
 import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
+import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -11,6 +13,9 @@ import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.integration.Api
 import nl.vdzon.hkhworkflow.integration.ApiResponse
 import nl.vdzon.hkhworkflow.integration.TestEnvironment
+import tools.jackson.databind.SerializationFeature
+import tools.jackson.databind.json.JsonMapper
+import tools.jackson.databind.node.ObjectNode
 
 class AccessSteps {
     private val visitor by lazy { Api(World.baseUrl) }
@@ -69,6 +74,18 @@ class AccessSteps {
         val operations = paths[path] ?: error("$path staat niet in de beschrijving: ${paths.keys}")
         val parameters = operations.values.first()["parameters"].toString()
         assertTrue(parameters.contains("collection"), parameters)
+    }
+
+    /** Met -Dopenapi.update=true werkt dit de kopie bij: zie tools/update-openapi.sh. */
+    @Then("the description of the API is the same as the copy of the frontend")
+    fun sameAsFrontend() {
+        val mapper = JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build()
+        val published = mapper.readTree(World.lastResponse!!.body) as ObjectNode
+        // Het adres van de server verschilt per keer, en de frontend gebruikt het niet.
+        published.remove("servers")
+        val copy = Path.of("frontend/openapi.json")
+        if (System.getProperty("openapi.update") == "true") Files.writeString(copy, mapper.writeValueAsString(published) + "\n")
+        assertEquals(mapper.readTree(Files.readString(copy)), published, "frontend/openapi.json loopt achter; draai tools/update-openapi.sh")
     }
 
     @Then("{word} sees {string}")

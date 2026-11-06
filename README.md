@@ -1,7 +1,7 @@
 # hkh-workflow
 
 Webinterface ("ZcbsServer") om gescande pdf's van de Historische Kring Heemskerk te verwerken naar ZCBS.
-Kotlin + Spring Boot 4 + Spring Modulith, server-side HTML met Thymeleaf en htmx. Levert één runnable jar.
+Kotlin + Spring Boot 4 + Spring Modulith. Levert één runnable jar. De schermen gaan over van Thymeleaf en htmx naar een React-frontend op een REST-API (zie [docs/frontend.md](docs/frontend.md) en [docs/api.md](docs/api.md)).
 
 **Documentatie:** [docs/specs.md](docs/specs.md) (specificaties, keuzes, status, volgende stappen) en
 [docs/zcbs-achtergrond.md](docs/zcbs-achtergrond.md) (ZCBS, images.exe, pdf2zcbs.exe).

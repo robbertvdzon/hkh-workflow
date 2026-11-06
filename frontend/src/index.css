@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* De kleuren en letters van de app. Componenten gebruiken alleen deze namen, nooit losse kleurcodes. */
+@theme {
+  --color-background: #f6f3ec;
+  --color-sidebar: #efe9dc;
+  --color-sidebar-line: #e0d8c6;
+  --color-sidebar-hover: #e6dfcf;
+  --color-card: #ffffff;
+  --color-line: #e4ded1;
+  --color-field: #b9b09c;
+  --color-foreground: #1d1b16;
+  --color-foreground-soft: #3d392f;
+  --color-muted: #5f5a4f;
+  --color-primary: #1e4d5c;
+  --color-primary-hover: #133540;
+  --color-primary-soft: #e8eff1;
+  --color-primary-ink: #1d3a43;
+  --color-neutral: #f1ece1;
+  --color-neutral-line: #d6cfbf;
+  --color-ok: #2a5f34;
+  --color-ok-soft: #e6f1e6;
+  --color-danger: #8f2118;
+  --color-danger-soft: #f9e3e0;
+
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: 15px;
+  }
+  h1,
+  h2 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+  }
+  a {
+    color: var(--color-primary);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}

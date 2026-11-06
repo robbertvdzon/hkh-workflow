@@ -1,0 +1,5 @@
+node_modules/
+# De Node die Maven voor de build downloadt
+.node/
+# Gemaakt uit openapi.json (npm run types)
+src/api/schema.ts

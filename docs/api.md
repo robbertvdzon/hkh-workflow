@@ -1,6 +1,6 @@
 # REST-API
 
-Dit is de afspraak tussen de backend en de losse React-frontend. **Status: de API is gebouwd en draait naast de oude pagina's; de React-frontend komt hierna.**
+Dit is de afspraak tussen de backend en de losse React-frontend. **Status: de API is gebouwd en draait naast de oude pagina's; de React-frontend ([frontend.md](frontend.md)) wordt er scherm voor scherm op gebouwd.**
 
 ## Regels
 
@@ -35,7 +35,7 @@ Dit is de afspraak tussen de backend en de losse React-frontend. **Status: de AP
 
 | | |
 |---|---|
-| `GET /api/session` | Wie ben ik: `user`, `admin`, `collections` (met `available` en `reason`), `build`. Werkt ook zonder login. |
+| `GET /api/session` | Wie ben ik: `user`, `admin`, `rights`, `collections` (met `available` en `reason`), `zcbs`, `build`. Werkt ook zonder login. |
 | `POST /api/session` | Inloggen met `{name, password}` |
 | `DELETE /api/session` | Uitloggen |
 | `POST /api/admin-session` | Beheerder inloggen met `{password}` |
@@ -164,4 +164,4 @@ Iemand die in ZCBS alleen mag lezen, krijgt bij `POST .../edit` een 502 `zcbs-fa
 
 ## OpenAPI
 
-De backend publiceert de beschrijving op `/api/openapi.json`. Daaruit genereert de frontend zijn TypeScript-types, dus een gewijzigd endpoint geeft een fout bij het bouwen.
+De backend publiceert de beschrijving op `/api/openapi.json`. Een kopie staat in `frontend/openapi.json`; daaruit maakt de build de TypeScript-types. Een scenario controleert dat de kopie gelijk is aan wat de backend publiceert, dus een gewijzigd endpoint valt altijd op. Bijwerken doe je met `tools/update-openapi.sh`; past de frontend er dan niet meer bij, dan faalt de build.

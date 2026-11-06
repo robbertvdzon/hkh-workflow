@@ -13,7 +13,7 @@ mvn test -Dtest=CucumberIntegrationTest
 | Onderdeel | In de test |
 |---|---|
 | De app | De echte Spring Boot-app, eenmaal gestart op een willekeurige poort (`CucumberSpringConfiguration`) |
-| De gebruiker | `Api`: praat met de REST-API zoals de frontend dat doet (JSON en cookies). `Browser` is er alleen voor wat buiten de API valt: een bestand van de site en het formulier naar ZCBS zelf |
+| De gebruiker | `Api`: praat met de REST-API zoals de frontend dat doet (JSON en cookies). `Screen`: de React-schermen in een echte browser (`screens.feature`, zie [frontend.md](frontend.md)). `Browser` is er alleen voor wat buiten de API valt: een bestand van de site en het formulier naar ZCBS zelf |
 | ZCBS | Een Docker-container met Apache, een eigen Perl-script en vsftpd (`src/test/resources/zcbs-docker`, `ZcbsServer`) |
 | pdf2zcbs.exe en images.exe | Shellscripts (`src/test/resources/integration/programs`): dezelfde vragen, en images uploadt echt met ftp naar de container en zet de records in `updates.txt`, zoals het echte programma |
 | GitHub en het workflow-logboek van hkh-admin | WireMock (`TestEnvironment`) |
@@ -46,7 +46,7 @@ Niet nagebootst: de routervraag (HKH-netwerk) en de snelheidsrem van ZCBS. Die w
 ## Wat ze niet testen
 
 - Windows: de echte exe's, de codepagina IBM850 en Windows-paden. Daarvoor blijft `tools/windows-testlaptop` en [testen-bij-hkh.md](testen-bij-hkh.md).
-- De schermen: de scenario's gaan via de REST-API en openen geen browser. De oude Thymeleaf-pagina's zijn sinds de overstap op de API niet meer gedekt.
+- De oude Thymeleaf-pagina's: die zijn sinds de overstap op de API niet meer gedekt. Van de React-schermen wordt alleen getest wat er al is gebouwd.
 - Het echte archief bij HKH.
 
 ## Een scenario toevoegen
