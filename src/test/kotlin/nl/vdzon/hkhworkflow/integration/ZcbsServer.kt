@@ -27,6 +27,7 @@ class ZcbsServer private constructor(val real: Boolean, context: Path) : AutoClo
         ImageFromDockerfile(if (real) "hkh-workflow-zcbs-echt" else "hkh-workflow-zcbs-nabouw", false).withFileFromPath(".", context),
     ).apply {
         withExposedPorts(80, 21)
+        withEnv("PASV_ADDRESS", java.net.InetAddress.getByName(DockerClientFactory.instance().dockerHostIpAddress()).hostAddress)
         withEnv("PASV_MIN_PORT", passivePorts.first.toString())
         withEnv("PASV_MAX_PORT", passivePorts.last.toString())
         // Passieve ftp geeft het poortnummer door aan de client, dus die poorten moeten op de host hetzelfde nummer hebben.
@@ -53,6 +54,32 @@ class ZcbsServer private constructor(val real: Boolean, context: Path) : AutoClo
     /** Voegt een gebruiker toe aan `permit.lst`, met rechten [level]: 1+ is beheerder, 1 is bewerken, 3 is lezen. */
     fun addUser(name: String, password: String, level: String = "1+") {
         sh("printf 'archief\\t$level\\txxx.xxx.xxx.xx\\t$name - $password\\n' >> $ROOT/cgi-bin/misc/permit.lst")
+    }
+
+    /** Zet een bestand op de server, alsof het er al stond. */
+    fun putFile(path: String) = sh("mkdir -p \"\$(dirname $ROOT/$path)\" && echo bestaand > $ROOT/$path && chmod -R a+rwX \"\$(dirname $ROOT/$path)\"")
+
+    /** Zet een nieuw record rechtstreeks in de database, alsof iemand het in ZCBS zelf deed. */
+    fun addRecord(number: String, title: String) {
+        val fields = MutableList(35) { "" }
+        fields[0] = "HKH"; fields[1] = "997"; fields[2] = number; fields[5] = title; fields[21] = "0"; fields[32] = "261101-10:00|system"
+        append(fields)
+    }
+
+    /** Wijzigt een veld van een record rechtstreeks in de database, alsof iemand anders het in ZCBS zelf deed. */
+    fun changeField(number: String, field: Int, value: String) = append(record(number).toMutableList().also { it[field] = value })
+
+    /** Het record zoals het nu in de database staat: de laatste regel met dit nummer telt. */
+    fun record(number: String): List<String> =
+        (readFile("cgi-bin/archief/archief.txt").lines() + readFile("cgi-bin/archief/updates.txt").lines())
+            .map { it.split("\t") }.lastOrNull { it.size > 2 && it[2] == number } ?: error("Record $number staat niet in de database")
+
+    fun hasRecord(number: String): Boolean =
+        (readFile("cgi-bin/archief/archief.txt").lines() + readFile("cgi-bin/archief/updates.txt").lines()).any { it.split("\t").getOrNull(2) == number }
+
+    private fun append(fields: List<String>) {
+        val line = fields.joinToString("\t").replace("'", "'\\''")
+        sh("printf '%s\\n' '$line' >> $ROOT/cgi-bin/archief/updates.txt")
     }
 
     fun fileExists(path: String): Boolean = container.execInContainer("test", "-f", "$ROOT/$path").exitCode == 0

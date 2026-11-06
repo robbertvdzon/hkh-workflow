@@ -98,7 +98,7 @@ java -jar target/hkh-workflow.jar
 ```
 
 - **Tests** (ruim 200): modulegrenzen (`ModulithArchitectureTest`), de ZCBS-client en pagina-herkenning met opgeslagen pagina's (`src/test/resources/zcbs`) en een nep-ZCBS (`FakeZcbs`),
-  de stappenketen met nep-exe's, meerdere gebruikers, herstart, logboek-clients, instellingen. `-Dzcbs.live=true` draait de contracttests tegen de lokale Docker-ZCBS.
+  de stappenketen met nep-exe's, meerdere gebruikers, herstart, logboek-clients, instellingen. De integratietests en `ZcbsContractTest` draaien tegen een eigen nabouw van ZCBS in Docker, en met `-Dzcbs.real=true` tegen de echte scripts; zie [integratietests.md](integratietests.md).
 - **Zonder Windows:** `tools/mock/` bevat nep-versies van pdf2zcbs en images (Perl); `tools/docker/` een lokale ZCBS (poort 8081, ftp 2121/21);
   `tools/localfileserver/` testscans; `tools/windows-testlaptop/` scripts voor de echte exe's op een testlaptop.
 - **Handleidingen:** de screenshots en pdf's in `manual/` worden gemaakt met `tools/docs/` (Playwright en Chrome tegen de lokale testomgeving); zie `tools/docs/README.md`.

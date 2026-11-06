@@ -1,0 +1,20 @@
+name: Testen
+# Op elke branch en pull request: alle tests, met de integratietests tegen de nagebouwde ZCBS in Docker (Testcontainers). Bouwt geen release; dat doet build.yml op main.
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Testen
+        run: mvn -B --no-transfer-progress clean verify

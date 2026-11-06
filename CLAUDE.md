@@ -7,4 +7,6 @@
 - Stijlreferentie: `~/git/hkh/backend` (Kotlin, Spring Boot 4, Spring Modulith, Jackson 3). Elke module een
   `package-info.java` met `allowedDependencies` (geen `*`); nieuwe modules toevoegen aan `ModulithArchitectureTest`.
 - Bouwen/testen: `mvn clean package` (Java 21). Thuis testen zonder Windows met `tools/mock/`.
+- **Integratietests:** zie [docs/integratietests.md](docs/integratietests.md). Nieuw gedrag krijgt eerst een Cucumber-scenario in `src/test/resources/features`. Code onder `integration/` kent de app niet.
+- **Nooit code van de echte ZCBS committen** (`objecten.pl`, `cfg-cbs.pl` enzovoort): die is van Gerard van Nes en deze repository is publiek.
 - Houd `docs/specs.md` bij als er iets besloten of gebouwd wordt (beslissingenlog, status, volgende stappen).
