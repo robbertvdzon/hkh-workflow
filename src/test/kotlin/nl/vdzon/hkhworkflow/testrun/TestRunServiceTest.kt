@@ -1,6 +1,7 @@
 package nl.vdzon.hkhworkflow.testrun
 
 import java.nio.file.Files
+import nl.vdzon.hkhworkflow.zcbs.StubZcbs
 import java.nio.file.Path
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
@@ -26,8 +27,7 @@ import nl.vdzon.hkhworkflow.testrun.internal.SourceFilesService
 import nl.vdzon.hkhworkflow.testrun.internal.StepType
 import nl.vdzon.hkhworkflow.testrun.internal.StepView
 import nl.vdzon.hkhworkflow.testrun.internal.WorkFolders
-import nl.vdzon.hkhworkflow.zcbs.FakeZcbs
-import nl.vdzon.hkhworkflow.zcbs.internal.HttpZcbsClientFactory
+
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -60,7 +60,7 @@ class TestRunServiceTest {
     private lateinit var settings: SettingsService
     private lateinit var service: FlowSession
     private lateinit var items: ItemEditService
-    private lateinit var zcbs: FakeZcbs
+    private lateinit var zcbs: StubZcbs
     private lateinit var runner: ExeRunner
     private lateinit var processed: ProcessedLog
     private lateinit var input: WorkFolders
@@ -76,7 +76,7 @@ class TestRunServiceTest {
 
     @BeforeEach
     fun setUp() {
-        zcbs = FakeZcbs()
+        zcbs = StubZcbs()
         zcbs.numberWidth = 8
         workBase = Files.createDirectories(dir.resolve("werkmap"))
         val root = workBase.resolve("Test Beheerder").resolve("archief")
@@ -103,7 +103,7 @@ class TestRunServiceTest {
         val properties = WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString())
         settings = DefaultSettingsService(ObjectMapper(), properties)
         save { it }
-        items = ItemEditService(settings, HttpZcbsClientFactory())
+        items = ItemEditService(settings, zcbs.factory)
         runner = ProcessExeRunner("UTF-8", dir.resolve("logs").toString())
         processed = ProcessedLog(settings, properties)
         input = WorkFolders(settings, "Test Beheerder", "archief")

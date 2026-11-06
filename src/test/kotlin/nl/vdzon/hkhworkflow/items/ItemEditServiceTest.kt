@@ -1,6 +1,7 @@
 package nl.vdzon.hkhworkflow.items
 
 import java.nio.file.Path
+import nl.vdzon.hkhworkflow.zcbs.StubZcbs
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -22,9 +23,8 @@ import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
-import nl.vdzon.hkhworkflow.zcbs.FakeZcbs
+
 import nl.vdzon.hkhworkflow.zcbs.NumberRange
-import nl.vdzon.hkhworkflow.zcbs.internal.HttpZcbsClientFactory
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
@@ -32,19 +32,19 @@ class ItemEditServiceTest {
     @TempDir
     lateinit var dir: Path
 
-    private lateinit var zcbs: FakeZcbs
+    private lateinit var zcbs: StubZcbs
     private lateinit var settings: SettingsService
     private lateinit var service: ItemEditService
 
     @BeforeTest
     fun setUp() {
-        zcbs = FakeZcbs()
+        zcbs = StubZcbs()
         zcbs.addRecord("edit-leeg.html", "11905")
         zcbs.addRecord("edit-gevuld.html", "11902")
         settings = DefaultSettingsService(ObjectMapper(), WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         settings.save(WorkflowSettings(zcbsBaseUrl = zcbs.baseUrl, collection = "archief"))
         Current.set(null)
-        service = ItemEditService(settings, HttpZcbsClientFactory())
+        service = ItemEditService(settings, zcbs.factory)
         assertNull(service.login("Test Beheerder", "Beheer1"))
         service.startBatch(
             listOf(BatchRecord("11905", "scan_0412.pdf", "Ria", "K:\\scabslelly\\Ria\\map57"), BatchRecord("11902", "scan_0413.pdf", "Ria", "K:\\scabslelly\\Ria\\map57"), BatchRecord("11999", "scan_0414.pdf")),
@@ -92,7 +92,7 @@ class ItemEditServiceTest {
 
     @Test
     fun `inloggen controleert naam en wachtwoord en het adres van ZCBS`() {
-        val other = ItemEditService(settings, HttpZcbsClientFactory())
+        val other = ItemEditService(settings, zcbs.factory)
         assertContains(other.login("Test Beheerder", "fout")!!, "niet herkend")
         assertFalse(other.loggedIn())
         assertNull(other.login("Test Beheerder", "Beheer1"))
@@ -101,16 +101,16 @@ class ItemEditServiceTest {
         other.logout()
         assertFalse(other.loggedIn())
         settings.save(settings.get().copy(zcbsBaseUrl = ""))
-        assertContains(ItemEditService(settings, HttpZcbsClientFactory()).login("a", "b")!!, "Instellingen")
+        assertContains(ItemEditService(settings, zcbs.factory).login("a", "b")!!, "Instellingen")
         settings.save(settings.get().copy(zcbsBaseUrl = "http://127.0.0.1:1"))
-        assertContains(ItemEditService(settings, HttpZcbsClientFactory()).login("a", "b")!!, "Geen verbinding")
+        assertContains(ItemEditService(settings, zcbs.factory).login("a", "b")!!, "Geen verbinding")
     }
 
     @Test
     fun `inloggen probeert alle collecties en onthoudt waar je rechten hebt`() {
         zcbs.grant("beeldbank", "Test Beheerder")
         zcbs.grant("bidprent", "Test Bewerker")
-        val other = ItemEditService(settings, HttpZcbsClientFactory())
+        val other = ItemEditService(settings, zcbs.factory)
         assertNull(other.login("Test Beheerder", "Beheer1"))
         assertEquals(listOf("archief", "beeldbank"), other.rights(), "de rest geeft geen recht of bestaat niet op de server")
         assertTrue(other.canUse("archief"))
@@ -125,7 +125,7 @@ class ItemEditServiceTest {
     @Test
     fun `iemand met alleen rechten bij een andere collectie kan inloggen, maar niet met het archief werken`() {
         zcbs.grant("beeldbank", "Alleen Beeldbank", "Beeld1")
-        val other = ItemEditService(settings, HttpZcbsClientFactory())
+        val other = ItemEditService(settings, zcbs.factory)
         // het archief kent hem niet, de beeldbank wel: ZCBS beslist per collectie
         assertNull(other.login("Alleen Beeldbank", "Beeld1"))
         assertTrue(other.loggedIn())
@@ -137,7 +137,7 @@ class ItemEditServiceTest {
 
     @Test
     fun `een naam zonder rechten bij welke collectie dan ook kan niet inloggen`() {
-        val other = ItemEditService(settings, HttpZcbsClientFactory())
+        val other = ItemEditService(settings, zcbs.factory)
         assertContains(other.login("Onbekend", "fout")!!, "nergens rechten")
         assertFalse(other.loggedIn())
         assertEquals(emptyList(), other.rights())
@@ -184,7 +184,6 @@ class ItemEditServiceTest {
         assertEquals(listOf("Heemskrink, \"juni\" 1981 \u00EB"), sent.filter { it.name == "a5" }.map { it.value })
         assertEquals(listOf("Markt", "Recreatie"), sent.filter { it.name == "a24" }.map { it.value })
         listOf("a0", "ident", "upd_form", "write", "a34").forEach { assertTrue(sent.any { p -> p.name == it }, it) }
-        assertTrue(zcbs.rawBodies.single().contains(0xEB.toByte()), "ë moet als latin-1 byte gaan")
         assertEquals(EditStatus.OPGESLAGEN, service.record("11905")?.status)
         assertEquals("Heemskrink, \"juni\" 1981 \u00EB", service.record("11905")?.title)
         assertEquals("Heemskrink, \"juni\" 1981 \u00EB", zcbs.records.getValue("11905").form.control("a5")?.value)

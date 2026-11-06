@@ -1,6 +1,7 @@
 package nl.vdzon.hkhworkflow.testrun
 
 import java.nio.file.Files
+import nl.vdzon.hkhworkflow.zcbs.StubZcbs
 import java.nio.file.Path
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -23,7 +24,6 @@ import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
 import nl.vdzon.hkhworkflow.testrun.internal.ProcessedLog
 import nl.vdzon.hkhworkflow.testrun.internal.TestRunService
 import nl.vdzon.hkhworkflow.testrun.internal.WorkFolders
-import nl.vdzon.hkhworkflow.zcbs.internal.HttpZcbsClientFactory
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
@@ -50,7 +50,7 @@ class TestRunServiceUsersTest {
     private fun service(): TestRunService {
         val mapper = ObjectMapper()
         val processed = ProcessedLog(settings, WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString()))
-        return TestRunService(settings, DefaultFtpService(settings), ItemEditService(settings, HttpZcbsClientFactory()), processed, ProcessExeRunnerFactory("UTF-8", dir.resolve("logs").toString()), mapper)
+        return TestRunService(settings, DefaultFtpService(settings), ItemEditService(settings, StubZcbs().factory), processed, ProcessExeRunnerFactory("UTF-8", dir.resolve("logs").toString()), mapper)
     }
 
     /** Zet een pdf in de invoermap van [user] in [collection], zoals het kiezen van bestanden dat doet. */

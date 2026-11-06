@@ -1,6 +1,7 @@
 package nl.vdzon.hkhworkflow.items
 
 import com.sun.net.httpserver.HttpServer
+import nl.vdzon.hkhworkflow.zcbs.StubZcbs
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
@@ -20,7 +21,6 @@ import nl.vdzon.hkhworkflow.items.internal.ItemEditService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
-import nl.vdzon.hkhworkflow.zcbs.internal.HttpZcbsClientFactory
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.json.JsonMapper
 
@@ -40,15 +40,15 @@ class EditLogReporterTest {
     }
     private lateinit var items: ItemEditService
     private lateinit var reporter: EditLogReporter
-    private lateinit var zcbs: nl.vdzon.hkhworkflow.zcbs.FakeZcbs
+    private lateinit var zcbs: StubZcbs
 
     @BeforeTest
     fun setUp() {
         Current.set(null)
-        zcbs = nl.vdzon.hkhworkflow.zcbs.FakeZcbs()
+        zcbs = StubZcbs()
         val settings = DefaultSettingsService(mapper, WorkflowProperties(settingsFile = dir.resolve("s.json").toString()))
         settings.save(nl.vdzon.hkhworkflow.settings.WorkflowSettings(zcbsBaseUrl = zcbs.baseUrl, collection = "archief"))
-        items = ItemEditService(settings, HttpZcbsClientFactory())
+        items = ItemEditService(settings, zcbs.factory)
         assertNull(items.login("Test Beheerder", "Beheer1"))
         reporter = EditLogReporter(items, AdminLogClient(mapper, "http://127.0.0.1:${server.address.port}"), mapper)
     }
