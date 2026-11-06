@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react"
+import { Link, Navigate, useLocation } from "react-router"
 import { errorMessage } from "@/api/client"
 import { useAdminLogin, useAdminLogout, useLoadedSession } from "@/api/session"
 import { Alert } from "@/components/ui/alert"
@@ -10,6 +11,9 @@ import { PageHeader } from "@/components/ui/page-header"
 
 export function AdminPage() {
   const session = useLoadedSession()
+  const location = useLocation()
+  const cameFrom = (location.state as { from?: string } | null)?.from
+  if (session.admin && cameFrom) return <Navigate to={cameFrom} replace />
   return (
     <>
       <PageHeader title="Beheer" tabTitle="Beheer">
@@ -25,7 +29,10 @@ function LoggedIn() {
   return (
     <Card className="max-w-[520px]">
       <h2 className="text-xl">Je bent ingelogd als beheerder</h2>
-      <div>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild>
+          <Link to="/instellingen">Instellingen</Link>
+        </Button>
         <Button variant="secondary" onClick={() => logout.mutate()}>
           Uitloggen als beheerder
         </Button>

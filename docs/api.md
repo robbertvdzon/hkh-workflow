@@ -1,6 +1,6 @@
 # REST-API
 
-Dit is de afspraak tussen de backend en de losse React-frontend. **Status: de API is gebouwd en draait naast de oude pagina's; de React-frontend ([frontend.md](frontend.md)) wordt er scherm voor scherm op gebouwd.**
+Dit is de afspraak tussen de backend en de losse React-frontend. De React-frontend ([frontend.md](frontend.md)) praat alleen hiermee.
 
 ## Regels
 
@@ -150,9 +150,9 @@ Alles hieronder vraagt de beheerder.
 | `DELETE /api/program-logs/{file}` | Eén log verwijderen |
 | `DELETE /api/program-logs` | Alle logs verwijderen |
 
-## Bewuste veranderingen ten opzichte van nu
+## Bewuste veranderingen ten opzichte van de oude schermen
 
-- **"Klaar" blijft staan.** Nu is die pagina één keer te zien, omdat het ophalen de flow wist. Dat mag niet bij een `GET`, dus de flow blijft op "Klaar" staan tot `DELETE /flow`.
+- **"Klaar" blijft staan.** Die pagina was één keer te zien, omdat het ophalen de flow wiste. Dat mag niet bij een `GET`, dus de flow blijft op "Klaar" staan tot `DELETE /flow`.
 - **Records hebben geen lijst met gekozen records meer.** Een nummer openen is direct `POST /records/{number}/edit`, zonder de tussenstap `/records/kies`.
 
 - **De technische pagina `/test` komt niet terug.** Een stap overslaan, een stap als gedaan markeren, starten zonder de eerste stappen en een programma in een eigen Windows-venster draaien vervallen. Een programma handmatig uitvoeren en zelf de invoer geven hoort bij de flow en blijft (beslissing van Robbert, 6 november 2026).

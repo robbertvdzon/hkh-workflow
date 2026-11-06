@@ -76,7 +76,6 @@ archief beeldbank.docx`. De genummerde bestanden staan in `invoer\werk`.
 - Na stap 3: kijk met `dir` in `images\small`, `large` en `100pct`. Heb je upload en records aan laten maken, maak ze dan
   **niet** nog een keer aan.
 - Na stap 4: de bestanden op de server blijven staan. Opnieuw proberen slaat wat er al staat over.
-- Zet een stap die je zelf hebt afgemaakt op "Toch klaar" of "Overslaan", zodat de volgende stappen aan de beurt komen.
 
 ## Meenemen terug
 

@@ -15,7 +15,7 @@ De tekst is gebaseerd op de broncode van de app. Waar iets alleen uit de code is
 7. [Systeeminstellingen buiten het scherm](#7-systeeminstellingen-buiten-het-scherm-applicationproperties-en-omgevingsvariabelen)
 8. [Sessies](#8-sessies)
 9. [Versie en bijwerken](#9-versie-en-bijwerken)
-10. [De technische pagina /test](#10-de-technische-pagina-test)
+10. [De pagina Logs](#10-de-pagina-logs)
 11. [Meldingen aan het workflow-logboek](#11-meldingen-aan-het-workflow-logboek)
 12. [Aanbevolen waarden: macOS-server of Windows](#12-aanbevolen-waarden-macos-server-of-windows)
 13. [Tabel: veld naar waar gebruikt](#13-tabel-veld-naar-waar-gebruikt)
@@ -35,11 +35,11 @@ De app is een wrapper rond ZCBS, het systeem achter de archieven van de Historis
 | Ftp-verbinding testen | `/instellingen/ftp-test` (knop op de pagina Instellingen) | alleen de beheerder |
 | Sessies | `/instellingen/sessies` | alleen de beheerder |
 | Versie (welke build draait, bijwerken) | `/instellingen/versie` | alleen de beheerder |
-| Technische pagina Test | `/test` | alleen de beheerder (een deel van de onderliggende stappen ook voor een ingelogde ZCBS-gebruiker, zie hoofdstuk 10) |
+| Logs van de programma's | `/instellingen/logs` | alleen de beheerder |
 
 Wie een pagina voor de beheerder opent zonder als beheerder ingelogd te zijn, wordt doorgestuurd naar `/beheer`. Na het inloggen komt hij terug op de pagina waar hij heen wilde.
 
-Het menu links toont onderaan, onder het kopje **Beheer**, de links **Instellingen**, **Sessies** en **Versie** en de knop **Uitloggen als beheerder**, maar alleen als je als beheerder bent ingelogd. Anders staat er één link **Beheer**. Er is geen menu-item voor de pagina `/test`; die open je door het adres in te typen.
+Het menu links toont onderaan, onder het kopje **Beheer**, de links **Instellingen**, **Sessies**, **Versie** en **Logs** en de knop **Uitloggen als beheerder**, maar alleen als je als beheerder bent ingelogd. Anders staat er één link **Beheer**.
 
 Helemaal onderin het menu staat, voor iedereen en klein, de **build** die draait: bijvoorbeeld "build 57 · 2 nov 2026 20:34" (de tijd van de build, in Nederlandse tijd). Houd je de muis erboven, dan zie je de versie en de commit. Zie hoofdstuk 9.
 
@@ -439,7 +439,7 @@ De pagina toont twee blokken.
 | Kolom | Betekenis |
 |---|---|
 | Collectie | de collectie (nu archief) |
-| Gebruiker | de ZCBS-naam; "(beheerder)" als de doorloop vanaf de technische pagina is gestart zonder ZCBS-gebruiker |
+| Gebruiker | de ZCBS-naam |
 | Fase | de huidige fase, "x van 7" |
 | Sinds | tijdstip (uren:minuten) waarop de doorloop begon |
 | Laatst actief | tijdstip van de laatste handeling van de gebruiker |
@@ -530,17 +530,12 @@ Omdat elke wijziging op `main` een build wordt en de nachtelijke update altijd d
 
 ---
 
-## 10. De technische pagina /test
+## 10. De pagina Logs
 
-De pagina `/test` is de technische weergave voor de beheerder: je verwerkt de pdf's in de invoermap stap voor stap (hernoemen, `pdf2zcbs.exe`, `images.exe`, upload, back-up en opruimen), met alle knoppen, de console en de logbestanden. Carla gebruikt hiervoor de pagina Nieuwe bestanden. Er is geen link in het menu; open `/test` met het adres.
+Open **Instellingen > Logs** (adres `/instellingen/logs`). Elke start van een programma heeft een eigen logbestand met de tijd sinds de start per regel, nieuwste boven. De lijst toont de logs van de doorloop van de ingelogde ZCBS-gebruiker in de standaardcollectie.
 
-- **Toegang:** `/test` zelf en de onderdelen `/test/runs/...`, `/test/start` en `/test/reset` vragen de beheerder. De overige onderdelen (de console, het volledige log, een stap uitvoeren, overslaan, op klaar zetten of opnieuw proberen) werken ook voor een ingelogde ZCBS-gebruiker, omdat de pagina Nieuwe bestanden ze gebruikt.
-- **Bovenaan** staat, als er iets niet klopt, "Niet alles is ingesteld:" met de waarschuwingen van de pagina Instellingen (hoofdstuk 4) en een link naar Instellingen.
-- **Nieuwe test starten:** toont de invoermap en de gekozen bestanden. Je vult het **Eerste volgnummer** in; elk bestand krijgt een volgnummer (steeds één hoger, voorloopnullen blijven staan). **De pagina controleert niet of de nummers vrij zijn in ZCBS**; dat doet de pagina Nieuwe bestanden. Gebruik /test dus alleen voor testen of als je zeker weet dat de nummers vrij zijn.
-- **Per stap:** **Uitvoeren** voor de interne stappen; voor de programma's **Handmatig uitvoeren** (jij beantwoordt de vragen), **Automatisch uitvoeren** (de app geeft de vaste antwoorden) en **In cmd-venster op de server** (alleen als de app op Windows draait; opent het programma in een eigen venster). Verder zie je de console, **Volledig log**, en onderaan **Runs** met alle logbestanden (**Toon** en **Wis**, en **Alle logs wissen**; het log van een lopend programma blijft staan).
-- **Nieuwe test:** stopt een nog lopend programma en maakt de console leeg.
-
-De instellingen die de technische pagina gebruikt zijn dezelfde als op de pagina Instellingen; er zijn geen aparte instellingen.
+- **Toon** laat het log zien onder de lijst.
+- **Wis** verwijdert één log, **Alle logs wissen** alle logs. Het log van een lopend programma blijft staan.
 
 ---
 
@@ -607,8 +602,8 @@ Tips voor een Windows-service:
 
 | Veld (label op het scherm) | Naam in het opslagbestand | Waar de app het gebruikt |
 |---|---|---|
-| Werkmap | `testFolder` | alle mappen van de gebruiker (`invoer`, `werk`, `pdf2zcbs`, `images`, `resten`), `sessie.json`, kopiëren van gekozen bestanden, fase 1 (resten), de stappen en Sessies; waarschuwing op Instellingen en /test |
-| pdf2zcbs.exe (hoofdmap) | `pdf2zcbsExe` | kopieert de programmabestanden naar de map `pdf2zcbs` van de gebruiker; start de stap pdf2zcbs; fase 1 regel 4; waarschuwing op Instellingen en /test |
+| Werkmap | `testFolder` | alle mappen van de gebruiker (`invoer`, `werk`, `pdf2zcbs`, `images`, `resten`), `sessie.json`, kopiëren van gekozen bestanden, fase 1 (resten), de stappen en Sessies; waarschuwing op Instellingen |
+| pdf2zcbs.exe (hoofdmap) | `pdf2zcbsExe` | kopieert de programmabestanden naar de map `pdf2zcbs` van de gebruiker; start de stap pdf2zcbs; fase 1 regel 4; waarschuwing op Instellingen |
 | images.exe (hoofdmap) | `imagesExe` | idem voor de map `images` en de stap images.exe; fase 1 regel 4 |
 | Start met PERLIO=:unix | `perlioUnbuffered` | omgeving van de programma's; regeleinde van de antwoorden |
 | Mappen met scans | `sourceFolders` | bladeren, kiezen en kopiëren in fase 2; herkomst (wie scande); fase 1 regel 3; waarschuwing op Instellingen |
@@ -617,7 +612,7 @@ Tips voor een Windows-service:
 | Het ftp-wachtwoord meesturen naar het logboek | `logFtpPassword` | bepaalt of het ftp-wachtwoord leesbaar in de logboekmeldingen staat |
 | Wachtwoord van ... / wissen | `ftpPassword` | antwoord op "FTP wachtwoord" voor images.exe; ftp-upload en ftp-test van de app; fase 1 regel 6; waarschuwing op Instellingen |
 | Resolutie van images.exe (per collectie) | `collections.<collectie>.imagesResolution` | antwoord op "Kies 1,2,3 ..." van images.exe |
-| Back-upmap voor 100pct (per collectie) | `collections.<collectie>.backup100pctFolder` | stap Back-up; fase 1 regel 5; waarschuwing op Instellingen en /test |
+| Back-upmap voor 100pct (per collectie) | `collections.<collectie>.backup100pctFolder` | stap Back-up; fase 1 regel 5; waarschuwing op Instellingen |
 | Back-upmap voor de pdf's (per collectie) | `collections.<collectie>.backupPdfFolder` | stap Back-up; fase 1 regel 5; waarschuwing |
 | (niet op het scherm) | `collection`, `ftpUser`, `ftpBaseDir`, `ftpHost`, `ftpPort`, `zcbsBaseUrl` | afgeleid; ZCBS-script `/cgi-bin/archief.pl`, ftp-mappen `/public_html/archief/ocr` en `/pdf` |
 | (niet op Instellingen, maar op Versie) | `nightlyUpdate` | de nachtelijke update (hoofdstuk 9); standaard aan |

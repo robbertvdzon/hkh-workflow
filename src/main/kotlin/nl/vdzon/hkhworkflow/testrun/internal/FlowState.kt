@@ -15,7 +15,6 @@ data class FlowState(
     val started: Boolean,
     val filesConfirmed: Boolean,
     val inputAcceptedFor: String?,
-    val finishedShown: Boolean,
     val claimedSince: String?,
 )
 

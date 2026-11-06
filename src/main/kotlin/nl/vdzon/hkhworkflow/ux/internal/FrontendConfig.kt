@@ -11,23 +11,22 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import org.springframework.web.servlet.resource.PathResourceResolver
 
 /**
- * De React-frontend uit de jar (zie docs/frontend.md). Een adres als /app/collectie/archief is geen bestand maar een scherm van de frontend,
+ * De React-frontend uit de jar (zie docs/frontend.md). Een adres als /collectie/archief is geen bestand maar een scherm van de frontend,
  * dus dan krijgt de browser index.html en kiest de frontend zelf het scherm. Bestanden in assets/ hebben een hash in hun naam en veranderen nooit.
  */
 @Configuration
 class FrontendConfig : WebMvcConfigurer {
 
     override fun addViewControllers(registry: ViewControllerRegistry) {
-        registry.addRedirectViewController("/app", "/app/")
         // Een leeg pad komt niet bij de resolver hieronder aan.
-        registry.addViewController("/app/").setViewName("forward:/app/index.html")
+        registry.addViewController("/").setViewName("forward:/index.html")
     }
 
     override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
-        registry.addResourceHandler("/app/assets/**")
+        registry.addResourceHandler("/assets/**")
             .addResourceLocations("classpath:/frontend/assets/")
             .setCacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable())
-        registry.addResourceHandler("/app/**")
+        registry.addResourceHandler("/**")
             .addResourceLocations("classpath:/frontend/")
             .setCacheControl(CacheControl.noCache())
             .resourceChain(false)

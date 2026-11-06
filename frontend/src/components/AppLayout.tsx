@@ -62,12 +62,29 @@ function Sidebar({ session }: { session: Session }) {
           {session.rights.length ? session.rights.join(", ") : "geen"}
         </div>
       )}
-      {session.admin && <div className="px-3 pt-4.5 pb-1.5 text-[11px] tracking-wider text-muted uppercase">Beheer</div>}
-      <MenuLink to="/beheer" icon={<Settings size={18} aria-hidden />}>
-        Beheer
-      </MenuLink>
+      {session.admin ? (
+        <>
+          <div className="px-3 pt-4.5 pb-1.5 text-[11px] tracking-wider text-muted uppercase">Beheer</div>
+          <MenuLink to="/instellingen" end icon={<Settings size={18} aria-hidden />}>
+            Instellingen
+          </MenuLink>
+          <MenuLink to="/instellingen/sessies" indented>
+            Sessies
+          </MenuLink>
+          <MenuLink to="/instellingen/versie" indented>
+            Versie
+          </MenuLink>
+          <MenuLink to="/instellingen/logs" indented>
+            Logs
+          </MenuLink>
+        </>
+      ) : (
+        <MenuLink to="/beheer" icon={<Settings size={18} aria-hidden />}>
+          Beheer
+        </MenuLink>
+      )}
       {session.admin && (
-        <button className="cursor-pointer px-3 py-1.5 text-left text-sm text-primary underline" onClick={() => adminLogout.mutate()}>
+        <button className="cursor-pointer px-3 py-1.5 text-left text-sm text-primary underline" onClick={() => adminLogout.mutate(undefined, { onSuccess: () => navigate("/") })}>
           Uitloggen als beheerder
         </button>
       )}
@@ -79,14 +96,15 @@ function Sidebar({ session }: { session: Session }) {
   )
 }
 
-function MenuLink({ to, icon, children }: { to: string; icon: ReactNode; children: ReactNode }) {
+function MenuLink({ to, icon, end, indented, children }: { to: string; icon?: ReactNode; end?: boolean; indented?: boolean; children: ReactNode }) {
   return (
     <NavLink
       to={to}
-      end={to === "/"}
+      end={end ?? to === "/"}
       className={({ isActive }) =>
         cn(
           "flex items-center gap-2.5 rounded-lg px-3 py-2.75 text-sm font-medium no-underline",
+          indented && "pl-10",
           isActive ? "bg-primary text-white" : "text-foreground-soft hover:bg-sidebar-hover hover:text-foreground",
         )
       }

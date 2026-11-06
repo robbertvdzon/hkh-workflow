@@ -257,14 +257,7 @@ class ProcessExeRunner(charsetName: String, logDir: String) : ExeRunner {
         onExit: (Int?) -> Unit,
     ): RunSnapshot {
         check(!isRunning()) { "Er draait al een programma: ${current?.label}" }
-        val command = when (mode) {
-            RunMode.IN_APP -> listOf(exe.toString())
-            RunMode.WINDOW -> {
-                check(isWindows()) { "Een eigen venster openen kan alleen als de app op Windows draait." }
-                // 'start' opent een nieuw consolevenster; het eerste argument tussen quotes is de titel.
-                listOf("cmd.exe", "/c", "start", "\"$label\"", "/wait", exe.toString())
-            }
-        }
+        val command = listOf(exe.toString())
         val id = ids.incrementAndGet()
         Files.createDirectories(logDir)
         val stamp = LocalDateTime.now().format(STAMP_FORMAT)

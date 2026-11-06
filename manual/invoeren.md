@@ -3,7 +3,7 @@
 Stand: 1 november 2026. Voor beheerders en technisch geïnteresseerden. Medewerkers die alleen willen weten welke knoppen ze moeten klikken, lezen de
 [quickstart](quickstart-invoeren.md).
 
-**Bronnen en betrouwbaarheid.** Deze handleiding is geschreven vanuit de code en de schermen van de app (de pagina `/nieuw`, de klassen `FlowSession`,
+**Bronnen en betrouwbaarheid.** Deze handleiding is geschreven vanuit de code en de schermen van de app (het scherm Nieuwe bestanden, de klassen `FlowSession`,
 `TestRunService`, `WorkFolders`, `ProgramFiles`, `SourceFilesService`, `ExeAnswers`, `ExeRunner`, `FtpService` en de tests). Waar de code iets
 doet wat niet is geprobeerd op de echte HKH-server, staat dat erbij: *uit de code gelezen, niet bevestigd op de echte server*. De code wint van
 oudere teksten in `docs/` en de README; de verschillen staan onderaan in [Bekende verschillen met oudere documentatie](#bekende-verschillen-met-oudere-documentatie).
@@ -93,7 +93,7 @@ eigen map per collectie:
 ```
 
 Voorbeeld: `<werkmap>\Carla\archief\invoer\`. De gebruikersmap heet zoals de ZCBS-naam; tekens die op schijf niet mogen of lastig zijn worden `_`.
-Zonder ingelogde gebruiker (de technische pagina van de beheerder) heet de map `gebruiker`. De werkmap zelf moet al bestaan; de app maakt de
+De werkmap zelf moet al bestaan; de app maakt de
 submappen aan. De werkmap mag op het netwerk staan, zodat gebruikers kunnen meekijken. Draait de app als Windows-service, gebruik dan een
 UNC-pad in plaats van een gekoppelde schijf (zie de README).
 
@@ -274,7 +274,7 @@ programmabestanden bij, en start het programma **één keer voor alle pdf's same
 tekstbestand mag wel leeg zijn: een pagina zonder herkende tekst). Pas dan staat de stap op **Klaar** met "Klaar: alle *N* verwachte bestanden zijn aangemaakt."
 (*N* = 4 per pdf). Anders staat hij op **Mislukt**:
 
-- "Gestopt met exitcode *c*. Controleer de uitvoer; zet de stap handmatig op klaar als het toch goed ging." Op de pagina Nieuwe bestanden is **Toch klaar** er niet; dat is een knop op de technische pagina Test van de beheerder.
+- "Gestopt met exitcode *c*. Controleer de uitvoer en kies Opnieuw."
 - "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: ..."
 
 Staan er afbeeldingen tussen de gekozen bestanden, dan eindigt de melding met "*N* afbeelding(en) is/zijn overgeslagen (geen pdf: ze gaan rechtstreeks naar images.exe)". Zijn er **alleen** afbeeldingen, dan slaat de stap zichzelf over en gaat de doorloop naar fase 5.
@@ -373,7 +373,7 @@ Een tabel (Waar, Soort, Bestanden, Map) toont wat er is gemaakt en waar het staa
 - **Server (ftp ...):** small, large en 100pct (jpg, voor alle bestanden), tekst (ocr) en pdf (alleen voor pdf's), met de mappen op de server.
 - **Back-up:** 100pct (jpg) en pdf.
 
-De knop **Nieuwe bestanden verwerken** begint een nieuwe doorloop. Het scherm Klaar is **één keer** te zien: open je `/nieuw` daarna opnieuw, dan begint de pagina weer bij fase 1.
+De knop **Nieuwe bestanden verwerken** begint een nieuwe doorloop. Het scherm Klaar blijft staan tot je op die knop drukt, ook als je de pagina opnieuw opent.
 De originelen op `K:` zijn niet aangeraakt.
 
 ---
@@ -659,7 +659,7 @@ Alle meldingen komen uit de code. Hoofdletters en leestekens kunnen in het scher
 | In *output* staan resultaten van een vorige run ... | Oude uitvoer in `output` | Opnieuw beginnen en opruimen via fase 1, of de map zelf veiligstellen |
 | In *small / large / 100pct* staan resultaten van een vorige run ... Ruim eerst op. | Oude afgeleide afbeeldingen | Idem |
 | Controleer eerst de bestanden van pdf2zcbs.exe (images.exe) en bevestig dat ze goed zijn. | De controle van hoofdstuk 6 is nog niet gedaan | Op **Ja, goed: ...** klikken (nadat je gekeken hebt) |
-| Gestopt met exitcode *c*. Controleer de uitvoer; zet de stap handmatig op klaar als het toch goed ging. | Het programma gaf een foutcode, of is gestopt via **Stop programma** | Beheerder: log lezen (Test, Runs). Ging het toch goed, dan **Toch klaar** op de pagina Test. Anders **Opnieuw** |
+| Gestopt met exitcode *c*. Controleer de uitvoer en kies Opnieuw. | Het programma gaf een foutcode, of is gestopt via **Stop programma** | Beheerder: log lezen (Test, Runs). Ging het toch goed, dan **Toch klaar** op de pagina Test. Anders **Opnieuw** |
 | Het programma is klaar (exitcode 0), maar er ontbreken bestanden: ... | Het programma deed zijn werk niet volledig (bijv. een pagina werd niet verwerkt) | Log lezen; **Opnieuw**, of de scan nakijken |
 | Het programma is klaar, maar het afronden is mislukt: ... | Een uitzondering bij het controleren | Log van de app lezen; **Opnieuw** |
 | De app is herstart terwijl deze stap bezig was. ... | Zie hoofdstuk 10 | Eerst kijken wat er al staat, dan **Opnieuw** |

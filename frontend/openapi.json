@@ -1768,6 +1768,10 @@
             "type" : [ "integer", "null" ],
             "format" : "int32"
           },
+          "inputsSent" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
           "label" : {
             "type" : [ "string", "null" ]
           },
@@ -1791,7 +1795,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "running" ]
+        "required" : [ "auto", "autoAnswered", "autoStuck", "exitCode", "inputsSent", "label", "output", "question", "running", "secondsSinceOutput", "suggestion", "suspiciousSilence" ]
       },
       "CurrentBuildResponse" : {
         "type" : "object",
@@ -1824,6 +1828,9 @@
               "$ref" : "#/components/schemas/FieldResponse"
             }
           },
+          "fileName" : {
+            "type" : [ "string", "null" ]
+          },
           "lockedUntil" : {
             "type" : [ "string", "null" ]
           },
@@ -1844,7 +1851,7 @@
             "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "fields", "lockedUntil", "media", "number", "ocrText", "openedAt" ]
+        "required" : [ "fields", "fileName", "lockedUntil", "media", "number", "ocrText", "openedAt" ]
       },
       "EntriesResponse" : {
         "type" : "object",
@@ -2422,8 +2429,18 @@
               "$ref" : "#/components/schemas/CollectionSettingsResponse"
             }
           },
+          "ftpBaseDir" : {
+            "type" : "string"
+          },
+          "ftpHost" : {
+            "type" : "string"
+          },
           "ftpPasswordSet" : {
             "type" : "boolean"
+          },
+          "ftpPort" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "ftpUser" : {
             "type" : "string"
@@ -2471,7 +2488,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "collections", "ftpPasswordSet", "ftpUser", "imagesExe", "leftoversFolder", "logFtpPassword", "pdf2zcbsExe", "perlioUnbuffered", "problems", "resolutions", "settingsFile", "sourceFolders", "testZcbsUrl", "useTestZcbs", "workFolder" ]
+        "required" : [ "collections", "ftpBaseDir", "ftpHost", "ftpPasswordSet", "ftpPort", "ftpUser", "imagesExe", "leftoversFolder", "logFtpPassword", "pdf2zcbsExe", "perlioUnbuffered", "problems", "resolutions", "settingsFile", "sourceFolders", "testZcbsUrl", "useTestZcbs", "workFolder" ]
       },
       "SourceFileResponse" : {
         "type" : "object",

@@ -10,9 +10,6 @@ import java.util.Locale
 enum class RunMode(val label: String) {
     /** De app start het proces zelf, toont de uitvoer in de browser en stuurt invoer door. */
     IN_APP("in de app"),
-
-    /** Windows: het programma opent in een eigen cmd-venster op de computer waar de jar draait. */
-    WINDOW("in eigen venster"),
 }
 
 /** Automatisch antwoord: bevat de uitvoer [pattern] (hoofdletterongevoelig), dan wordt [answer] + Enter gestuurd. */

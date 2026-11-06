@@ -141,11 +141,9 @@ class FlowSession(
         filesConfirmed = false
         started = false
         inputAcceptedFor = null
-        finishedShown = false
         claimedSince = null
     }
 
-    private var finishedShown = false
 
     /** Het bestand waarin de stand van deze doorloop wordt bewaard, in de map van de gebruiker. */
     fun stateFile(): Path? = input.root()?.resolve("sessie.json")
@@ -161,7 +159,7 @@ class FlowSession(
             files = files.map { StateFile(it.index, it.original.toString(), it.number, it.by, it.folder) },
             steps = current?.steps.orEmpty().map { st -> StateStep(st.id, st.type.name, st.files.map { it.index }, st.status.name, st.message, st.uploaded.sorted()) },
             gated = current?.gated == true, reviewed = current?.reviewed.orEmpty().map { it.name }.sorted(),
-            started = started, filesConfirmed = filesConfirmed, inputAcceptedFor = inputAcceptedFor, finishedShown = finishedShown,
+            started = started, filesConfirmed = filesConfirmed, inputAcceptedFor = inputAcceptedFor,
             claimedSince = claimedSince?.toString(),
         )
     }
@@ -172,7 +170,6 @@ class FlowSession(
         started = state.started
         filesConfirmed = state.filesConfirmed
         inputAcceptedFor = state.inputAcceptedFor
-        finishedShown = state.finishedShown
         claimedSince = state.claimedSince?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
         touch()
         val startNumber = state.startNumber ?: return
@@ -195,18 +192,6 @@ class FlowSession(
         }
     }
 
-    /**
-     * De stand voor de pagina Nieuwe bestanden, in één keer gelezen (de laatste stap loopt in een andere thread). Is de doorloop klaar
-     * en is dat al eens getoond, dan begint de pagina opnieuw bij het begin. Het overzicht van de gemaakte bestanden zit erbij zolang de pagina klaar is.
-     */
-    @Synchronized
-    fun pageState(): Pair<FlowView, List<SummaryLine>?> {
-        if (finishedShown && run?.nextStep() == null && run != null) reset()
-        val flow = flowView()
-        if (!flow.finished) return flow to null
-        finishedShown = true
-        return flow to summary()
-    }
 
     /** Alles wat deze doorloop heeft gemaakt en waar het staat: op de server (ftp) en in de back-up. */
     @Synchronized
@@ -452,9 +437,6 @@ class FlowSession(
     fun skip(stepId: Int) = update(stepId) { it.status = StepStatus.SKIPPED }
 
     @Synchronized
-    fun markDone(stepId: Int) = update(stepId) { it.status = StepStatus.DONE; it.message = "Handmatig op klaar gezet." }
-
-    @Synchronized
     fun retry(stepId: Int) = update(stepId) { it.status = StepStatus.PENDING; it.message = null }
 
     /** Een stap zonder bestanden om te verwerken (alleen afbeeldingen gekozen: geen tekst en pdf) slaat zichzelf over. */
@@ -578,7 +560,7 @@ class FlowSession(
                 synchronized(this) {
                     if (code != 0) {
                         step.status = StepStatus.FAILED
-                        step.message = "Gestopt met exitcode ${code ?: "onbekend"}. Controleer de uitvoer; zet de stap handmatig op klaar als het toch goed ging."
+                        step.message = "Gestopt met exitcode ${code ?: "onbekend"}. Controleer de uitvoer en kies Opnieuw."
                     } else if (missing.isEmpty()) {
                         step.status = StepStatus.DONE
                         step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt.$note$extraNote"
@@ -586,7 +568,7 @@ class FlowSession(
                     } else {
                         step.status = StepStatus.FAILED
                         step.message = "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: " +
-                            names(missing.map { "${it.first} ${it.second}" }, 6) + ". Bekijk het log; zet de stap handmatig op klaar als het toch goed ging."
+                            names(missing.map { "${it.first} ${it.second}" }, 6) + ". Bekijk het log en kies Opnieuw."
                     }
                 }
             } catch (e: Exception) {
@@ -594,7 +576,7 @@ class FlowSession(
                 log.warn("Afronden van stap {} ({}) mislukt", step.id, step.type, e)
                 synchronized(this) {
                     step.status = StepStatus.FAILED
-                    step.message = "Het programma is klaar, maar het afronden is mislukt: ${e.message ?: e.javaClass.simpleName}. Bekijk het log; zet de stap handmatig op klaar als het toch goed ging."
+                    step.message = "Het programma is klaar, maar het afronden is mislukt: ${e.message ?: e.javaClass.simpleName}. Bekijk het log en kies Opnieuw."
                 }
             }
             }

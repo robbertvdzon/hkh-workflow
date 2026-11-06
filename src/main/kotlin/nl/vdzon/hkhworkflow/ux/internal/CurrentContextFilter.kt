@@ -19,9 +19,8 @@ class CurrentContextFilter(private val items: ZcbsSession) : OncePerRequestFilte
         val session = request.getSession(false)
         val user = (session?.getAttribute(USER) as? String)?.takeIf { items.hasSession(it) }
         if (session != null && user == null) session.removeAttribute(USER)
-        // Bij de REST-API staat de collectie in de URL; de oude pagina's onthouden hem in de sessie.
-        val collection = API_COLLECTION.find(request.requestURI.removePrefix(request.contextPath))?.groupValues?.get(1)
-            ?: (session?.getAttribute(COLLECTION) as? String) ?: WorkflowSettings.COLLECTION
+        // De collectie staat in de URL van de REST-API.
+        val collection = API_COLLECTION.find(request.requestURI.removePrefix(request.contextPath))?.groupValues?.get(1) ?: WorkflowSettings.COLLECTION
         Current.set(Current.Context(user, collection))
         try {
             chain.doFilter(request, response)
@@ -33,9 +32,6 @@ class CurrentContextFilter(private val items: ZcbsSession) : OncePerRequestFilte
     companion object {
         /** De naam in de browsersessie van wie is ingelogd. */
         const val USER = "zcbsUser"
-
-        /** De collectie waarmee in de browsersessie wordt gewerkt. */
-        const val COLLECTION = "collectie"
 
         private val API_COLLECTION = Regex("^/api/collections/([^/]+)")
     }

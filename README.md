@@ -1,7 +1,7 @@
 # hkh-workflow
 
 Webinterface ("ZcbsServer") om gescande pdf's van de Historische Kring Heemskerk te verwerken naar ZCBS.
-Kotlin + Spring Boot 4 + Spring Modulith. Levert één runnable jar. De schermen gaan over van Thymeleaf en htmx naar een React-frontend op een REST-API (zie [docs/frontend.md](docs/frontend.md) en [docs/api.md](docs/api.md)).
+Kotlin + Spring Boot 4 + Spring Modulith, met een React-frontend op een REST-API (zie [docs/frontend.md](docs/frontend.md) en [docs/api.md](docs/api.md)). Levert één runnable jar; Node is alleen nodig tijdens het bouwen en haalt Maven zelf op.
 
 **Documentatie:** [docs/specs.md](docs/specs.md) (specificaties, keuzes, status, volgende stappen) en
 [docs/zcbs-achtergrond.md](docs/zcbs-achtergrond.md) (ZCBS, images.exe, pdf2zcbs.exe).
@@ -17,7 +17,7 @@ java -jar target/hkh-workflow.jar
 
 Open daarna http://localhost:9000 (of `http://<computernaam>:9000` vanaf een ander systeem). De app luistert
 op alle netwerkadressen en start .exe-bestanden: zet hem alleen op een server waar niet iedereen bij kan, of zet `HKH_WORKFLOW_ADDRESS=127.0.0.1`.
-Je logt in met je eigen ZCBS-naam en -wachtwoord; de instellingen en de technische pagina's vragen daarnaast het **beheerderswachtwoord**, dat in het
+Je logt in met je eigen ZCBS-naam en -wachtwoord; de instellingen en de andere schermen voor het beheer vragen daarnaast het **beheerderswachtwoord**, dat in het
 configuratiebestand staat (`hkh.workflow.admin-password` in `application.properties` naast de jar). Zonder dat wachtwoord blijven ze dicht.
 Na het inloggen blijf je ingelogd, ook na een herstart van de app: de naam en het wachtwoord staan versleuteld in een cookie van 30 dagen (alleen op
 de computer van de gebruiker), met de sleutel in `hkh-workflow-inloggen.key` naast het instellingenbestand (niet in git zetten). Uitloggen haalt het cookie weg.
@@ -82,7 +82,7 @@ bestanden in die mappen staan en is pas klaar als de verwachte bestanden er zijn
 
 De exe's draaien **in de app**: de uitvoer verschijnt in de browser. Kies **Handmatig uitvoeren** om zelf te antwoorden (de app stelt het onthouden antwoord voor; knoppen voor Enter/J/N)
 of **Automatisch uitvoeren**. Wachtwoorden worden nergens getoond of gelogd (wel leesbaar opgeslagen in het instellingenbestand). Automatisch werkt alleen als de vragen zichtbaar zijn,
-dus met **PERLIO=:unix** aan (standaard aan). Lukt het in de app niet, dan kan de beheerder op de technische pagina **In cmd-venster op de server** kiezen (alleen Windows).
+dus met **PERLIO=:unix** aan (standaard aan).
 
 ### Logging
 

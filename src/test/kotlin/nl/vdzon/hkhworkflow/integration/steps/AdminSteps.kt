@@ -77,5 +77,8 @@ class AdminSteps {
     }
 
     @After("@wijzigt-instellingen")
-    fun restoreSettings() = changesLeftovers("")
+    fun restoreSettings() {
+        adminLoggedIn()
+        changesLeftovers("")
+    }
 }

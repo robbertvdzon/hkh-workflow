@@ -20,6 +20,8 @@ class Screen(private val baseUrl: String) {
     init {
         page.setDefaultTimeout(10_000.0)
         page.onPageError { errors += "JavaScript: $it" }
+        // De vragen "Weet je het zeker?" zijn in deze scenario's altijd met ja beantwoord.
+        page.onDialog { it.accept() }
     }
 
     fun open(path: String) { page.navigate(baseUrl + path) }
@@ -28,9 +30,18 @@ class Screen(private val baseUrl: String) {
 
     fun fill(label: String, value: String) = page.getByLabel(label, PlaywrightPage.GetByLabelOptions().setExact(true)).fill(value)
 
+    /** Een knop of link met precies deze tekst. */
+    fun action(name: String): Locator = button(name).or(page.getByRole(AriaRole.LINK, PlaywrightPage.GetByRoleOptions().setName(name).setExact(true))).first()
+
     fun button(name: String): Locator = page.getByRole(AriaRole.BUTTON, PlaywrightPage.GetByRoleOptions().setName(name).setExact(true))
 
-    fun link(name: String): Locator = page.getByRole(AriaRole.LINK, PlaywrightPage.GetByRoleOptions().setName(name))
+    fun link(name: String): Locator = page.getByRole(AriaRole.LINK, PlaywrightPage.GetByRoleOptions().setName(name).setExact(true))
+
+    /** Een grote keuze op het scherm: een link waarvan de tekst met deze naam begint. */
+    fun choice(name: String): Locator = page.getByRole(AriaRole.LINK, PlaywrightPage.GetByRoleOptions().setName(java.util.regex.Pattern.compile("^$name")))
+
+    /** De rij van een tabel waarin deze tekst staat. */
+    fun row(text: String): Locator = page.getByRole(AriaRole.ROW).filter(Locator.FilterOptions().setHasText(text))
 
     fun heading(name: String): Locator = page.getByRole(AriaRole.HEADING, PlaywrightPage.GetByRoleOptions().setName(name))
 

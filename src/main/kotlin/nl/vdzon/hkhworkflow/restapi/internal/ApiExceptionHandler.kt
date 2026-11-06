@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
-/** Elke fout van de REST-API krijgt dezelfde vorm, zie [ApiProblem]. De oude pagina's zijn gewone controllers en merken hier niets van. */
+/** Elke fout van de REST-API krijgt dezelfde vorm, zie [ApiProblem]. */
 @RestControllerAdvice(annotations = [RestController::class])
 class ApiExceptionHandler {
     private val log = LoggerFactory.getLogger(javaClass)

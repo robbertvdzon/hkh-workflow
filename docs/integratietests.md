@@ -46,7 +46,6 @@ Niet nagebootst: de routervraag (HKH-netwerk) en de snelheidsrem van ZCBS. Die w
 ## Wat ze niet testen
 
 - Windows: de echte exe's, de codepagina IBM850 en Windows-paden. Daarvoor blijft `tools/windows-testlaptop` en [testen-bij-hkh.md](testen-bij-hkh.md).
-- De oude Thymeleaf-pagina's: die zijn sinds de overstap op de API niet meer gedekt. Van de React-schermen wordt alleen getest wat er al is gebouwd.
 - Het echte archief bij HKH.
 
 ## Een scenario toevoegen

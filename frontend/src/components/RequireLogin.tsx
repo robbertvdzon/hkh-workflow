@@ -8,3 +8,11 @@ export function RequireLogin() {
   if (!session.user) return <Navigate to="/" replace state={{ from: location.pathname + location.search }} />
   return <Outlet />
 }
+
+/** Schermen voor de beheerder. Na het inloggen als beheerder kom je terug waar je wilde zijn. */
+export function RequireAdmin() {
+  const session = useLoadedSession()
+  const location = useLocation()
+  if (!session.admin) return <Navigate to="/beheer" replace state={{ from: location.pathname }} />
+  return <Outlet />
+}

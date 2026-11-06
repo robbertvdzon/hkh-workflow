@@ -8,6 +8,7 @@ const alertVariants = cva("rounded-[10px] px-4.5 py-3.5 text-sm", {
       info: "bg-primary-soft text-primary-ink",
       error: "bg-danger-soft text-danger",
       ok: "bg-ok-soft text-ok",
+      warn: "bg-busy-soft text-busy",
     },
   },
   defaultVariants: { variant: "info" },

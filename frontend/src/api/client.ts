@@ -5,11 +5,14 @@ import type { paths } from "./schema"
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
+  /** De hele fout, voor wat er naast de melding in staat (bijvoorbeeld de `conflicts` bij `edit-conflict`). */
+  readonly body: Record<string, unknown>
 
-  constructor(status: number, code: string, detail: string) {
+  constructor(status: number, code: string, detail: string, body: Record<string, unknown> = {}) {
     super(detail)
     this.status = status
     this.code = code
+    this.body = body
   }
 }
 
@@ -22,7 +25,7 @@ export async function unwrap<T>(call: Promise<Result<T>>): Promise<T> {
   const { data, error, response } = await call
   if (response.ok) return data as T
   const problem = (error ?? {}) as { code?: string; detail?: string }
-  throw new ApiError(response.status, problem.code ?? "unknown", problem.detail ?? `De server gaf een fout (${response.status}).`)
+  throw new ApiError(response.status, problem.code ?? "unknown", problem.detail ?? `De server gaf een fout (${response.status}).`, problem)
 }
 
 /** De tekst om aan de gebruiker te tonen. Alleen een [ApiError] heeft een melding die voor hem bedoeld is. */

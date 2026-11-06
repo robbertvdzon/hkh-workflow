@@ -92,17 +92,18 @@ data class SummaryResponse(val place: String, val kind: String, val count: Int, 
 
 data class ConsoleResponse(
     val running: Boolean,
-    val label: String? = null,
-    val output: String = "",
-    val exitCode: Int? = null,
-    val auto: Boolean = false,
-    val autoStuck: Boolean = false,
-    val autoAnswered: Int = 0,
+    val label: String?,
+    val output: String,
+    val exitCode: Int?,
+    val auto: Boolean,
+    val autoStuck: Boolean,
+    val autoAnswered: Int,
+    val inputsSent: Int,
     /** De bekende vraag waar het programma op wacht, en het voorgestelde antwoord (nooit een wachtwoord). */
-    val question: String? = null,
-    val suggestion: String? = null,
-    val secondsSinceOutput: Long = 0,
-    val suspiciousSilence: Boolean = false,
+    val question: String?,
+    val suggestion: String?,
+    val secondsSinceOutput: Long,
+    val suspiciousSilence: Boolean,
 )
 
 data class ConsoleInputRequest(val line: String = "")
@@ -392,8 +393,8 @@ class FlowApiController(
     )
 
     private fun console(s: RunSnapshot?): ConsoleResponse =
-        if (s == null) ConsoleResponse(running = false)
-        else ConsoleResponse(s.running, s.label, s.output, s.exitCode, s.auto, s.autoStuck, s.autoAnswered, s.question, s.suggestion, s.secondsSinceOutput, s.suspiciousSilence)
+        if (s == null) ConsoleResponse(false, null, "", null, false, false, 0, 0, null, null, 0, false)
+        else ConsoleResponse(s.running, s.label, s.output, s.exitCode, s.auto, s.autoStuck, s.autoAnswered, s.inputsSent, s.question, s.suggestion, s.secondsSinceOutput, s.suspiciousSilence)
 
     private fun disposition(name: String, download: Boolean): String =
         (if (download) ContentDisposition.attachment() else ContentDisposition.inline()).filename(name, Charsets.UTF_8).build().toString()

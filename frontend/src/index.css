@@ -22,6 +22,10 @@
   --color-ok-soft: #e6f1e6;
   --color-danger: #8f2118;
   --color-danger-soft: #f9e3e0;
+  --color-busy: #8a4a0b;
+  --color-busy-soft: #fdf0e1;
+  --color-console: #16201f;
+  --color-console-ink: #e8efe9;
 
   --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: "Source Serif 4", Georgia, serif;

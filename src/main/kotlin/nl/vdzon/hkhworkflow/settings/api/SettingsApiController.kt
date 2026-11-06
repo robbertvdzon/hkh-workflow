@@ -23,6 +23,9 @@ data class SettingsResponse(
     val leftoversFolder: String,
     val logFtpPassword: Boolean,
     val ftpUser: String,
+    val ftpHost: String,
+    val ftpPort: Int,
+    val ftpBaseDir: String,
     val ftpPasswordSet: Boolean,
     val collections: List<CollectionSettingsResponse>,
     val resolutions: List<ResolutionResponse>,
@@ -68,6 +71,9 @@ class SettingsApiController(private val settingsService: SettingsService, privat
             leftoversFolder = s.leftoversFolder,
             logFtpPassword = s.logFtpPassword,
             ftpUser = s.ftpUser,
+            ftpHost = s.ftpHost,
+            ftpPort = s.ftpPort,
+            ftpBaseDir = s.ftpBaseDir,
             ftpPasswordSet = s.ftpPassword.isNotEmpty(),
             collections = WorkflowSettings.ALL_COLLECTIONS.map {
                 val c = s.collectionSettings(it)

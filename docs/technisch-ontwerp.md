@@ -9,7 +9,7 @@ Stand: 1 november 2026. Wat er functioneel gebeurt staat in [functioneel-ontwerp
 |---|---|
 | Vorm | Eén runnable jar (`target/hkh-workflow.jar`), poort 9000, luistert op alle adressen |
 | Taal/framework | Kotlin 2.2.21, Spring Boot 4.0.6, Spring Modulith 2.0.0, Java 21, Maven. Jackson 3 (`tools.jackson`) |
-| Schermen | Server-side HTML: Thymeleaf + htmx (meegeleverd, geen CDN), eigen CSS en kleine scripts (`static/js/viewer.js`) |
+| Schermen | React-frontend in `frontend/` op een REST-API; gaat mee in de jar. Zie [frontend.md](frontend.md) en [api.md](api.md) |
 | Opslag | Bestanden, geen database (zie §4) |
 | Pdf's lezen | Apache PDFBox (aantal pagina's, afmeting) |
 | Ftp | Apache Commons Net |
@@ -68,18 +68,15 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 
 ## 6. Schermen en routes (kort)
 
-| Pad | Wat |
+| Scherm | Wat |
 |---|---|
-| `/`, `/collectie`, `/collectie/{naam}` | Inloggen, collectie, twee keuzes |
-| `/nieuw`, `/nieuw/…` | De doorloop (kiezen, voorbereiden, starten, controleren, resten, opnieuw), `/nieuw/bron/…` (bestand en details van een bron), `/nieuw/resultaat/{soort}/{nummer}` (uitvoer bekijken) |
-| `/records`, `/records/kies`, `/records/{nr}` en `/opslaan`, `/conflict`, `/later` | Records aanpassen. `/voorbeeld` en `/terug` (voorbeeldscherm) bestaan nog, maar `record.html` verwijst er niet meer naar |
-| `/zcbs/login`, `/zcbs/logout` | ZCBS-inlog |
-| `/beheer`, `/beheer/inloggen`, `/beheer/uitloggen` | Beheerderslogin |
-| `/instellingen`, `/instellingen/ftp-test`, `/instellingen/sessies`, `/instellingen/sessies/stoppen` | Beheer |
-| `/instellingen/versie`, `.../controleren`, `.../bijwerken`, `.../nacht` | Beheer: welke build draait, wat staat er klaar, bijwerken, de nachtelijke schakelaar |
-| `/test`, `/test/…` | Technische testpagina (stappenketen, console, logs) |
+| `/`, `/collectie/{naam}` | Inloggen, collectie kiezen, twee keuzes |
+| `/collectie/{naam}/nieuw` | De doorloop van nieuwe bestanden; de fase komt van de server |
+| `/collectie/{naam}/records`, `.../records/{nr}` | Records aanpassen |
+| `/beheer` | Beheerderslogin |
+| `/instellingen`, `/instellingen/sessies`, `/instellingen/versie`, `/instellingen/logs` | Beheer |
 
-`WebConfig` bepaalt wie waar mag komen: `/collectie`, `/nieuw`, `/records` vragen een ZCBS-inlog; `/instellingen` en delen van `/test` de beheerder.
+Deze adressen zijn schermen van de frontend; `FrontendConfig` geeft daarvoor `index.html`. De gegevens komen uit de REST-API, zie [api.md](api.md). `WebConfig` bepaalt wie wat mag in de API: de gegevens van een collectie vragen een ZCBS-inlog, het beheer vraagt de beheerder.
 Na een herstart logt de interceptor automatisch opnieuw in met het cookie.
 
 ## 7. Fouten en veerkracht

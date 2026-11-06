@@ -2,7 +2,7 @@
 
 De nieuwe schermen zijn een losse React-app in `frontend/`, die alleen met de [REST-API](api.md) praat. De gebouwde frontend gaat mee in de jar, dus op de server is geen Node nodig en blijft het één programma.
 
-**Status:** de basis staat: inloggen, de keuze van de collectie, inloggen als beheerder en het menu. Records, instellingen en de flow komen hierna. Tot de oude schermen weg zijn, woont de frontend onder `/app`; daarna gaat hij naar de root.
+De schermen: inloggen, collectie kiezen, Nieuwe bestanden (met de live console en Handmatig uitvoeren), Records aanpassen, en voor de beheerder Instellingen, Sessies, Versie en Logs.
 
 ## Ontwikkelen
 
@@ -12,14 +12,14 @@ Start de backend op poort 9000 en daarnaast:
 cd frontend && npm install && npm run dev
 ```
 
-De frontend staat dan op http://localhost:5173/app/, ververst vanzelf en stuurt `/api` door naar de backend.
+De frontend staat dan op http://localhost:5173/, ververst vanzelf en stuurt `/api` door naar de backend.
 
-`mvn clean verify` bouwt de frontend mee: eerst de types, dan `tsc`, ESLint en Vite. Wie alleen aan de backend werkt en sneller wil, slaat dat over met `-Dskip.npm -Dskip.installnodenpm`. De oude build in `target/classes/frontend` blijft dan staan zolang er geen `clean` draait.
+`mvn clean verify` bouwt de frontend mee: eerst de types, dan `tsc`, ESLint en Vite. Wie alleen aan de backend werkt en sneller wil, slaat dat over met `-Dskip.npm -Dskip.installnodenpm`. De vorige build in `target/classes/frontend` blijft dan staan zolang er geen `clean` draait.
 
 ## Afspraken
 
 - **Techniek:** TypeScript, Vite, React Router, TanStack Query en componenten in de stijl van shadcn/ui in `src/components/ui`.
-- **Alleen de API.** De frontend gebruikt alleen `/api` en leest nergens html van de oude schermen.
+- **Alleen de API.** De frontend gebruikt alleen `/api`. De enige uitzonderingen zijn `/actuator/health` (wachten op de herstart na een update) en de pagina `open-in-zcbs`, die in een eigen tabblad opent.
 - **Types komen uit de API.** Een kopie van de beschrijving staat in `frontend/openapi.json`; de build maakt daaruit `src/api/schema.ts`. Schrijf geen eigen types voor wat de API teruggeeft.
 - **Als de API verandert:** draai `tools/update-openapi.sh` en commit `frontend/openapi.json`. Vergeet je dat, dan faalt een scenario; past de frontend niet meer bij de nieuwe API, dan faalt de build.
 - **Fouten:** `unwrap` in `src/api/client.ts` maakt van elke fout een `ApiError`, en `errorMessage` geeft de tekst om te tonen. Kijk naar `error.code`, nooit naar de tekst.

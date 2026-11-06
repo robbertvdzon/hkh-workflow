@@ -121,12 +121,10 @@ class TestRunService(
     fun sources(): SourceFilesService = current().sourceFiles
 
     fun acceptInput() = current().acceptInput()
-    fun inputFolder(): Path? = current().inputFolder()
     fun confirmFiles(): String? = current().confirmFiles()
     fun filesInTestFolder(): List<Path> = current().filesInTestFolder()
     fun start(startNumber: String) = current().start(startNumber)
     fun reset() = current().reset()
-    fun pageState(): Pair<FlowView, List<SummaryLine>?> = current().pageState()
     fun summary(): List<SummaryLine> = current().summary()
     fun prepare(startNumber: String): String? = current().prepare(startNumber)
     fun confirmReview(type: StepType): String? = current().confirmReview(type)
@@ -138,7 +136,6 @@ class TestRunService(
     fun clearLeftovers(move: Boolean): String = current().clearLeftovers(move)
     fun execute(stepId: Int, mode: RunMode, auto: Boolean = false) = current().execute(stepId, mode, auto)
     fun skip(stepId: Int) = current().skip(stepId)
-    fun markDone(stepId: Int) = current().markDone(stepId)
     fun retry(stepId: Int) = current().retry(stepId)
     fun view(): TestRunView? = current().view()
     fun stepId(type: StepType): Int? = current().stepId(type)

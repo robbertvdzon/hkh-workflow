@@ -52,6 +52,8 @@ data class FieldResponse(val name: String, val label: String, val kind: ControlK
 
 data class EditResponse(
     val number: String,
+    /** Uit welk bestand het record kwam, als de app dat weet. */
+    val fileName: String?,
     val fields: List<FieldResponse>,
     val openedAt: String?,
     val lockedUntil: String?,
@@ -240,6 +242,7 @@ class RecordsApiController(
         val image = if (pdf == null) items.imageUrl(padded) else null
         return EditResponse(
             number = padded,
+            fileName = items.record(padded)?.fileName?.ifEmpty { null },
             fields = fields(padded),
             openedAt = items.openedAt(padded),
             lockedUntil = items.openedUntil(padded),
