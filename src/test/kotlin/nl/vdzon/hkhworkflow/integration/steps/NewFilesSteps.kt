@@ -25,7 +25,10 @@ class NewFilesSteps {
                 else -> TestEnvironment.copy("integration/scans/foto.jpg", target)
             }
             // De nagemaakte pdf2zcbs herkent hieraan een scan waar het programma op vastloopt.
-            if ("kapot" in name) Files.writeString(target, Files.readString(target, Charsets.ISO_8859_1) + "\n% kapot\n", Charsets.ISO_8859_1)
+            listOf("kapot", "ongeldig").firstOrNull { it in name && name.endsWith(".pdf") }?.let {
+                Files.writeString(target, Files.readString(target, Charsets.ISO_8859_1) + "\n% $it\n", Charsets.ISO_8859_1)
+            }
+            if ("kapot" in name && !name.endsWith(".pdf")) Files.writeString(target, "Dit is geen afbeelding.\n")
         }
     }
 

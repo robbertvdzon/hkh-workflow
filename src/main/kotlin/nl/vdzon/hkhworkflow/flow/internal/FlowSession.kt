@@ -554,17 +554,23 @@ class FlowSession(
             Current.runAs(input.user.ifEmpty { null }, collection) {
             try {
                 val missing = if (code == 0) expected.filter { !it.second.present(allowEmpty = it.first == "tekst") } else emptyList()
+                val invalid = if (code == 0) expected.filter { it.first != "tekst" && it.first != "pdf" && it !in missing && imageSize(it.second).isEmpty() } else emptyList()
+                val complete = missing.isEmpty() && invalid.isEmpty()
                 // Buiten het slot: dit leest een paar pagina's van ZCBS.
-                val note = if (code == 0 && missing.isEmpty() && step.type == StepType.IMAGES) imagesNote(step) else ""
-                if (code == 0 && missing.isEmpty() && autoAnswers == null && step.type == StepType.IMAGES) learnPassword(exeRunner.typedSecretAnswers())
+                val note = if (code == 0 && complete && step.type == StepType.IMAGES) imagesNote(step) else ""
+                if (code == 0 && complete && autoAnswers == null && step.type == StepType.IMAGES) learnPassword(exeRunner.typedSecretAnswers())
                 synchronized(this) {
                     if (code != 0) {
                         step.status = StepStatus.FAILED
                         step.message = "Gestopt met exitcode ${code ?: "onbekend"}. Controleer de uitvoer en kies Opnieuw."
-                    } else if (missing.isEmpty()) {
+                    } else if (complete) {
                         step.status = StepStatus.DONE
                         step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt.$note$extraNote"
                         // Ook na automatisch uitvoeren ziet Carla eerst wat er gemaakt is en gaat ze zelf verder (de controle in de flow).
+                    } else if (missing.isEmpty()) {
+                        step.status = StepStatus.FAILED
+                        step.message = "Het programma is klaar (exitcode 0), maar dit zijn geen geldige afbeeldingen: " +
+                            names(invalid.map { "${it.first} ${it.second}" }, 6) + ". Bekijk het log en kies Opnieuw."
                     } else {
                         step.status = StepStatus.FAILED
                         step.message = "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: " +

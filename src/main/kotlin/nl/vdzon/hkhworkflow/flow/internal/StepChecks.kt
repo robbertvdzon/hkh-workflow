@@ -57,7 +57,9 @@ class StepChecks {
                 exeProblem("images.exe", s.imagesExe)?.let { add(it) }
                 step.files.forEach {
                     if (it.isImage) {
-                        if (!current.workDir.resolve(it.newName).present()) add("Werkbestand ontbreekt: ${current.workDir.resolve(it.newName)} (is de hernoem-stap gedaan?)")
+                        val work = current.workDir.resolve(it.newName)
+                        if (!work.present()) add("Werkbestand ontbreekt: $work (is de hernoem-stap gedaan?)")
+                        else if (imageSize(work).isEmpty()) add("${it.originalName} is geen geldige afbeelding. Kies Opnieuw beginnen en laat dit bestand weg.")
                     } else if (!l.p2zLarge(it).present()) add("Large-jpg van pdf2zcbs ontbreekt: ${l.p2zLarge(it) ?: "(pdf2zcbs.exe niet ingesteld)"} (is de pdf2zcbs-stap gedaan?)")
                 }
                 val dir = l.img ?: return@buildList

@@ -187,7 +187,11 @@ Feature: The screens of the frontend
     When "Geef de bestanden deze nummers en ga verder" is clicked
     And "Automatisch uitvoeren" is clicked
     Then the screen says "Dit heeft pdf2zcbs.exe gemaakt" within a minute
-    When "Ja, goed: verder met images.exe" is clicked
+    When "Bekijk log" is clicked
+    Then a window shows the file "Log van pdf2zcbs.exe"
+    And the window shows the text "EXIT code=0"
+    When the window is closed
+    And "Ja, goed: verder met images.exe" is clicked
     And "Automatisch uitvoeren" is clicked
     Then the screen says "Dit heeft images.exe gemaakt" within a minute
     And ZCBS has a record 99068 that still has to be described
@@ -255,8 +259,19 @@ Feature: The screens of the frontend
     When "Automatisch uitvoeren" is clicked
     Then "Opnieuw" can be clicked within a minute
     And the screen says "99068"
-    When "Opnieuw" is clicked
+    When "Bekijk log" is clicked
+    Then a window shows the file "Log van pdf2zcbs.exe"
+    And the window shows the text "EXIT code=0"
+    When the window is closed
+    And "Opnieuw" is clicked
     Then "Automatisch uitvoeren" can be clicked within a minute
+
+  Scenario: A file that is not really an image cannot go to images
+    Given Ria scanned "kapot.jpg"
+    And Carla has chosen "kapot.jpg" of Ria on the screen
+    When "Geef de bestanden deze nummers en ga verder" is clicked
+    Then the screen says "kapot.jpg is geen geldige afbeelding"
+    And "Automatisch uitvoeren" cannot be clicked
 
   Scenario: Choosing several files with shift, and nothing means no way on
     Given Jelly scanned "a.pdf, b.pdf, c.pdf"

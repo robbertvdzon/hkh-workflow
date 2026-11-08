@@ -276,6 +276,7 @@ tekstbestand mag wel leeg zijn: een pagina zonder herkende tekst). Pas dan staat
 
 - "Gestopt met exitcode *c*. Controleer de uitvoer en kies Opnieuw."
 - "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: ..."
+- "Het programma is klaar (exitcode 0), maar dit zijn geen geldige afbeeldingen: ..."
 
 Staan er afbeeldingen tussen de gekozen bestanden, dan eindigt de melding met "*N* afbeelding(en) is/zijn overgeslagen (geen pdf: ze gaan rechtstreeks naar images.exe)". Zijn er **alleen** afbeeldingen, dan slaat de stap zichzelf over en gaat de doorloop naar fase 5.
 
@@ -455,7 +456,7 @@ Kent de app een vraag niet (bijvoorbeeld een andere versie van het programma), d
 
 ### Console, logbestanden en stoppen
 
-- Elke start van een programma krijgt een eigen logbestand `run-<datum-tijd>-<id>-<label>.log` in `logs\<collectie>\<gebruiker>\` (de logmap volgt uit `HKH_WORKFLOW_LOG_DIR`, standaard `logs`) met tijdstempels per stuk uitvoer en per verstuurde invoer. Te lezen via de technische pagina **Test** onder Runs, of via de link **Volledig log** in de console.
+- Elke start van een programma krijgt een eigen logbestand `run-<datum-tijd>-<id>-<label>.log` in `logs\<collectie>\<gebruiker>\` (de logmap volgt uit `HKH_WORKFLOW_LOG_DIR`, standaard `logs`) met tijdstempels per stuk uitvoer en per verstuurde invoer. Te lezen via de knop **Bekijk log** bij een mislukte stap en bij het controleren van wat een programma heeft gemaakt, via de link **Volledig log** in de console, en voor de beheerder bij **Logs**.
 - De console-codepagina is standaard IBM850 (Nederlandse Windows; `HKH_WORKFLOW_CONSOLE_CHARSET`).
 - **Stop programma** (alleen in de handmatige console) stopt het programma en zijn onderliggende processen. De stap eindigt dan waarschijnlijk als **Mislukt** (exitcode niet 0; uit de code gelezen, niet bevestigd op de echte server).
 - Er kan per gebruiker maar één programma tegelijk draaien ("Er draait nog een programma.").
@@ -661,6 +662,8 @@ Alle meldingen komen uit de code. Hoofdletters en leestekens kunnen in het scher
 | Controleer eerst de bestanden van pdf2zcbs.exe (images.exe) en bevestig dat ze goed zijn. | De controle van hoofdstuk 6 is nog niet gedaan | Op **Ja, goed: ...** klikken (nadat je gekeken hebt) |
 | Gestopt met exitcode *c*. Controleer de uitvoer en kies Opnieuw. | Het programma gaf een foutcode, of is gestopt via **Stop programma** | Beheerder: log lezen (Test, Runs). Ging het toch goed, dan **Toch klaar** op de pagina Test. Anders **Opnieuw** |
 | Het programma is klaar (exitcode 0), maar er ontbreken bestanden: ... | Het programma deed zijn werk niet volledig (bijv. een pagina werd niet verwerkt) | Log lezen; **Opnieuw**, of de scan nakijken |
+| Het programma is klaar (exitcode 0), maar dit zijn geen geldige afbeeldingen: ... | Het programma heeft bestanden gemaakt die geen afbeelding zijn | **Bekijk log**; **Opnieuw**, of de scan nakijken |
+| ... is geen geldige afbeelding. Kies Opnieuw beginnen en laat dit bestand weg. | De gekozen jpg is beschadigd of is eigenlijk een ander soort bestand. images.exe wordt niet gestart | **Opnieuw beginnen** en dit bestand niet kiezen; de scan opnieuw maken |
 | Het programma is klaar, maar het afronden is mislukt: ... | Een uitzondering bij het controleren | Log van de app lezen; **Opnieuw** |
 | De app is herstart terwijl deze stap bezig was. ... | Zie hoofdstuk 10 | Eerst kijken wat er al staat, dan **Opnieuw** |
 | Voordat images.exe de records aanmaakt: ... Er is niets aangemaakt. Kies "Opnieuw beginnen" ... | Zie hoofdstuk 7: iemand anders gebruikte de nummers | **Opnieuw beginnen**, ander beginnummer |

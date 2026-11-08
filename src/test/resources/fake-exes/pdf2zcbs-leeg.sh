@@ -6,6 +6,6 @@ for f in *.pdf; do
   b="${f%.pdf}"
   mv "$f" "output/pdf/$f"
   : > "output/ocr/$b.txt"
-  echo "small $b" > "output/small/$b.jpg"
-  echo "large $b" > "output/large/$b.jpg"
+  { cat sample.bin; echo "small $b"; } > "output/small/$b.jpg"
+  { cat sample.bin; echo "large $b"; } > "output/large/$b.jpg"
 done

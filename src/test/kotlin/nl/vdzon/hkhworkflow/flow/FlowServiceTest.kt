@@ -66,6 +66,15 @@ class FlowServiceTest {
     private lateinit var input: WorkFolders
     private lateinit var sources: SourceFilesService
 
+    /** Een echte jpg met [text] erachter: de app ziet een geldige afbeelding en de test ziet welke het is. */
+    private fun jpg(text: String): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        javax.imageio.ImageIO.write(java.awt.image.BufferedImage(40, 30, java.awt.image.BufferedImage.TYPE_INT_RGB), "jpg", out)
+        return out.toByteArray() + "\n$text\n".toByteArray()
+    }
+
+    private fun textIn(jpg: Path): String = Files.readString(jpg, Charsets.ISO_8859_1).trim().substringAfterLast('\n')
+
     private fun fake(name: String, into: Path, asName: String): Path {
         Files.createDirectories(into)
         val target = into.resolve(asName)
@@ -93,6 +102,7 @@ class FlowServiceTest {
         Files.writeString(inbox.resolve("xx01.pdf"), "a")
         Files.writeString(inbox.resolve("notes.txt"), "genegeerd")
         fake("pdf2zcbs.sh", p2zMaster, "pdf2zcbs.sh")
+        Files.write(p2zMaster.resolve("sample.bin"), jpg("voorbeeld"))
         fake("images.sh", imgMaster, "images.sh")
 
         serverRoot = Files.createDirectories(dir.resolve("server"))
@@ -219,7 +229,7 @@ class FlowServiceTest {
         // images: krijgt de large-jpg's van pdf2zcbs en geen pdf's.
         assertEquals("DONE", runNext().status)
         assertEquals(listOf("90000000.jpg", "90000001.jpg"), filesIn(imgDir.resolve("images")))
-        assertEquals("large 90000000", Files.readString(imgDir.resolve("images/90000000.jpg")).trim())
+        assertEquals("large 90000000", textIn(imgDir.resolve("images/90000000.jpg")))
         assertEquals(listOf("90000000.jpg", "90000001.jpg"), filesIn(imgDir.resolve("100pct")))
         assertEquals(listOf("OK", "OK", "OK"), states(1, "images"))
 
@@ -239,7 +249,7 @@ class FlowServiceTest {
         assertFalse(Files.exists(imgDir.resolve("100pct")))
         assertEquals(emptyList(), filesIn(imgDir.resolve("images")))
         assertEquals(listOf("images", "images.sh"), filesIn(imgDir), "het logbestand is weg; het programma en de lege invoermap blijven")
-        assertEquals(listOf("pdf2zcbs.sh"), filesIn(p2zDir), "ook de pdf's die pdf2zcbs kreeg zijn weg")
+        assertEquals(listOf("pdf2zcbs.sh", "sample.bin"), filesIn(p2zDir), "ook de pdf's die pdf2zcbs kreeg zijn weg")
         assertEquals(listOf("notes.txt"), filesIn(inbox), "de kopieën in de invoermap en de werkmap zijn opgeruimd")
         assertEquals(listOf("server", "back-up"), service.view()!!.rows[0].checks.map { it.label })
         assertEquals(listOf("OK", "OK"), states(0, "back-up"))
@@ -248,7 +258,7 @@ class FlowServiceTest {
 
     @Test
     fun `een afbeelding slaat pdf2zcbs en de upload over en gaat rechtstreeks naar images`() {
-        Files.writeString(inbox.resolve("xx03.jpg"), "oorspronkelijke jpg")
+        Files.write(inbox.resolve("xx03.jpg"), jpg("oorspronkelijke jpg"))
         service.start("90000000")
         assertEquals(listOf("90000000.pdf", "90000001.pdf", "90000002.jpg"), service.view()!!.rows.map { it.newName })
         assertEquals(listOf("pdf2zcbs", "images", "server", "back-up"), service.view()!!.rows[0].checks.map { it.label })
@@ -266,8 +276,8 @@ class FlowServiceTest {
 
         assertEquals("DONE", runNext().status)
         assertEquals(listOf("90000000.jpg", "90000001.jpg", "90000002.jpg"), filesIn(imgDir.resolve("images")))
-        assertEquals("oorspronkelijke jpg", Files.readString(imgDir.resolve("images/90000002.jpg")).trim(), "de afbeelding zelf gaat naar images.exe")
-        assertEquals("large 90000000", Files.readString(imgDir.resolve("images/90000000.jpg")).trim(), "een pdf geeft de large-jpg van pdf2zcbs door")
+        assertEquals("oorspronkelijke jpg", textIn(imgDir.resolve("images/90000002.jpg")), "de afbeelding zelf gaat naar images.exe")
+        assertEquals("large 90000000", textIn(imgDir.resolve("images/90000000.jpg")), "een pdf geeft de large-jpg van pdf2zcbs door")
         assertEquals(9, service.producedFiles(StepType.IMAGES).size)
 
         val upload = runNext()
@@ -288,8 +298,8 @@ class FlowServiceTest {
     fun `alleen afbeeldingen, dan worden pdf2zcbs en de upload overgeslagen`() {
         Files.delete(inbox.resolve("xx01.pdf"))
         Files.delete(inbox.resolve("xx02.pdf"))
-        Files.writeString(inbox.resolve("a.jpg"), "plaatje a")
-        Files.writeString(inbox.resolve("b.jpeg"), "plaatje b")
+        Files.write(inbox.resolve("a.jpg"), jpg("plaatje a"))
+        Files.write(inbox.resolve("b.jpeg"), jpg("plaatje b"))
         service.start("90000000")
         assertEquals(listOf("90000000.jpg", "90000001.jpg"), service.view()!!.rows.map { it.newName })
         runUntil("PDF2ZCBS")
@@ -299,7 +309,7 @@ class FlowServiceTest {
         assertFalse(Files.exists(p2zDir.resolve("output")), "pdf2zcbs is niet gestart")
         assertEquals("DONE", runNext().status)
         assertEquals(listOf("90000000.jpg", "90000001.jpg"), filesIn(imgDir.resolve("images")))
-        assertEquals("plaatje b", Files.readString(imgDir.resolve("images/90000001.jpg")).trim())
+        assertEquals("plaatje b", textIn(imgDir.resolve("images/90000001.jpg")))
         assertEquals("SKIPPED", runNext().status, "geen tekst of pdf om te uploaden")
         assertEquals(emptyList(), filesIn(remote("/public_html/archief/pdf")))
         assertEquals("DONE", runNext().status)
@@ -624,7 +634,7 @@ class FlowServiceTest {
         assertEquals(listOf("tekst", "pdf", "small", "large"), produced.take(4).map { it.label })
         assertEquals(listOf("p2z-small", "p2z-large"), produced.take(4).map { it.kind }.drop(2))
         assertTrue(produced.all { it.size.endsWith(" B") }, produced.map { it.size }.toString())
-        assertTrue(produced.all { it.resolution == "" }, "de nepbestanden zijn geen echte afbeeldingen")
+        assertEquals(listOf("", "", "40 × 30 px", "40 × 30 px"), produced.take(4).map { it.resolution })
         assertEquals(emptyList(), service.producedFiles(StepType.IMAGES), "images draaide nog niet")
         assertEquals("DONE", runNext().status)
         assertEquals(listOf("small", "large", "100pct"), service.producedFiles(StepType.IMAGES).take(3).map { it.label })

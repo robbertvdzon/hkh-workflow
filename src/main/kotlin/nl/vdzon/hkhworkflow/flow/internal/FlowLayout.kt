@@ -35,6 +35,19 @@ class FlowLayout(val s: WorkflowSettings, folders: WorkFolders) {
 internal fun Path?.present(allowEmpty: Boolean = false): Boolean =
     this != null && Files.isRegularFile(this) && (allowEmpty || runCatching { Files.size(this) > 0 }.getOrDefault(false))
 
+/** "1654 × 2339 px" voor een afbeelding, zonder haar helemaal te lezen; leeg als dat niet lukt. */
+internal fun imageSize(path: Path): String = runCatching {
+    javax.imageio.ImageIO.createImageInputStream(path.toFile()).use { stream ->
+        val readers = javax.imageio.ImageIO.getImageReaders(stream)
+        if (!readers.hasNext()) return@runCatching ""
+        val reader = readers.next()
+        try {
+            reader.input = stream
+            "${reader.getWidth(0)} × ${reader.getHeight(0)} px"
+        } finally { reader.dispose() }
+    }
+}.getOrDefault("")
+
 internal fun names(list: List<String>, max: Int = 8): String =
     list.take(max).joinToString() + if (list.size > max) " en ${list.size - max} andere" else ""
 

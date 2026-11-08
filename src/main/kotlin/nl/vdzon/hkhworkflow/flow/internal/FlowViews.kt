@@ -219,17 +219,4 @@ class FlowViews(private val input: WorkFolders, private val ftpService: FtpServi
         bytes < 1024 * 1024 -> "${(bytes + 512) / 1024} kB"
         else -> "%.1f MB".format(java.util.Locale.forLanguageTag("nl"), bytes / 1024.0 / 1024.0)
     }
-
-    /** "1654 × 2339 px" voor een afbeelding, zonder haar helemaal te lezen; leeg als dat niet lukt. */
-    private fun imageSize(path: Path): String = runCatching {
-        javax.imageio.ImageIO.createImageInputStream(path.toFile()).use { stream ->
-            val readers = javax.imageio.ImageIO.getImageReaders(stream)
-            if (!readers.hasNext()) return@runCatching ""
-            val reader = readers.next()
-            try {
-                reader.input = stream
-                "${reader.getWidth(0)} × ${reader.getHeight(0)} px"
-            } finally { reader.dispose() }
-        }
-    }.getOrDefault("")
 }

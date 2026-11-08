@@ -112,6 +112,9 @@ class ScreenSteps {
         assertThat(dialog.getByText(title).first()).isVisible()
     }
 
+    @Then("the window shows the text {string}")
+    fun windowShowsText(text: String) = assertThat(screen.page.getByRole(AriaRole.DIALOG).frameLocator("iframe").getByText(text).first()).isVisible()
+
     @When("the window is closed")
     fun closeWindow() {
         screen.button("Sluiten").click()

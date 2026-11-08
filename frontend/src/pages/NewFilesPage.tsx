@@ -574,13 +574,26 @@ function CurrentStep({ collection, flow, step, act, busy }: { collection: string
             </Button>
           ))}
         {step.status === "FAILED" && (
-          <Button disabled={busy} onClick={() => act((a) => a.retry(name))}>
-            Opnieuw
-          </Button>
+          <div className="flex gap-2">
+            {step.usesProgram && <LogButton collection={collection} program={step.label} />}
+            <Button disabled={busy} onClick={() => act((a) => a.retry(name))}>
+              Opnieuw
+            </Button>
+          </div>
         )}
       </section>
       {running && step.usesProgram && flow.running && <ProgramConsole collection={collection} act={act} />}
     </>
+  )
+}
+
+/** Toont het log van de laatste run in een venster boven het scherm. */
+function LogButton({ collection, program }: { collection: string; program: string }) {
+  const viewer = useFileViewer()
+  return (
+    <Button variant="secondary" onClick={() => viewer({ url: consoleLogUrl(collection), title: `Log van ${program}`, kind: "text" })}>
+      Bekijk log
+    </Button>
   )
 }
 
@@ -763,6 +776,7 @@ function Review({ collection, step, steps, act, busy }: { collection: string; st
         >
           Niet goed: {program} opnieuw uitvoeren
         </Button>
+        <LogButton collection={collection} program={program ?? step} />
       </div>
     </Card>
   )

@@ -100,6 +100,29 @@ Feature: Putting new files in ZCBS
     When Carla retries pdf2zcbs
     Then the step pdf2zcbs is waiting for Carla
 
+  Scenario: pdf2zcbs makes something that is not an image
+    Given Jelly scanned "ongeldig.pdf"
+    When Carla starts adding new files
+    And Carla picks "ongeldig.pdf" from Jelly
+    And Carla accepts the offered numbers
+    And Carla runs pdf2zcbs
+    Then the step pdf2zcbs has failed for Carla
+    And Carla sees "geen geldige afbeeldingen"
+    And Carla is not asked to check anything
+    And ZCBS has no record 99068
+
+  Scenario: A file that is not really an image does not reach images
+    Given Ria scanned "kapot.jpg"
+    When Carla starts adding new files
+    And Carla picks "kapot.jpg" from Ria
+    And Carla accepts the offered numbers
+    And Carla runs images
+    Then the step images has failed for Carla
+    And Carla sees "kapot.jpg is geen geldige afbeelding"
+    And Carla is not asked to check anything
+    And the server has no files of record 99068
+    And ZCBS has no record 99068
+
   Scenario: Somebody used one of my numbers in the meantime: images does not start
     When Carla starts adding new files
     And Carla picks "kerk.pdf" from Jelly

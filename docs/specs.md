@@ -286,6 +286,7 @@ oude manier kan worden afgemaakt. Er wordt pas iets verwijderd of gearchiveerd a
    grijs = stap nog niet aan de beurt. Na het opruimen verdwijnen de lokale groepen.
 5. Een exe-stap is pas **klaar** als de verwachte bestanden er zijn; exitcode 0 alleen is niet genoeg (Perl-programma's geven
    die bijna altijd). Ontbreekt er iets, dan is de stap mislukt met de lijst van ontbrekende bestanden.
+   Een gemaakte small, large of 100pct moet ook echt een afbeelding zijn. Een gekozen jpg die dat niet is, houdt de stap images tegen voordat het programma start, want images.exe uploadt zelf en maakt records aan (8 november 2026).
 
 | Stap | Wat er gebeurt | Weigert als |
 |---|---|---|
@@ -329,7 +330,7 @@ bestanden zelf, dus blijft staan na een herstart van de app.
   vraag …`, `EOF`, `EXIT code=…, tekens, brokken, invoerregels`.
 - Wachtwoorden: in console `********`, in log `(wachtwoord, n tekens)`.
 - UI toont live: ontvangen tekens/brokken, seconden sinds laatste uitvoer, aantal invoerregels, aantal automatische
-  antwoorden, link "Volledig log". **Buffer-waarschuwing** alleen bij verdachte stilte: nog nooit uitvoer, of niets
+  antwoorden, link "Volledig log". Na afloop opent de knop "Bekijk log" (bij een mislukte stap en bij het controleren) hetzelfde log in een venster. **Buffer-waarschuwing** alleen bij verdachte stilte: nog nooit uitvoer, of niets
   meer na de laatste invoer (≥ 5 s). Rode melding als automatisch een vraag niet herkent.
 - **Automatisch antwoorden:** bij elk nieuw stuk uitvoer zoekt `autoRespond` in de nog niet beantwoorde tekst de
   eerst voorkomende `pattern` (hoofdletterongevoelig), stuurt het antwoord en gaat verder na die plek. Maximaal 100
