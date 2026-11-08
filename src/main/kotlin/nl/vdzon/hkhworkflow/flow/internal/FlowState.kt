@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 /**
  * De stand van een doorloop zoals hij op schijf wordt bewaard (`sessie.json` in de map van de gebruiker), zodat hij een herstart van de app

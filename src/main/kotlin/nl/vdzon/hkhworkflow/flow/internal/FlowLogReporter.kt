@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 import java.time.Instant
 import java.util.UUID
@@ -25,7 +25,7 @@ import tools.jackson.databind.node.ObjectNode
  */
 @Component
 class FlowLogReporter(
-    private val flows: TestRunService,
+    private val flows: FlowService,
     private val settingsService: SettingsService,
     private val items: ZcbsSession,
     private val processed: ProcessedLog,
@@ -94,7 +94,7 @@ class FlowLogReporter(
 
         val run = view.run
         run?.rows?.forEach { current.numbers += it.number }
-        val chosen = if (run == null) f.filesInTestFolder().map { it.fileName.toString() } else emptyList()
+        val chosen = if (run == null) f.filesInInputFolder().map { it.fileName.toString() } else emptyList()
         val fileCount = run?.fileCount ?: chosen.size
         val titles = view.phases.map { it.title }
         val phaseLabel = if (view.finished) "Klaar" else titles.getOrNull(view.current - 1).orEmpty()
@@ -133,7 +133,7 @@ class FlowLogReporter(
             put("startnummer", run?.startNumber.orEmpty())
             put("aantalBestanden", fileCount)
             put("gebruiker", items.user.orEmpty())
-            put("invoermap", run?.testFolder ?: f.inputFolder()?.toString().orEmpty())
+            put("invoermap", run?.inputFolder ?: f.inputFolder()?.toString().orEmpty())
             put("werkmap", run?.workDir.orEmpty())
             put("sessieGestart", current.startedAt.toString())
         })

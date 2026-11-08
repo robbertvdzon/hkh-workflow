@@ -2,7 +2,7 @@ package nl.vdzon.hkhworkflow.update.internal
 
 import java.time.Clock
 import kotlin.system.exitProcess
-import nl.vdzon.hkhworkflow.testrun.RunningFlows
+import nl.vdzon.hkhworkflow.flow.RunningFlows
 import org.springframework.boot.ExitCodeGenerator
 import org.springframework.boot.SpringApplication
 import org.springframework.context.ConfigurableApplicationContext

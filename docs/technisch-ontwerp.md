@@ -21,15 +21,16 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
 
 | Module | Mag gebruiken | Inhoud |
 |---|---|---|
-| `settings` | – | De instellingen: `SettingsService`, `WorkflowSettings`, `WorkflowProperties`, `SettingsChanged`. `internal`: `DefaultSettingsService`, `SettingsFile` (het bestand op schijf). `api`: `SettingsController` |
+| `settings` | – | De instellingen: `SettingsService`, `WorkflowSettings`, `WorkflowProperties`, `SettingsChanged`. `internal`: `DefaultSettingsService`, `SettingsFile` (het bestand op schijf). `api`: `SettingsApiController` |
 | `exerunner` | – | `ExeRunner`: start één extern programma tegelijk, leest uitvoer, stuurt invoer, vaste antwoorden, logbestand per run. `internal`: `ProcessExeRunner` |
-| `ftp` | settings | `FtpService`: ftp-upload zoals images.exe, nooit overschrijven. `internal`: `DefaultFtpService`. `api`: `FtpController` |
+| `ftp` | settings | `FtpService`: ftp-upload zoals images.exe, nooit overschrijven. `internal`: `DefaultFtpService`. `api`: `FtpApiController` |
 | `zcbs` | settings | `ZcbsClient`, `ItemForm`, `Page`, `FreeNumbers`, `ZcbsText`. `internal`: `HttpZcbsClient` (HTTP naar `/cgi-bin/<collectie>.pl`, cookies in het geheugen), `ZcbsPages` (antwoorden herkennen), `FormParser`, `RecordRebuilder` (controle tegen veld `a0`) |
 | `adminlog` | settings | `AdminLog`, `SessionReport`, `SnapshotSanitizer`, `AppVersion`. `internal`: `AdminLogClient`, `SettingsChangeReporter`, `AppLogAppender`/`AppLogSpool`/`AppLogShipper` (app-log) |
-| `items` | adminlog, zcbs, settings | `ZcbsSession` (de inlog, voor andere modules), `LoginCookie`, `Current` (wie is aan het woord), `NewRecordsSource`. `internal`: `ItemEditService`, `EditSession` (de sessie en het bewerken van één gebruiker), `RecentRecords`, `RememberLogin`, `EditLogReporter`. `api`: `ItemsController` |
-| `testrun` | adminlog, settings, exerunner, ftp, items, zcbs | `RunningFlows`. `internal`: `TestRunService` (register van doorlopen), `FlowSession` (één doorloop), `StepChecks` (wat houdt een stap tegen), `FlowViews` (wat de gebruiker ziet), `LeftoverFolders`, `FlowLayout`, `WorkFolders`, `ProgramFiles`, `SourceFilesService`, `ProcessedLog`, `FlowLogReporter`. `api`: `NewFilesController`, `TestController`, `SessionsController` |
-| `update` | adminlog, settings, testrun | Geen openbare kant. `internal`: `UpdateService` (kijkt op GitHub of er een nieuwere build is, zet de jar klaar, herstart met exitcode 10), `GitHubReleases`. `api`: `UpdateController` |
-| `ux` | adminlog, settings, items | Geen openbare kant. `internal`: `CurrentContextFilter`, `WebConfig` (wie waar mag komen), `AdminAccess`. `api`: `ShellController` |
+| `items` | adminlog, zcbs, settings | `ZcbsSession` (de inlog, voor andere modules), `LoginCookie`, `Current` (wie is aan het woord), `NewRecordsSource`. `internal`: `ItemEditService`, `EditSession` (de sessie en het bewerken van één gebruiker), `RecentRecords`, `RememberLogin`, `EditLogReporter`. `api`: `RecordsApiController` |
+| `flow` | adminlog, settings, exerunner, ftp, items, zcbs | `RunningFlows`. `internal`: `FlowService` (register van doorlopen), `FlowSession` (één doorloop), `StepChecks` (wat houdt een stap tegen), `FlowViews` (wat de gebruiker ziet), `LeftoverFolders`, `FlowLayout`, `WorkFolders`, `ProgramFiles`, `SourceFilesService`, `ProcessedLog`, `FlowLogReporter`. `api`: `FlowApiController`, `AdminApiController` |
+| `restapi` | – | `ApiProblem`: de foutvorm van de API. `internal`: `ApiExceptionHandler`, `OpenApiConfig`, `KotlinNullability` |
+| `update` | adminlog, settings, flow | Geen openbare kant. `internal`: `UpdateService` (kijkt op GitHub of er een nieuwere build is, zet de jar klaar, herstart met exitcode 10), `GitHubReleases`. `api`: `VersionApiController` |
+| `ux` | adminlog, settings, items | Geen openbare kant. `internal`: `CurrentContextFilter`, `FrontendConfig` (serveert de React-app), `WebConfig` (wie waar mag komen), `AdminAccess`. `api`: `SessionApiController` |
 
 ## 3. Wie is aan het woord: meerdere gebruikers
 
@@ -37,7 +38,7 @@ Elke module heeft een `package-info.java` met `@ApplicationModule(allowedDepende
   Achtergronddraden zetten hem zelf met `Current.runAs(user, collection) { … }`.
 - **`ItemEditService`** (voor andere modules: `ZcbsSession`) is een facade over een register van `EditSession`s (sleutel: naam in kleine letters). Elke aanroep gaat naar de sessie van de gebruiker die aan het woord is.
   Een `EditSession` bewaart de inlog per collectie (`ZcbsClient` per collectie waar de gebruiker rechten heeft), de gekozen records en hun status.
-- **`TestRunService`** is een register van `FlowSession`s met sleutel `<gebruiker in kleine letters>/<collectie>`. **Er is geen slot per collectie** (besluit 1 november 2026);
+- **`FlowService`** is een register van `FlowSession`s met sleutel `<gebruiker in kleine letters>/<collectie>`. **Er is geen slot per collectie** (besluit 1 november 2026);
   twee gebruikers in dezelfde collectie hebben dus twee doorlopen met eigen `ExeRunner`, eigen mappen en eigen stand. `active()` voedt de pagina Sessies, `stop()` stopt een doorloop.
 - **Nummerconflicten** zijn het enige dat gebruikers delen. `FlowSession.numbersTaken` controleert vlak voor de eerste poging van images.exe via `FreeNumbers.check`
   dat de nummers nog vrij zijn (alleen bij de eerste poging: bij een herhaling bestaan de eigen records al).

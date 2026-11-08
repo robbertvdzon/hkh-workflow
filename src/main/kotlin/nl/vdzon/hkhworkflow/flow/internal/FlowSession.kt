@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
 
 /**
  * De doorloop van "Nieuwe bestanden" van één gebruiker in één collectie: de stand (bestanden, stappen, controles) en alles wat er uit volgt. Er is
- * geen slot per collectie: elke gebruiker heeft zijn eigen doorloop ([TestRunService] houdt ze bij); elke doorloop heeft zijn eigen
+ * geen slot per collectie: elke gebruiker heeft zijn eigen doorloop ([FlowService] houdt ze bij); elke doorloop heeft zijn eigen
  * mappen ([WorkFolders]), zijn eigen programma's ([ExeRunner]) en kijkt via [Current] naar de ZCBS-sessie van zijn eigenaar.
  */
 class FlowSession(
@@ -70,7 +70,7 @@ class FlowSession(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Volatile
-    private var run: TestRun? = null
+    private var run: FlowRun? = null
 
     /** Heeft de gebruiker de lijst met pdf's in de invoermap bevestigd (fase Bestanden kiezen)? */
     @Volatile
@@ -95,13 +95,13 @@ class FlowSession(
     @Synchronized
     fun confirmFiles(): String? {
         if (leftovers().isNotEmpty()) return LEFTOVERS_MESSAGE
-        if (filesInTestFolder().isEmpty()) return "Er staan geen bestanden in je invoermap. Kies eerst bestanden en kopieer ze."
+        if (filesInInputFolder().isEmpty()) return "Er staan geen bestanden in je invoermap. Kies eerst bestanden en kopieer ze."
         filesConfirmed = true
         return null
     }
 
     /** De gekozen bestanden (pdf's en jpg's) die nu in de invoermap van de gebruiker staan (alleen de map zelf, geen submappen). */
-    fun filesInTestFolder(): List<Path> {
+    fun filesInInputFolder(): List<Path> {
         val dir = input.invoer() ?: return emptyList()
         if (!Files.isDirectory(dir)) return emptyList()
         return dir.listDirectoryEntries()
@@ -114,22 +114,22 @@ class FlowSession(
         stopPrevious()
         val settings = settings()
         input.ensureAll()
-        val testFolder = input.invoer()!!
-        val chosen = filesInTestFolder()
-        require(chosen.isNotEmpty()) { "Er staan geen bestanden in de testmap." }
+        val inputFolder = input.invoer()!!
+        val chosen = filesInInputFolder()
+        require(chosen.isNotEmpty()) { "Er staan geen bestanden in de invoermap." }
 
         val numbers = sequenceNumbers(startNumber, chosen.size)
         val files = chosen.mapIndexed { i, path ->
             val origin = sourceFiles.origin(path.name)
-            TestFile(i, path, numbers[i], origin?.by.orEmpty(), origin?.folder.orEmpty())
+            FlowFile(i, path, numbers[i], origin?.by.orEmpty(), origin?.folder.orEmpty())
         }
         var id = 0
         val steps = StepType.entries.flatMap { type ->
             if (type.perFile) files.map { Step(++id, type, listOf(it)) } else listOf(Step(++id, type, files))
         }
-        run = TestRun(startNumber.trim(), testFolder, input.werk()!!, files, steps)
+        run = FlowRun(startNumber.trim(), inputFolder, input.werk()!!, files, steps)
         claim()
-        log.info("Testrun gestart: {} bestanden vanaf {}", files.size, startNumber)
+        log.info("Doorloop gestart: {} bestanden vanaf {}", files.size, startNumber)
     }
 
     @Synchronized
@@ -173,7 +173,7 @@ class FlowSession(
         claimedSince = state.claimedSince?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
         touch()
         val startNumber = state.startNumber ?: return
-        val files = state.files.map { TestFile(it.index, Path.of(it.original), it.number, it.by, it.folder) }
+        val files = state.files.map { FlowFile(it.index, Path.of(it.original), it.number, it.by, it.folder) }
         val steps = state.steps.map { st ->
             Step(st.id, StepType.valueOf(st.type), st.fileIndexes.mapNotNull { i -> files.firstOrNull { it.index == i } }).also { step ->
                 step.status = StepStatus.valueOf(st.status)
@@ -186,7 +186,7 @@ class FlowSession(
                 }
             }
         }
-        run = TestRun(startNumber, input.invoer()!!, input.werk()!!, files, steps).also { r ->
+        run = FlowRun(startNumber, input.invoer()!!, input.werk()!!, files, steps).also { r ->
             r.gated = state.gated
             r.reviewed += state.reviewed.map { StepType.valueOf(it) }
         }
@@ -202,7 +202,7 @@ class FlowSession(
         if (files.isEmpty()) return emptyList()
         val pdfs = files.filter { !it.isImage }
         // "99062.pdf t/m 99064.pdf" als de nummers aaneensluiten, anders een opsomming.
-        fun range(list: List<TestFile>, ext: String): String {
+        fun range(list: List<FlowFile>, ext: String): String {
             val numbers = list.map { it.number }
             val consecutive = numbers.size > 1 && numbers.map { it.toLongOrNull() }.zipWithNext().all { (a, b) -> a != null && b != null && b == a + 1 }
             return when {
@@ -211,7 +211,7 @@ class FlowSession(
                 else -> names(numbers.map { "$it.$ext" }, 6)
             }
         }
-        fun line(place: String, kind: String, ext: String, folder: String, list: List<TestFile> = files) =
+        fun line(place: String, kind: String, ext: String, folder: String, list: List<FlowFile> = files) =
             if (list.isEmpty()) null else SummaryLine(place, kind, list.size, range(list, ext), folder)
         val server = "Server (ftp ${s.ftpHost})"
         return listOfNotNull(
@@ -232,7 +232,7 @@ class FlowSession(
      */
     @Synchronized
     fun prepare(startNumber: String): String? {
-        val chosen = filesInTestFolder()
+        val chosen = filesInInputFolder()
         if (chosen.isEmpty()) return "Er staan geen bestanden in de invoermap."
         if (leftovers().isNotEmpty()) return LEFTOVERS_MESSAGE
         val start = startNumber.trim().toLongOrNull() ?: return "Geef een beginnummer van alleen cijfers op."
@@ -286,7 +286,7 @@ class FlowSession(
             else -> 7
         }
         val titles = listOf("Controleren", "Bestanden kiezen", "Nummers", "pdf2zcbs", "images.exe", "Upload ocr en pdf", "Back-up")
-        val chosen = filesInTestFolder().size
+        val chosen = filesInInputFolder().size
         val notes = mapOf(
             2 to chosen.takeIf { it > 0 }?.let { "$it gekozen" },
             3 to current?.files?.let { it.first().number + (if (it.size > 1) " t/m " + it.last().number else "") },
@@ -384,12 +384,12 @@ class FlowSession(
     private fun stopPrevious() {
         check(exeRunner.stopAndWait()) { "Het lopende programma wil niet stoppen; probeer het nog eens." }
         exeRunner.clear()
-        log.info("Vorige testrun opgeruimd")
+        log.info("Vorige doorloop opgeruimd")
     }
 
     @Synchronized
     fun execute(stepId: Int, mode: RunMode, auto: Boolean = false) {
-        val current = run ?: error("Er is geen testrun gestart.")
+        val current = run ?: error("Er is geen doorloop gestart.")
         val step = current.steps.firstOrNull { it.id == stepId } ?: error("Onbekende stap $stepId.")
         check(current.nextStep()?.id == step.id) { "Deze stap is nog niet aan de beurt." }
         check(step.status != StepStatus.RUNNING) { "Deze stap is al bezig." }
@@ -440,7 +440,7 @@ class FlowSession(
     fun retry(stepId: Int) = update(stepId) { it.status = StepStatus.PENDING; it.message = null }
 
     /** Een stap zonder bestanden om te verwerken (alleen afbeeldingen gekozen: geen tekst en pdf) slaat zichzelf over. */
-    private fun skipStep(current: TestRun, step: Step) {
+    private fun skipStep(current: FlowRun, step: Step) {
         step.status = StepStatus.SKIPPED
         step.message = "Overgeslagen: er zijn alleen afbeeldingen gekozen, en die hebben geen tekst of pdf."
         if (step.type == StepType.PDF2ZCBS) current.reviewed += step.type
@@ -450,7 +450,7 @@ class FlowSession(
      * Slaat de stappen over waar geen enkel bestand voor is. pdf2zcbs.exe meteen; de upload pas als de uitvoer van images.exe is gecontroleerd
      * (anders zou de controle erna worden overgeslagen).
      */
-    private fun skipUnneeded(current: TestRun) {
+    private fun skipUnneeded(current: FlowRun) {
         current.steps.firstOrNull { it.type == StepType.PDF2ZCBS && it.status == StepStatus.PENDING && it.activeFiles.isEmpty() }?.let { skipStep(current, it) }
         if (!current.gated || StepType.IMAGES in current.reviewed) {
             current.steps.firstOrNull { it.type == StepType.UPLOAD && it.status == StepStatus.PENDING && it.activeFiles.isEmpty() && current.steps.first { s -> s.type == StepType.IMAGES }.finished }
@@ -466,7 +466,7 @@ class FlowSession(
 
     // ---- De stappen ----
 
-    private fun rename(current: TestRun, step: Step) {
+    private fun rename(current: FlowRun, step: Step) {
         Files.createDirectories(current.workDir)
         val target = current.workDir.resolve(step.file.newName)
         Files.copy(step.file.original, target)
@@ -474,7 +474,7 @@ class FlowSession(
         step.message = "Kopie gemaakt: werk\\${step.file.newName}"
     }
 
-    private fun runPdf2zcbs(current: TestRun, step: Step, s: WorkflowSettings, mode: RunMode, auto: Boolean) {
+    private fun runPdf2zcbs(current: FlowRun, step: Step, s: WorkflowSettings, mode: RunMode, auto: Boolean) {
         syncPrograms()
         val l = FlowLayout(s, input)
         val dir = l.p2z!!
@@ -488,7 +488,7 @@ class FlowSession(
         runExe(current, step, s, l.p2zExe()!!, dir, copies, expected, mode, if (auto) known else null, known, extraNote = note)
     }
 
-    private fun runImages(current: TestRun, step: Step, s: WorkflowSettings, mode: RunMode, auto: Boolean) {
+    private fun runImages(current: FlowRun, step: Step, s: WorkflowSettings, mode: RunMode, auto: Boolean) {
         if (auto) {
             check(s.ftpPassword.isNotEmpty()) {
                 "Voor automatisch uitvoeren moet bij Instellingen het FTP-wachtwoord staan. Gebruik anders Handmatig uitvoeren: typ het één keer in, dan neemt de app het over."
@@ -523,7 +523,7 @@ class FlowSession(
     }
 
     private fun runExe(
-        current: TestRun,
+        current: FlowRun,
         step: Step,
         s: WorkflowSettings,
         exe: Path,
@@ -633,7 +633,7 @@ class FlowSession(
      * flow hoort: de mappen van de programma's en de kopieën in de invoermap. De originelen op K: blijven staan. Als laatste komt
      * er in het verwerkt-log te staan wat er klaar is.
      */
-    private fun cleanup(current: TestRun, step: Step, s: WorkflowSettings) {
+    private fun cleanup(current: FlowRun, step: Step, s: WorkflowSettings) {
         val l = FlowLayout(s, input)
         step.status = StepStatus.RUNNING
         var copied = 0
@@ -704,7 +704,7 @@ class FlowSession(
 
     /** De stand voor de pagina, of null als er nog geen doorloop is. */
     @Synchronized
-    fun view(): TestRunView? = run?.let { views.view(it, settings()) }
+    fun view(): FlowRunView? = run?.let { views.view(it, settings()) }
 
     /** Het id van de stap van dit soort; de stappen na het hernoemen zijn er één keer per doorloop. */
     fun stepId(type: StepType): Int? = run?.steps?.firstOrNull { it.type == type }?.id

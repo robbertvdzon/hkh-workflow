@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun
+package nl.vdzon.hkhworkflow.flow
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -8,8 +8,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
-import nl.vdzon.hkhworkflow.testrun.internal.ProcessedFile
-import nl.vdzon.hkhworkflow.testrun.internal.ProcessedLog
+import nl.vdzon.hkhworkflow.flow.internal.ProcessedFile
+import nl.vdzon.hkhworkflow.flow.internal.ProcessedLog
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 

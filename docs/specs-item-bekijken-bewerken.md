@@ -136,12 +136,12 @@ Niet bewerkbaar: documentnummer en de stempels (aangemaakt, beschreven, aangepas
 
 ## 5. Techniek
 
-Nieuwe Spring Modulith-modules, in dezelfde stijl als `sftp` en `testrun`:
+Nieuwe Spring Modulith-modules, in dezelfde stijl als `sftp` en `flow`:
 
 | Module | Inhoud | Mag gebruiken |
 |---|---|---|
 | `zcbs` | Client voor ZCBS: sessie, inloggen, formulier ophalen, opslaan, terugleggen | `settings` |
-| `items` | Lijst en recordpagina's (controller, templates), statusbeheer van de run | `zcbs`, `settings`, `testrun` (alleen leesbare batchgegevens) |
+| `items` | Lijst en recordpagina's (controller, templates), statusbeheer van de run | `zcbs`, `settings`, `flow` (alleen leesbare batchgegevens) |
 
 **Onderdelen van `zcbs`**
 - `ZcbsSession`: eigen `HttpClient` met cookiebeheerder (alleen geheugen), de gebruikersnaam en het wachtwoord in een `CharArray` dat gewist kan worden.
@@ -338,6 +338,6 @@ Het testen van deze stap kan eerst volledig tegen de lokale ZCBS in Docker (zie 
 **Gebouwd (25 oktober 2026).** Wat er staat en waar:
 - `zcbs`: `ZcbsClient`, `FormParser` (Jsoup), `ItemForm`, `RecordRebuilder`, `ZcbsText`, `ZcbsPages`. Tests met echte pagina's van de lokale ZCBS in `src/test/resources/zcbs/` en een nagemaakte ZCBS (`FakeZcbs`), plus contracttests tegen de lokale ZCBS die alleen met `-Dzcbs.live=true` draaien.
 - `items`: `ItemEditService` en de pagina's `/records`. De ZCBS-naam en het wachtwoord staan alleen in het geheugen; elke opslag volgt paragraaf 7.
-- `testrun`: `SourceFilesService` (bestanden ophalen, wie het gescand heeft in `herkomst.tsv`) en de stap Records bewerken (na de upload, vóór het opruimen).
+- `flow`: `SourceFilesService` (bestanden ophalen, wie het gescand heeft in `herkomst.tsv`) en de stap Records bewerken (na de upload, vóór het opruimen).
 - Wat de lokale ZCBS liet zien en wat dit document anders zei: veld 17 komt als **verborgen** veld in het formulier (niet zichtbaar); een regeleinde in een tekstvak komt na opslaan terug met een spatie ervoor; de ocr-tekst van pdf2zcbs is UTF-8.
 - Nog niet gebouwd: een eigen login op de app, het versturen van logs naar een eigen server, de keuze wat er met de originelen op de server gebeurt.

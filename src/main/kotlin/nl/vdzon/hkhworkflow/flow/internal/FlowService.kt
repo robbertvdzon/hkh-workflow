@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 import java.nio.file.Path
 import java.time.Instant
@@ -9,7 +9,7 @@ import nl.vdzon.hkhworkflow.ftp.FtpService
 import nl.vdzon.hkhworkflow.items.Current
 import nl.vdzon.hkhworkflow.items.ZcbsSession
 import nl.vdzon.hkhworkflow.settings.SettingsService
-import nl.vdzon.hkhworkflow.testrun.RunningFlows
+import nl.vdzon.hkhworkflow.flow.RunningFlows
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
@@ -26,7 +26,7 @@ data class ActiveFlow(val collection: String, val owner: String, val since: Inst
  * nu aan het woord zijn ([Current]).
  */
 @Service
-class TestRunService(
+class FlowService(
     private val settingsService: SettingsService,
     private val ftpService: FtpService,
     private val itemEditService: ZcbsSession,
@@ -122,7 +122,7 @@ class TestRunService(
 
     fun acceptInput() = current().acceptInput()
     fun confirmFiles(): String? = current().confirmFiles()
-    fun filesInTestFolder(): List<Path> = current().filesInTestFolder()
+    fun filesInInputFolder(): List<Path> = current().filesInInputFolder()
     fun start(startNumber: String) = current().start(startNumber)
     fun reset() = current().reset()
     fun summary(): List<SummaryLine> = current().summary()
@@ -137,7 +137,7 @@ class TestRunService(
     fun execute(stepId: Int, mode: RunMode, auto: Boolean = false) = current().execute(stepId, mode, auto)
     fun skip(stepId: Int) = current().skip(stepId)
     fun retry(stepId: Int) = current().retry(stepId)
-    fun view(): TestRunView? = current().view()
+    fun view(): FlowRunView? = current().view()
     fun stepId(type: StepType): Int? = current().stepId(type)
     fun resultFile(kind: String, number: String): Path? = current().resultFile(kind, number)
     fun producedFiles(type: StepType): List<ProducedFile> = current().producedFiles(type)

@@ -31,8 +31,9 @@ items/
 | `zcbs` | `ZcbsClient`, `ZcbsClientFactory`, `ItemForm`, `Page`, `FreeNumbers`, `ZcbsText` |
 | `adminlog` | `AdminLog`, `SessionReport`, `SnapshotSanitizer`, `AppVersion` |
 | `items` | `ZcbsSession`, `LoginCookie`, `Current`, `NewRecordsSource` |
-| `testrun` | `RunningFlows` |
-| `update`, `ux` | niets: alleen pagina's |
+| `flow` | `RunningFlows` |
+| `restapi` | `ApiProblem` |
+| `update`, `ux` | niets: alleen de API en wat daarbij hoort |
 
 `ModuleApiConventionTest` faalt als er een service, client, configuratie of controller in een root staat, als er in een root een gewone klasse staat die niet op de korte lijst van domeinklassen staat, of als een module in de subpackages van een andere module kijkt. `ModulithArchitectureTest` bewaakt de toegestane afhankelijkheden.
 
@@ -47,8 +48,7 @@ Aan elke rand van de app staat een eigen klasse voor wat daar over de lijn gaat,
 | GitHub | `GitHubRelease` | `Release` |
 | Workflow-logboek | `LoginMessage`, `SessionReport` | wat de reporters verzamelen |
 | Verwerkt-log (tsv) | `ProcessedLine` | `ProcessedFile` |
-| Knop Open (json) | `MediaResponse` | `Media` |
-| Pagina's | viewklassen zoals `RecentRow`, `TestRunView` | de domeinklassen |
+| De REST-API (json) | de `*Request`- en `*Response`-klassen in `api` | de domeinklassen |
 
 ## Tests
 

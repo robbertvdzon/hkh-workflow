@@ -4,7 +4,7 @@ Stand: 1 november 2026. Voor beheerders en technisch geïnteresseerden. Medewerk
 [quickstart](quickstart-invoeren.md).
 
 **Bronnen en betrouwbaarheid.** Deze handleiding is geschreven vanuit de code en de schermen van de app (het scherm Nieuwe bestanden, de klassen `FlowSession`,
-`TestRunService`, `WorkFolders`, `ProgramFiles`, `SourceFilesService`, `ExeAnswers`, `ExeRunner`, `FtpService` en de tests). Waar de code iets
+`FlowService`, `WorkFolders`, `ProgramFiles`, `SourceFilesService`, `ExeAnswers`, `ExeRunner`, `FtpService` en de tests). Waar de code iets
 doet wat niet is geprobeerd op de echte HKH-server, staat dat erbij: *uit de code gelezen, niet bevestigd op de echte server*. De code wint van
 oudere teksten in `docs/` en de README; de verschillen staan onderaan in [Bekende verschillen met oudere documentatie](#bekende-verschillen-met-oudere-documentatie).
 
@@ -650,7 +650,7 @@ Alle meldingen komen uit de code. Hoofdletters en leestekens kunnen in het scher
 
 | Melding | Oorzaak | Wat te doen |
 |---|---|---|
-| Er is geen testrun gestart. / Onbekende stap *n*. / Deze stap is nog niet aan de beurt. / Deze stap is al bezig. | Verouderde pagina (twee tabbladen, dubbele klik) | Pagina verversen |
+| Er is geen doorloop gestart. / Onbekende stap *n*. / Deze stap is nog niet aan de beurt. / Deze stap is al bezig. | Verouderde pagina (twee tabbladen, dubbele klik) | Pagina verversen |
 | Er draait nog een programma. | Er loopt al een programma voor deze gebruiker | Wachten tot het klaar is of in de console **Stop programma** |
 | Het lopende programma wil niet stoppen; probeer het nog eens. | Het proces reageert niet binnen 5 seconden | Nogmaals proberen; zo nodig het proces op de server beëindigen |
 | Starten mislukt: *reden* (log: *pad*) | Het programma is niet te starten (bijv. verkeerd bestandstype of geen rechten) | Beheerder: pad en rechten controleren, logbestand lezen |
@@ -729,7 +729,7 @@ Deze handleiding volgt de code. Dit wijkt af van (of ontbreekt in) andere tekste
 
 | Waar | Staat er | Code zegt |
 |---|---|---|
-| `FlowSession.kt`, kopcommentaar | "Per collectie is er hooguit één doorloop tegelijk" | Er is geen slot per collectie; één doorloop per gebruiker en collectie (`TestRunService`) |
+| `FlowSession.kt`, kopcommentaar | "Per collectie is er hooguit één doorloop tegelijk" | Er is geen slot per collectie; één doorloop per gebruiker en collectie (`FlowService`) |
 | `FlowLogReporter.kt` | "Er zijn meer doorlopen tegelijk: één per collectie" | Eén per gebruiker en collectie |
 | README en `application.properties` | `session-timeout-minutes`: een in gebruik zijnde collectie komt na 120 minuten vrij | Niet door de code gebruikt |
 | README (fase 5) en tooltips van **Handmatig uitvoeren** / **Automatisch uitvoeren** | "De app onthoudt de antwoorden en stelt ze de volgende keer voor" | De antwoorden zijn vast (`ExeAnswers`); alleen het ftp-wachtwoord wordt overgenomen |

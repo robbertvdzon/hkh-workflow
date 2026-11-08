@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 import nl.vdzon.hkhworkflow.exerunner.AutoAnswer
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings

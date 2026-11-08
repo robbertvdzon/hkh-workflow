@@ -53,7 +53,7 @@ gekozen bestanden, de stappen en de uitvoer en het log van pdf2zcbs.exe en image
 gestuurd; een fout of onbereikbare server hindert de app niet. De **bron** van een melding is de naam van de computer; die staat bij elke melding en daarop is
 in het beheerscherm te filteren. Stel `hkh.workflow.admin-log-url` (of `HKH_WORKFLOW_ADMIN_LOG_URL`) in
 op een leeg adres om niets te melden, of op een lokale hkh-backend om te testen. De code staat in de module `adminlog` en de
-`FlowLogReporter` (testrun) en `EditLogReporter` (items).
+`FlowLogReporter` (flow) en `EditLogReporter` (items).
 
 ## Schermen
 
@@ -112,8 +112,8 @@ images.exe en pdf2zcbs.exe als Perl-scripts; zie `tools/mock/README.md`.
 | `exerunner` | Externe programma's starten, uitvoer lezen, invoer doorsturen |
 | `ftp` | Uploaden naar de server met ftp, zonder iets te overschrijven of te verwijderen |
 | `zcbs` | Client voor ZCBS: inloggen, de vrije nummers, formulier ophalen en posten, controles op wat ZCBS wel en niet accepteert |
-| `items` | Inloggen bij ZCBS en records bewerken via het ZCBS-formulier (voorbeeld, opslaan, conflictcontrole, teruglezen) + pagina's |
-| `testrun` | De flow Nieuwe bestanden (de stappenketen met controles, bladeren door K:, het verwerkt-log) + pagina's |
+| `items` | Inloggen bij ZCBS en records bewerken via het ZCBS-formulier (voorbeeld, opslaan, conflictcontrole, teruglezen) |
+| `flow` | De flow Nieuwe bestanden (de stappenketen met controles, bladeren door K:, het verwerkt-log) |
 | `ux` | Het begin van de app: inloggen, collectie en acties kiezen, de beheerderslogin en wie waar mag komen |
 
 ## Documentatie

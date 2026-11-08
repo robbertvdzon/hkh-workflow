@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 import nl.vdzon.hkhworkflow.items.NewRecord
 import nl.vdzon.hkhworkflow.items.NewRecordsSource

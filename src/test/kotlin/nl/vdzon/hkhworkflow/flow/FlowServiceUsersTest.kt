@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun
+package nl.vdzon.hkhworkflow.flow
 
 import java.nio.file.Files
 import nl.vdzon.hkhworkflow.zcbs.StubZcbs
@@ -21,14 +21,14 @@ import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
-import nl.vdzon.hkhworkflow.testrun.internal.ProcessedLog
-import nl.vdzon.hkhworkflow.testrun.internal.TestRunService
-import nl.vdzon.hkhworkflow.testrun.internal.WorkFolders
+import nl.vdzon.hkhworkflow.flow.internal.ProcessedLog
+import nl.vdzon.hkhworkflow.flow.internal.FlowService
+import nl.vdzon.hkhworkflow.flow.internal.WorkFolders
 import org.junit.jupiter.api.io.TempDir
 import tools.jackson.databind.ObjectMapper
 
 /** Elke gebruiker heeft per collectie een eigen doorloop in eigen mappen, zonder slot: ook twee gebruikers in dezelfde collectie werken tegelijk. */
-class TestRunServiceUsersTest {
+class FlowServiceUsersTest {
     @TempDir
     lateinit var dir: Path
 
@@ -47,10 +47,10 @@ class TestRunServiceUsersTest {
     @AfterTest
     fun tearDown() = Current.set(null)
 
-    private fun service(): TestRunService {
+    private fun service(): FlowService {
         val mapper = ObjectMapper()
         val processed = ProcessedLog(settings, WorkflowProperties(settingsFile = dir.resolve("s.json").toString(), processedLog = dir.resolve("verwerkt.tsv").toString()))
-        return TestRunService(settings, DefaultFtpService(settings), ItemEditService(settings, StubZcbs().factory), processed, ProcessExeRunnerFactory("UTF-8", dir.resolve("logs").toString()), mapper)
+        return FlowService(settings, DefaultFtpService(settings), ItemEditService(settings, StubZcbs().factory), processed, ProcessExeRunnerFactory("UTF-8", dir.resolve("logs").toString()), mapper)
     }
 
     /** Zet een pdf in de invoermap van [user] in [collection], zoals het kiezen van bestanden dat doet. */

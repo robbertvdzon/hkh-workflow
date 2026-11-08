@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory
 /** Wat de gebruiker te zien krijgt van een doorloop. Alleen lezen: hier verandert niets aan de doorloop. */
 class FlowViews(private val input: WorkFolders, private val ftpService: FtpService, private val checks: StepChecks) {
 
-    fun view(current: TestRun, s: WorkflowSettings): TestRunView {
+    fun view(current: FlowRun, s: WorkflowSettings): FlowRunView {
         val next = current.nextStep()
 
         fun toView(step: Step): StepView {
@@ -55,9 +55,9 @@ class FlowViews(private val input: WorkFolders, private val ftpService: FtpServi
                 checks = checkGroups(current, file, s),
             )
         }
-        return TestRunView(
+        return FlowRunView(
             startNumber = current.startNumber,
-            testFolder = current.testFolder.toString(),
+            inputFolder = current.inputFolder.toString(),
             workDir = current.workDir.toString(),
             fileCount = current.files.size,
             doneCount = current.steps.count { it.finished },
@@ -68,13 +68,13 @@ class FlowViews(private val input: WorkFolders, private val ftpService: FtpServi
         )
     }
 
-    private fun warnings(current: TestRun, step: Step): List<String> = buildList {
+    private fun warnings(current: FlowRun, step: Step): List<String> = buildList {
         if (step.type == StepType.CLEANUP && current.steps.first { it.type == StepType.UPLOAD }.status == StepStatus.SKIPPED && current.files.any { !it.isImage }) {
             add("De upload is overgeslagen. Na het opruimen zijn de tekst en pdf's weg, tenzij je ze zelf op de server hebt gezet.")
         }
     }
 
-    private fun plan(current: TestRun, step: Step, s: WorkflowSettings): List<String> {
+    private fun plan(current: FlowRun, step: Step, s: WorkflowSettings): List<String> {
         val l = FlowLayout(s, input)
         val n = step.files.size
         val unset = "(niet ingesteld)"
@@ -108,7 +108,7 @@ class FlowViews(private val input: WorkFolders, private val ftpService: FtpServi
         }
     }
 
-    private fun checkGroups(current: TestRun, file: TestFile, s: WorkflowSettings): List<CheckGroupView> {
+    private fun checkGroups(current: FlowRun, file: FlowFile, s: WorkflowSettings): List<CheckGroupView> {
         val l = FlowLayout(s, input)
         fun stepOf(type: StepType) = current.steps.first { it.type == type && it.files.contains(file) }
         val cleaned = stepOf(StepType.CLEANUP).status == StepStatus.DONE
@@ -172,7 +172,7 @@ class FlowViews(private val input: WorkFolders, private val ftpService: FtpServi
 
     /** Een bestand van de uitvoer van pdf2zcbs of images.exe om te bekijken: alleen voor de nummers van de huidige flow en alleen als het bestaat. */
     @Synchronized
-    fun resultFile(current: TestRun, s: WorkflowSettings, kind: String, number: String): Path? {
+    fun resultFile(current: FlowRun, s: WorkflowSettings, kind: String, number: String): Path? {
         val file = current.files.firstOrNull { it.number == number } ?: return null
         val l = FlowLayout(s, input)
         val path = when (kind) {
@@ -192,7 +192,7 @@ class FlowViews(private val input: WorkFolders, private val ftpService: FtpServi
      * De bestanden die pdf2zcbs.exe of images.exe voor de gebruiker heeft gemaakt, om te controleren: per bestand de soort, de grootte en (bij een afbeelding) de afmeting.
      * Een leeg tekstbestand (een pagina zonder herkende tekst) staat er met een opmerking bij.
      */
-    fun producedFiles(current: TestRun, s: WorkflowSettings, type: StepType): List<ProducedFile> {
+    fun producedFiles(current: FlowRun, s: WorkflowSettings, type: StepType): List<ProducedFile> {
         val kinds = when (type) {
             StepType.PDF2ZCBS -> listOf("tekst" to "tekst", "pdf" to "pdf", "p2z-small" to "small", "p2z-large" to "large")
             StepType.IMAGES -> listOf("small" to "small", "large" to "large", "100pct" to "100pct")

@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -18,17 +18,17 @@ class FlowLayout(val s: WorkflowSettings, folders: WorkFolders) {
     val backupPdf: Path? = s.backupPdfFolder().trim().takeIf { it.isNotEmpty() }?.let { Path.of(it) }
 
     fun p2zOutput(): Path? = p2z?.resolve("output")
-    fun ocr(f: TestFile): Path? = p2zOutput()?.resolve("ocr")?.resolve("${f.number}.txt")
-    fun pdf(f: TestFile): Path? = p2zOutput()?.resolve("pdf")?.resolve("${f.number}.pdf")
-    fun p2zSmall(f: TestFile): Path? = p2zOutput()?.resolve("small")?.resolve("${f.number}.jpg")
-    fun p2zLarge(f: TestFile): Path? = p2zOutput()?.resolve("large")?.resolve("${f.number}.jpg")
-    fun imgIn(f: TestFile): Path? = img?.resolve("images")?.resolve("${f.number}.jpg")
-    fun imgSmall(f: TestFile): Path? = img?.resolve("small")?.resolve("${f.number}.jpg")
-    fun imgLarge(f: TestFile): Path? = img?.resolve("large")?.resolve("${f.number}.jpg")
-    fun img100(f: TestFile): Path? = img?.resolve("100pct")?.resolve("${f.number}.jpg")
-    fun backupOf(f: TestFile): Path? = backup?.resolve("${f.number}.jpg")
-    fun backupPdfOf(f: TestFile): Path? = backupPdf?.resolve("${f.number}.pdf")
-    fun p2zInput(f: TestFile): Path? = p2z?.resolve("${f.number}.pdf")
+    fun ocr(f: FlowFile): Path? = p2zOutput()?.resolve("ocr")?.resolve("${f.number}.txt")
+    fun pdf(f: FlowFile): Path? = p2zOutput()?.resolve("pdf")?.resolve("${f.number}.pdf")
+    fun p2zSmall(f: FlowFile): Path? = p2zOutput()?.resolve("small")?.resolve("${f.number}.jpg")
+    fun p2zLarge(f: FlowFile): Path? = p2zOutput()?.resolve("large")?.resolve("${f.number}.jpg")
+    fun imgIn(f: FlowFile): Path? = img?.resolve("images")?.resolve("${f.number}.jpg")
+    fun imgSmall(f: FlowFile): Path? = img?.resolve("small")?.resolve("${f.number}.jpg")
+    fun imgLarge(f: FlowFile): Path? = img?.resolve("large")?.resolve("${f.number}.jpg")
+    fun img100(f: FlowFile): Path? = img?.resolve("100pct")?.resolve("${f.number}.jpg")
+    fun backupOf(f: FlowFile): Path? = backup?.resolve("${f.number}.jpg")
+    fun backupPdfOf(f: FlowFile): Path? = backupPdf?.resolve("${f.number}.pdf")
+    fun p2zInput(f: FlowFile): Path? = p2z?.resolve("${f.number}.pdf")
 }
 
 /** Bestaat het bestand en is het niet leeg? Een tekstbestand mag leeg zijn: een pagina zonder tekst geeft een lege tekst (dat zie je dan bij het controleren). */

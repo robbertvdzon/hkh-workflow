@@ -1,11 +1,11 @@
-package nl.vdzon.hkhworkflow.testrun
+package nl.vdzon.hkhworkflow.flow
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
-import nl.vdzon.hkhworkflow.testrun.internal.WorkFolders
+import nl.vdzon.hkhworkflow.flow.internal.WorkFolders
 
 class WorkFoldersTest {
     @Test

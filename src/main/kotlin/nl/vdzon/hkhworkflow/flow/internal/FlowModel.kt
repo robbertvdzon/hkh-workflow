@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 import java.nio.file.Path
 import java.time.Instant
@@ -29,7 +29,7 @@ enum class StepStatus(val label: String) {
  * Een gekozen bestand: een pdf, of een jpg (een afbeelding gaat niet door pdf2zcbs.exe en heeft geen tekst of pdf: ze gaat rechtstreeks naar
  * images.exe).
  */
-data class TestFile(val index: Int, val original: Path, val number: String, val by: String = "", val folder: String = "") {
+data class FlowFile(val index: Int, val original: Path, val number: String, val by: String = "", val folder: String = "") {
     val originalName: String get() = original.fileName.toString()
     val isImage: Boolean get() = original.fileName.toString().substringAfterLast('.', "").lowercase() in IMAGE_EXTENSIONS
     val newName: String get() = "$number.${if (isImage) "jpg" else "pdf"}"
@@ -40,7 +40,7 @@ data class TestFile(val index: Int, val original: Path, val number: String, val 
 }
 
 /** Eén stap: voor een stap per bestand bevat [files] precies één bestand, voor een stap voor alles samen alle bestanden. */
-class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
+class Step(val id: Int, val type: StepType, val files: List<FlowFile>) {
     @Volatile
     var status: StepStatus = StepStatus.PENDING
 
@@ -57,10 +57,10 @@ class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
     val finished: Boolean get() = status == StepStatus.DONE || status == StepStatus.SKIPPED
 
     /** Het bestand van een stap per bestand. */
-    val file: TestFile get() = files.single()
+    val file: FlowFile get() = files.single()
 
     /** De bestanden waar de stap echt iets mee doet: pdf2zcbs.exe en de upload slaan afbeeldingen over (ze hebben geen tekst of pdf). */
-    val activeFiles: List<TestFile>
+    val activeFiles: List<FlowFile>
         get() = if (type == StepType.PDF2ZCBS || type == StepType.UPLOAD) files.filter { !it.isImage } else files
 
     /** De bestandsnamen die de stap verwerkt: images.exe krijgt jpg's, de rest werkt met de genummerde bestanden. */
@@ -77,11 +77,11 @@ class Step(val id: Int, val type: StepType, val files: List<TestFile>) {
         }
 }
 
-class TestRun(
+class FlowRun(
     val startNumber: String,
-    val testFolder: Path,
+    val inputFolder: Path,
     val workDir: Path,
-    val files: List<TestFile>,
+    val files: List<FlowFile>,
     val steps: List<Step>,
     val createdAt: Instant = Instant.now(),
 ) {
@@ -96,7 +96,7 @@ class TestRun(
     fun nextStep(): Step? = steps.firstOrNull { !it.finished }
 }
 
-// ---- Views voor de templates (onveranderlijke momentopnames) ----
+// ---- Views voor de API (onveranderlijke momentopnames) ----
 
 data class StepView(
     val id: Int,
@@ -134,9 +134,9 @@ data class FileRowView(
     val checks: List<CheckGroupView>,
 )
 
-data class TestRunView(
+data class FlowRunView(
     val startNumber: String,
-    val testFolder: String,
+    val inputFolder: String,
     val workDir: String,
     val fileCount: Int,
     val doneCount: Int,
@@ -179,4 +179,4 @@ data class PhaseView(val nr: Int, val title: String, val state: String, val note
 /** Eén regel van het overzicht aan het eind: wat er gemaakt is en waar het nu staat. */
 data class SummaryLine(val place: String, val kind: String, val count: Int, val files: String, val folder: String)
 
-data class FlowView(val phases: List<PhaseView>, val current: Int, val finished: Boolean, val review: Boolean, val run: TestRunView?)
+data class FlowView(val phases: List<PhaseView>, val current: Int, val finished: Boolean, val review: Boolean, val run: FlowRunView?)

@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun
+package nl.vdzon.hkhworkflow.flow
 
 import java.nio.file.Files
 import nl.vdzon.hkhworkflow.zcbs.StubZcbs
@@ -20,13 +20,13 @@ import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
-import nl.vdzon.hkhworkflow.testrun.internal.FlowSession
-import nl.vdzon.hkhworkflow.testrun.internal.ProcessedLog
-import nl.vdzon.hkhworkflow.testrun.internal.ProgramFiles
-import nl.vdzon.hkhworkflow.testrun.internal.SourceFilesService
-import nl.vdzon.hkhworkflow.testrun.internal.StepType
-import nl.vdzon.hkhworkflow.testrun.internal.StepView
-import nl.vdzon.hkhworkflow.testrun.internal.WorkFolders
+import nl.vdzon.hkhworkflow.flow.internal.FlowSession
+import nl.vdzon.hkhworkflow.flow.internal.ProcessedLog
+import nl.vdzon.hkhworkflow.flow.internal.ProgramFiles
+import nl.vdzon.hkhworkflow.flow.internal.SourceFilesService
+import nl.vdzon.hkhworkflow.flow.internal.StepType
+import nl.vdzon.hkhworkflow.flow.internal.StepView
+import nl.vdzon.hkhworkflow.flow.internal.WorkFolders
 
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -39,7 +39,7 @@ import tools.jackson.databind.ObjectMapper
 
 /** De volledige stappenketen, met nep-programma's (shellscripts uit de testresources), een nep-ZCBS en een ftp-server in het geheugen. */
 @EnabledOnOs(OS.MAC, OS.LINUX)
-class TestRunServiceTest {
+class FlowServiceTest {
     @TempDir
     lateinit var dir: Path
 
@@ -783,13 +783,13 @@ class TestRunServiceTest {
         val first = input.ensure()
         assertEquals(workBase.resolve("Test Beheerder/archief/invoer"), first)
         Files.writeString(first.resolve("a.pdf"), "van de eerste")
-        assertEquals(listOf("a.pdf", "xx01.pdf", "xx02.pdf"), service.filesInTestFolder().map { it.name }.sorted())
+        assertEquals(listOf("a.pdf", "xx01.pdf", "xx02.pdf"), service.filesInInputFolder().map { it.name }.sorted())
         assertEquals(workBase.resolve("Test Beheerder/archief/resten"), service.leftoversTarget())
 
         val otherFolders = WorkFolders(settings, "Test Bewerker", "archief")
         val other = FlowSession(settings, ProcessExeRunner("UTF-8", dir.resolve("logs-b").toString()), DefaultFtpService(settings), items, SourceFilesService(settings, processed, otherFolders), processed, otherFolders, "archief")
         assertEquals(workBase.resolve("Test Bewerker/archief/invoer"), otherFolders.invoer())
-        assertEquals(emptyList(), other.filesInTestFolder(), "de bestanden van de ander zijn niet de mijne")
+        assertEquals(emptyList(), other.filesInInputFolder(), "de bestanden van de ander zijn niet de mijne")
         assertEquals(workBase.resolve("Test Bewerker/archief/resten"), other.leftoversTarget())
         assertTrue(Files.exists(first.resolve("a.pdf")))
 

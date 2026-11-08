@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.api
+package nl.vdzon.hkhworkflow.flow.api
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import java.nio.file.Files
@@ -9,13 +9,13 @@ import nl.vdzon.hkhworkflow.ftp.FtpService
 import nl.vdzon.hkhworkflow.items.ZcbsSession
 import nl.vdzon.hkhworkflow.restapi.ApiProblem
 import nl.vdzon.hkhworkflow.settings.SettingsService
-import nl.vdzon.hkhworkflow.testrun.internal.CopyResult
-import nl.vdzon.hkhworkflow.testrun.internal.FlowView
-import nl.vdzon.hkhworkflow.testrun.internal.ProducedFile
-import nl.vdzon.hkhworkflow.testrun.internal.StepStatus
-import nl.vdzon.hkhworkflow.testrun.internal.StepType
-import nl.vdzon.hkhworkflow.testrun.internal.StepView
-import nl.vdzon.hkhworkflow.testrun.internal.TestRunService
+import nl.vdzon.hkhworkflow.flow.internal.CopyResult
+import nl.vdzon.hkhworkflow.flow.internal.FlowView
+import nl.vdzon.hkhworkflow.flow.internal.ProducedFile
+import nl.vdzon.hkhworkflow.flow.internal.StepStatus
+import nl.vdzon.hkhworkflow.flow.internal.StepType
+import nl.vdzon.hkhworkflow.flow.internal.StepView
+import nl.vdzon.hkhworkflow.flow.internal.FlowService
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
 import org.springframework.http.ContentDisposition
@@ -115,7 +115,7 @@ data class ConsoleInputRequest(val line: String = "")
 @RestController
 @RequestMapping("/api/collections/{collection}/flow")
 class FlowApiController(
-    private val flow: TestRunService,
+    private val flow: FlowService,
     private val settingsService: SettingsService,
     private val zcbs: ZcbsSession,
     private val ftpService: FtpService,
@@ -214,7 +214,7 @@ class FlowApiController(
     fun files(): List<ChosenFileResponse> {
         val run = flow.view()
         if (run != null) return run.rows.map { ChosenFileResponse(it.originalName, it.by, it.number, it.newName) }
-        return flow.filesInTestFolder().map { ChosenFileResponse(it.fileName.toString(), flow.sources().origin(it.fileName.toString())?.by.orEmpty(), null, null) }
+        return flow.filesInInputFolder().map { ChosenFileResponse(it.fileName.toString(), flow.sources().origin(it.fileName.toString())?.by.orEmpty(), null, null) }
     }
 
     /** Kiest bestanden uit één map (de originelen blijven staan) en gaat door naar de nummers. Lukt dat niet, dan blijft de flow bij het kiezen. */
@@ -224,7 +224,7 @@ class FlowApiController(
         val result = if (body.names.isEmpty()) CopyResult(emptyList(), emptyList()) else flow.sources().copy(body.source, body.path, body.names)
         flow.acceptInput()
         val skipped = if (result.skipped.isEmpty()) "" else " Overgeslagen: ${result.skipped.joinToString()}."
-        if (flow.filesInTestFolder().isEmpty()) throw ApiProblem(400, "nothing-selected", "Vink minstens één bestand aan.$skipped")
+        if (flow.filesInInputFolder().isEmpty()) throw ApiProblem(400, "nothing-selected", "Vink minstens één bestand aan.$skipped")
         flow.confirmFiles()?.let { throw ApiProblem(409, "wrong-phase", it) }
         return ChooseFilesResponse(result.skipped)
     }
@@ -241,7 +241,7 @@ class FlowApiController(
 
     @GetMapping("/numbers")
     fun numbers(): NumbersResponse {
-        val count = flow.filesInTestFolder().size
+        val count = flow.filesInInputFolder().size
         val free = zcbs.freeNumbers()
             ?: throw ApiProblem(502, "zcbs-failed", "ZCBS gaf de lijst met vrije nummers niet. Is je sessie verlopen, heb je geen recht om records aan te maken, of is ZCBS niet bereikbaar?")
         return NumbersResponse(

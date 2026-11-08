@@ -331,7 +331,7 @@ HKH-workflow, een jar op de Windows-pc
 
 De app slaat zelf alleen op wat ZCBS niet kent: de status van batches, een audittrail met wie wat deed, en zijn instellingen met
 geheimen die niet in de browser terugkomen. Het huidige systeem heeft die onderdelen al deels: `settings`, `exerunner`, `sftp` en
-`testrun`, zie `docs/specs.md`.
+`flow`, zie `docs/specs.md`.
 
 ## C3. Een client voor ZCBS
 

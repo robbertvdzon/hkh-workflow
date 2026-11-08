@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun.internal
+package nl.vdzon.hkhworkflow.flow.internal
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
 
 /** De controles vooraf: wat houdt een stap nu tegen? Er gebeurt pas iets als er niets tegenhoudt. */
 class StepChecks {
-    fun problems(current: TestRun, step: Step, s: WorkflowSettings, input: WorkFolders): List<String> {
+    fun problems(current: FlowRun, step: Step, s: WorkflowSettings, input: WorkFolders): List<String> {
         val l = FlowLayout(s, input)
         val batch = step.activeFiles.map { it.number }.toSet()
         return when (step.type) {

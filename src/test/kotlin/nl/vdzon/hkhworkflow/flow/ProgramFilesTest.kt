@@ -1,4 +1,4 @@
-package nl.vdzon.hkhworkflow.testrun
+package nl.vdzon.hkhworkflow.flow
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -8,7 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import nl.vdzon.hkhworkflow.testrun.internal.ProgramFiles
+import nl.vdzon.hkhworkflow.flow.internal.ProgramFiles
 import org.junit.jupiter.api.io.TempDir
 
 class ProgramFilesTest {
