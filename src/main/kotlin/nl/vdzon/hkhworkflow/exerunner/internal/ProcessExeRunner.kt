@@ -7,6 +7,7 @@ import java.io.Writer
 import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -88,6 +89,11 @@ class ProcessExeRunner(charsetName: String, logDir: String) : ExeRunner {
         @Volatile var autoAnswered = 0
         @Volatile var autoEnabled = auto != null
         @Volatile var autoStuckLoggedAt = 0L
+        @Volatile var frozenHelper: String? = null
+        @Volatile var stoppedByUser = false
+        var watchedHelperPid = -1L
+        var watchedHelperCpu: Duration? = null
+        var watchedHelperSince = startNanos
         val autoBuffer = StringBuilder()
 
         val running: Boolean get() = finishedAt == null
@@ -130,6 +136,8 @@ class ProcessExeRunner(charsetName: String, logDir: String) : ExeRunner {
             autoStuck = isAutoStuck(run),
             question = currentQuestion(run)?.pattern,
             suggestion = currentQuestion(run)?.takeIf { !it.secret && run.running }?.answer,
+            frozenHelper = run.frozenHelper,
+            stoppedByUser = run.stoppedByUser,
         )
     }
 
@@ -331,8 +339,9 @@ class ProcessExeRunner(charsetName: String, logDir: String) : ExeRunner {
                 if (isAutoStuck(run) && run.autoStuckLoggedAt != run.lastOutputNanos) {
                     run.autoStuckLoggedAt = run.lastOutputNanos
                     val tail = synchronized(run.output) { run.output.takeLast(160).toString() }
-                    run.logLine("AUTO  geen regel herkent de laatste vraag; wacht op handmatig antwoord. Laatste uitvoer: ${quote(tail)}")
+                    run.logLine("AUTO  geen regel herkent de laatste uitvoer; is dit een onbekende vraag, of zit het programma vast? Laatste uitvoer: ${quote(tail)}")
                 }
+                stopIfHelperFrozen(run)
             }
         }, "exe-watch-${run.id}").apply { isDaemon = true }.start()
         return snapshot()!!
@@ -376,11 +385,40 @@ class ProcessExeRunner(charsetName: String, logDir: String) : ExeRunner {
 
     override fun kill() {
         current?.takeIf { it.running }?.let { run ->
+            run.stoppedByUser = true
             run.logLine("STOP  door gebruiker")
-            run.process.descendants().forEach { it.destroyForcibly() }
-            run.process.destroyForcibly()
+            destroy(run)
         }
     }
+
+    private fun destroy(run: Run) {
+        run.process.descendants().forEach { it.destroyForcibly() }
+        run.process.destroyForcibly()
+    }
+
+    /**
+     * Stopt de run als een hulpprogramma dat een foutvenster kan tonen niets meer doet. Als service ziet niemand dat venster, dus het blijft anders eeuwig wachten.
+     * Het hulpprogramma telt pas als vastgelopen als het ook geen processortijd meer gebruikt, zodat een groot bestand gewoon de tijd krijgt.
+     */
+    private fun stopIfHelperFrozen(run: Run) {
+        if (run.frozenHelper != null) return
+        val helper = run.process.descendants().filter { helperName(it) in FREEZING_HELPERS }.findFirst().orElse(null)
+        val cpu = helper?.info()?.totalCpuDuration()?.orElse(null)
+        val now = System.nanoTime()
+        // Niet elk systeem geeft de processortijd van een kleinkind-proces; dan telt alleen de stilte (cpu blijft null).
+        if (helper == null || helper.pid() != run.watchedHelperPid || cpu != run.watchedHelperCpu) {
+            run.watchedHelperPid = helper?.pid() ?: -1
+            run.watchedHelperCpu = cpu
+            run.watchedHelperSince = now
+        } else if ((now - maxOf(run.watchedHelperSince, run.lastOutputNanos)) / 1_000_000_000 >= FROZEN_AFTER_SECONDS) {
+            run.frozenHelper = helperName(helper).removeSuffix(".exe") + ".exe"
+            run.logLine("VAST  ${run.frozenHelper} doet al $FROZEN_AFTER_SECONDS s niets (waarschijnlijk een foutvenster dat niemand ziet); de app stopt het programma")
+            destroy(run)
+        }
+    }
+
+    private fun helperName(process: ProcessHandle): String =
+        process.info().command().orElse("").substringAfterLast('\\').substringAfterLast('/').lowercase()
 
     private fun pump(run: Run) {
         try {
@@ -473,6 +511,10 @@ class ProcessExeRunner(charsetName: String, logDir: String) : ExeRunner {
     companion object {
         private const val MAX_OUTPUT = 200_000
         private const val MAX_AUTO_ANSWERS = 100
+
+        /** Hulpprogramma's met vensters: bij een fout wachten ze op iemand die op OK klikt. */
+        private val FREEZING_HELPERS = setOf("i_view32.exe", "i_view32")
+        private const val FROZEN_AFTER_SECONDS = 20L
         private val STAMP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
 
         /** Logbestandsnaam zoals [start] die maakt: run-<datum-tijd>-<id>-<label>.log. */

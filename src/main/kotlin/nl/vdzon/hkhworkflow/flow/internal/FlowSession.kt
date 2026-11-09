@@ -566,7 +566,7 @@ class FlowSession(
                 synchronized(this) {
                     if (code != 0) {
                         step.status = StepStatus.FAILED
-                        step.message = "Gestopt met exitcode ${code ?: "onbekend"}. Controleer de uitvoer en kies Opnieuw."
+                        step.message = failureMessage(step.type.label, code)
                     } else if (complete) {
                         step.status = StepStatus.DONE
                         step.message = "Klaar: alle ${expected.size} verwachte bestanden zijn aangemaakt.$note$extraNote"
@@ -590,6 +590,20 @@ class FlowSession(
                 }
             }
             }
+        }
+    }
+
+    /** Waarom een programma niet goed is geëindigd, met de laatste regel die het zelf schreef: daar staat meestal het bestand waar het misging. */
+    private fun failureMessage(program: String, code: Int?): String {
+        val run = exeRunner.snapshot()
+        val last = run?.output?.lineSequence().orEmpty().map { it.trim() }
+            .lastOrNull { line -> line.any { it.isLetterOrDigit() } && !line.startsWith("⟶") }
+            ?.take(200)?.let { " Laatste uitvoer: \"$it\"." }.orEmpty()
+        return when {
+            run?.stoppedByUser == true -> "Je hebt $program gestopt.$last Kies Opnieuw om het nog eens te proberen."
+            run?.frozenHelper != null -> "$program liep vast op ${run.frozenHelper} en de app heeft het gestopt. Waarschijnlijk kan het een bestand niet verwerken.$last " +
+                "Bekijk het log, of kies Opnieuw beginnen en laat dit bestand weg."
+            else -> "$program stopte onverwacht met foutcode ${code ?: "onbekend"}.$last Bekijk het log en kies Opnieuw."
         }
     }
 

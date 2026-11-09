@@ -288,6 +288,7 @@ oude manier kan worden afgemaakt. Er wordt pas iets verwijderd of gearchiveerd a
    die bijna altijd). Ontbreekt er iets, dan is de stap mislukt met de lijst van ontbrekende bestanden.
    Een gemaakte small, large of 100pct moet ook echt een afbeelding zijn. Een gekozen jpg die dat niet is, houdt de stap images tegen voordat het programma start, want images.exe uploadt zelf en maakt records aan (8 november 2026).
    Een fase die klaar is, kun je openen om terug te kijken, alleen om te bekijken. Echt terug kan alleen van de nummers naar het kiezen (`DELETE /flow/files/confirmation`), want daarna is er al iets gebeurd (8 november 2026).
+   Loopt een programma vast op `i_view32.exe` (een foutvenster dat als service niemand ziet), dan stopt de app de run zodra `i_view32.exe` 20 seconden geen uitvoer geeft en geen processortijd gebruikt, en mislukt de stap met de laatste uitvoer in de melding. Bewust alleen dit hulpprogramma, zodat een trage upload niet wordt afgebroken; pdf's worden niet vooraf gecontroleerd. Bij andere stilte zegt de console dat het een onbekende vraag of een vastgelopen programma kan zijn.
 
 | Stap | Wat er gebeurt | Weigert als |
 |---|---|---|

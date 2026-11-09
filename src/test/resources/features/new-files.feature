@@ -111,6 +111,17 @@ Feature: Putting new files in ZCBS
     And Carla is not asked to check anything
     And ZCBS has no record 99068
 
+  Scenario: pdf2zcbs stops with an error
+    Given Jelly scanned "foutcode.pdf"
+    When Carla starts adding new files
+    And Carla picks "foutcode.pdf" from Jelly
+    And Carla accepts the offered numbers
+    And Carla runs pdf2zcbs
+    Then the step pdf2zcbs has failed for Carla
+    And Carla sees "foutcode 3"
+    And Carla sees "niet te lezen"
+    And Carla is not asked to check anything
+
   Scenario: A file that is not really an image does not reach images
     Given Ria scanned "kapot.jpg"
     When Carla starts adding new files

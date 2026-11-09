@@ -291,8 +291,17 @@ Feature: The screens of the frontend
     And the screen says "Dit heeft pdf2zcbs.exe gemaakt"
     And the screen does not say "Ja, goed"
     When "Bekijk Bestanden kiezen" is clicked
-    Then the screen says "99068.pdf"
+    Then the screen is titled "2. Bestanden kiezen"
+    And the screen says "kerk.pdf"
+    And the screen does not say "99068.pdf"
     And "Keuze aanpassen" cannot be found
+    When "Bekijk Nummers" is clicked
+    Then the screen is titled "3. Nummers"
+    And the screen says "99068.pdf"
+    When "Bekijk Nummers" is clicked
+    Then the screen is titled "3. Nummers"
+    When "Ga naar images.exe" is clicked
+    Then the screen says "Start images.exe"
 
   Scenario: Going back from the numbers to change the chosen files
     Given Jelly scanned "kerk.pdf"
@@ -390,6 +399,15 @@ Feature: The screens of the frontend
     Then the screen says "Log:"
     When "Alle logs wissen" is clicked
     Then the screen says "Nog geen runs"
+
+  Scenario: pdf2zcbs gets stuck on a helper program
+    Given Jelly scanned "vastloper.pdf"
+    And Carla has chosen "vastloper.pdf" of Jelly on the screen
+    And Carla has given the numbers on the screen
+    When "Automatisch uitvoeren" is clicked
+    Then the screen says "misschien vastgelopen" within a minute
+    And the screen says "liep vast op i_view32" within a minute
+    And the screen says "Verwerking: 99068.pdf"
 
   Scenario: The menu of the administrator
     When the app is opened at "/beheer"

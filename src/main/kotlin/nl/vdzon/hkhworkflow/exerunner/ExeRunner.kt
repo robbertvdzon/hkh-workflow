@@ -43,12 +43,16 @@ data class RunSnapshot(
     val auto: Boolean,
     /** Aantal automatisch gegeven antwoorden. */
     val autoAnswered: Int,
-    /** Automatisch: er staat een vraag die door geen enkele regel herkend wordt. */
+    /** Automatisch: het programma is al even stil en geen enkele regel past op de laatste uitvoer. Dat kan een onbekende vraag zijn, of een programma dat vastzit. */
     val autoStuck: Boolean,
     /** De bekende vraag waar het programma nu op wacht (de tekst waarmee hij herkend is), of null. */
     val question: String? = null,
     /** Het onthouden antwoord op [question], om vooraf in te vullen. Nooit een wachtwoord. */
     val suggestion: String? = null,
+    /** De naam van het hulpprogramma waarop de run vastliep en daarom is gestopt, of null. */
+    val frozenHelper: String? = null,
+    /** De gebruiker heeft deze run zelf gestopt. */
+    val stoppedByUser: Boolean = false,
 )
 
 /** Eén eerdere of lopende run, afgeleid van het logbestand in de logmap. Blijft dus ook na een herstart zichtbaar. */

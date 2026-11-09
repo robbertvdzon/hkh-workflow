@@ -133,7 +133,7 @@ Bij elke fase staat: wat het scherm toont, wat de knoppen doen, welke controles 
 gebeurt. Alle meldingen verschijnen in een rode balk bovenaan de pagina (fouten) of een groene/blauwe balk (info). Een volledige lijst met
 oorzaak en oplossing staat in [hoofdstuk 14](#14-problemen-en-oplossingen).
 
-Een fase die klaar is, kun je bovenaan aanklikken om terug te kijken, bijvoorbeeld welke bestanden je hebt gekozen. Dat is alleen bekijken. Zolang je nog geen nummers hebt gegeven, kun je bij Bestanden kiezen ook op **Keuze aanpassen** drukken; daarna kan dat alleen nog met **Opnieuw beginnen**.
+Een fase die klaar is, kun je bovenaan aanklikken om terug te kijken: bij **Bestanden kiezen** zie je welke bestanden je hebt gekozen, bij **Nummers** welk nummer elk bestand kreeg. Dat is alleen bekijken. Terug naar waar je was, ga je met **Terug naar de huidige stap** of door bovenaan op de huidige stap te klikken. Zolang je nog geen nummers hebt gegeven, kun je bij Bestanden kiezen ook op **Keuze aanpassen** drukken; daarna kan dat alleen nog met **Opnieuw beginnen**.
 
 ### Fase 1. Controleren
 
@@ -276,7 +276,9 @@ programmabestanden bij, en start het programma **één keer voor alle pdf's same
 tekstbestand mag wel leeg zijn: een pagina zonder herkende tekst). Pas dan staat de stap op **Klaar** met "Klaar: alle *N* verwachte bestanden zijn aangemaakt."
 (*N* = 4 per pdf). Anders staat hij op **Mislukt**:
 
-- "Gestopt met exitcode *c*. Controleer de uitvoer en kies Opnieuw."
+- "*programma* stopte onverwacht met foutcode *c*. Laatste uitvoer: ... Bekijk het log en kies Opnieuw."
+- "Je hebt *programma* gestopt. ... Kies Opnieuw om het nog eens te proberen."
+- "*programma* liep vast op i_view32.exe en de app heeft het gestopt. ..."
 - "Het programma is klaar (exitcode 0), maar er ontbreken bestanden: ..."
 - "Het programma is klaar (exitcode 0), maar dit zijn geen geldige afbeeldingen: ..."
 
@@ -453,7 +455,7 @@ Bij HKH stelt dit programma geen vragen zolang `pdf2zcbs.ini` ernaast staat; de 
 | VERWIJDEREN (tijdelijk) aangemaakte mappen | n |
 | VERWIJDEREN inhoud van de map [images] | n |
 
-Kent de app een vraag niet (bijvoorbeeld een andere versie van het programma), dan **stopt de automatische stand** en verschijnt de console met de melding "Automatisch: deze vraag wordt door geen enkele regel herkend. Beantwoord hem hieronder handmatig ...". De tekst
+Kent de app een vraag niet (bijvoorbeeld een andere versie van het programma), dan verschijnt na 5 seconden stilte de console met de melding "Het programma geeft al even niets terug en de app herkent geen vraag ...". Staat er een vraag, beantwoord die dan. Staat er geen vraag, dan is het programma misschien vastgelopen: kies **Stop programma** en bekijk het log. De tekst
 "of voeg een regel toe bij Instellingen" is verouderd: de antwoorden staan vast in de code en zijn niet meer in de instellingen aan te passen. Na 100 automatische antwoorden in één run zet de app het automatisch antwoorden uit (voor het geval het programma in een kringetje loopt).
 
 ### Console, logbestanden en stoppen
@@ -662,7 +664,7 @@ Alle meldingen komen uit de code. Hoofdletters en leestekens kunnen in het scher
 | In *output* staan resultaten van een vorige run ... | Oude uitvoer in `output` | Opnieuw beginnen en opruimen via fase 1, of de map zelf veiligstellen |
 | In *small / large / 100pct* staan resultaten van een vorige run ... Ruim eerst op. | Oude afgeleide afbeeldingen | Idem |
 | Controleer eerst de bestanden van pdf2zcbs.exe (images.exe) en bevestig dat ze goed zijn. | De controle van hoofdstuk 6 is nog niet gedaan | Op **Ja, goed: ...** klikken (nadat je gekeken hebt) |
-| Gestopt met exitcode *c*. Controleer de uitvoer en kies Opnieuw. | Het programma gaf een foutcode, of is gestopt via **Stop programma** | Beheerder: log lezen (Test, Runs). Ging het toch goed, dan **Toch klaar** op de pagina Test. Anders **Opnieuw** |
+| *programma* stopte onverwacht met foutcode *c*. ... | Het programma gaf een foutcode | Beheerder: log lezen (Test, Runs). Ging het toch goed, dan **Toch klaar** op de pagina Test. Anders **Opnieuw** |
 | Het programma is klaar (exitcode 0), maar er ontbreken bestanden: ... | Het programma deed zijn werk niet volledig (bijv. een pagina werd niet verwerkt) | Log lezen; **Opnieuw**, of de scan nakijken |
 | Het programma is klaar (exitcode 0), maar dit zijn geen geldige afbeeldingen: ... | Het programma heeft bestanden gemaakt die geen afbeelding zijn | **Bekijk log**; **Opnieuw**, of de scan nakijken |
 | ... is geen geldige afbeelding. Kies Opnieuw beginnen en laat dit bestand weg. | De gekozen jpg is beschadigd of is eigenlijk een ander soort bestand. images.exe wordt niet gestart | **Opnieuw beginnen** en dit bestand niet kiezen; de scan opnieuw maken |
@@ -670,7 +672,8 @@ Alle meldingen komen uit de code. Hoofdletters en leestekens kunnen in het scher
 | De app is herstart terwijl deze stap bezig was. ... | Zie hoofdstuk 10 | Eerst kijken wat er al staat, dan **Opnieuw** |
 | Voordat images.exe de records aanmaakt: ... Er is niets aangemaakt. Kies "Opnieuw beginnen" ... | Zie hoofdstuk 7: iemand anders gebruikte de nummers | **Opnieuw beginnen**, ander beginnummer |
 | Voor automatisch uitvoeren moet bij Instellingen het FTP-wachtwoord staan. ... | Geen ftp-wachtwoord ingesteld | Beheerder vult het in, of gebruik **Handmatig uitvoeren** en typ het één keer |
-| Automatisch: deze vraag wordt door geen enkele regel herkend. ... | `images.exe` stelt een vraag die de app niet kent (andere versie?) | Beantwoord de vraag in de console die nu verschijnt; meld de vraag aan de beheerder zodat de code kan worden aangepast |
+| Het programma geeft al even niets terug en de app herkent geen vraag. ... | Het programma stelt een vraag die de app niet kent (andere versie?), of het zit vast | Staat er een vraag, beantwoord die dan in de console en meld hem aan de beheerder zodat de code kan worden aangepast. Staat er geen vraag, kies dan **Stop programma** en bekijk het log |
+| *programma* liep vast op i_view32.exe en de app heeft het gestopt. ... | `i_view32.exe` kon een bestand niet verwerken en wacht op een foutvenster dat niemand ziet. De app stopt het na 20 seconden zonder activiteit | Bekijk de laatste uitvoer of het log, kies **Opnieuw beginnen** en laat het bestand weg |
 | Let op: de afbeeldingen zijn niet naar de server geüpload. / Let op: er zijn geen records aangemaakt in ZCBS. | Op de vraag over uploaden/records is niet met `j` geantwoord (alleen bij handmatig mogelijk) | De stap met **Niet goed: images.exe opnieuw uitvoeren** herhalen, na overleg met de beheerder |
 | Let op: deze records staan nog niet in ZCBS: ... / De records in ZCBS konden niet worden gecontroleerd. | Records niet (zichtbaar) aangemaakt, of ZCBS niet bereikbaar | In ZCBS kijken (via **Open in ZCBS** bij Records aanpassen, of in ZCBS zelf); bij twijfel de beheerder |
 | Kolom "Op de server" toont **nee** | Een afbeelding staat niet op de ftp-server | Niet verder gaan; de beheerder laat de ftp-map en het log nakijken |
@@ -696,7 +699,7 @@ Alle meldingen komen uit de code. Hoofdletters en leestekens kunnen in het scher
 | Melding / situatie | Oorzaak | Wat te doen |
 |---|---|---|
 | "De doorloop is gestopt." / "Deze doorloop was er al niet meer." | Resultaat van **Stoppen** bij Sessies | Gebruiker moet opnieuw beginnen (fase 1) |
-| De pagina blijft op "Bezig…" staan | Een programma wacht op een vraag (handmatig), of de app wacht op het afronden | Ga naar de console; bij Automatisch: wacht tot "Automatisch: deze vraag wordt door geen enkele regel herkend" verschijnt. Kijk in Test, Runs naar het logbestand |
+| De pagina blijft op "Bezig…" staan | Een programma wacht op een vraag (handmatig), of de app wacht op het afronden | Ga naar de console; bij Automatisch: wacht tot de melding "Het programma geeft al even niets terug" verschijnt. Kijk in Test, Runs naar het logbestand |
 | Onderin het menu staat "Het echte archief" | De app werkt tegen het echte archief (de instelling "Gebruik de test-ZCBS op localhost" staat uit) | Dit is geen fout; wees voorzichtig: alles wordt echt geschreven |
 
 ---

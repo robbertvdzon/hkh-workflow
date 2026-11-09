@@ -132,7 +132,11 @@ function PhaseStrip({ flow, viewing, onView }: { flow: Flow; viewing: number | n
         return (
           <li key={phase.number} aria-current={phase.state === "now" ? "step" : undefined}>
             {done ? (
-              <button type="button" aria-label={`Bekijk ${phase.title}`} title="Terugkijken" className={cn(look, "cursor-pointer hover:border-ok", viewing === phase.number && "ring-2 ring-ok")} onClick={() => onView(viewing === phase.number ? null : phase.number)}>
+              <button type="button" aria-label={`Bekijk ${phase.title}`} title="Terugkijken" className={cn(look, "cursor-pointer hover:border-ok", viewing === phase.number && "ring-2 ring-ok")} onClick={() => onView(phase.number)}>
+                {content}
+              </button>
+            ) : phase.state === "now" && viewing !== null ? (
+              <button type="button" aria-label={`Ga naar ${phase.title}`} title="Terug naar de huidige stap" className={cn(look, "cursor-pointer")} onClick={() => onView(null)}>
                 {content}
               </button>
             ) : (
@@ -171,7 +175,13 @@ function PastPhase({ collection, flow, act, busy, number, onClose }: PhaseProps 
         <Chip variant="neutral">Alleen bekijken</Chip>
       </div>
       {number === 1 && <PastChecks collection={collection} />}
-      {number >= 2 && number <= 3 && <FileList collection={collection} />}
+      {number === 2 && <PastChosenFiles collection={collection} />}
+      {number === 3 && (
+        <>
+          <p className="text-[13px] text-muted">Deze nummers heb je gegeven.</p>
+          <FileList collection={collection} />
+        </>
+      )}
       {step && <PastStep collection={collection} step={step} />}
       <div className="flex flex-wrap gap-2">
         <Button onClick={onClose}>Terug naar de huidige stap</Button>
@@ -182,6 +192,24 @@ function PastPhase({ collection, flow, act, busy, number, onClose }: PhaseProps 
         )}
       </div>
     </Card>
+  )
+}
+
+function PastChosenFiles({ collection }: { collection: string }) {
+  const files = useChosenFiles(collection).data ?? []
+  return (
+    <>
+      <p className="text-[13px] text-muted">
+        Je hebt {files.length === 1 ? "1 bestand" : `${files.length} bestanden`} gekozen.
+      </p>
+      <ul className="flex max-w-xl flex-col divide-y divide-line rounded-lg border border-line">
+        {files.map((file) => (
+          <li key={file.name} className="truncate px-4 py-2.5" title={file.name}>
+            {file.name}
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }
 
@@ -590,20 +618,22 @@ function StepsPhase({ collection, flow, act, busy }: PhaseProps) {
 function FileList({ collection }: { collection: string }) {
   const files = useChosenFiles(collection)
   return (
-    <Table>
-      <TableHead columns="minmax(0,1fr) 140px">
-        <span>Bestand</span>
-        <span>Nummer</span>
-      </TableHead>
-      {files.data?.map((file) => (
-        <TableRow key={file.name} columns="minmax(0,1fr) 140px">
-          <span className="truncate" title={file.name}>
-            {file.name}
-          </span>
-          <span className="font-mono">{file.newName ?? "–"}</span>
-        </TableRow>
-      ))}
-    </Table>
+    <div className="max-w-xl">
+      <Table>
+        <TableHead columns="minmax(0,1fr) 140px">
+          <span>Bestand</span>
+          <span>Wordt</span>
+        </TableHead>
+        {files.data?.map((file) => (
+          <TableRow key={file.name} columns="minmax(0,1fr) 140px">
+            <span className="truncate" title={file.name}>
+              {file.name}
+            </span>
+            <span className="font-mono">{file.newName ?? "–"}</span>
+          </TableRow>
+        ))}
+      </Table>
+    </div>
   )
 }
 
@@ -713,7 +743,11 @@ function ProgramConsole({ collection, act }: { collection: string; act: Act }) {
           Volledig log
         </a>
       </div>
-      {console.autoStuck && <Alert variant="error">Automatisch: deze vraag wordt door geen enkele regel herkend. Beantwoord hem hieronder handmatig.</Alert>}
+      {console.autoStuck && (
+        <Alert variant="error">
+          Het programma geeft al even niets terug en de app herkent geen vraag. Staat hieronder een vraag, beantwoord die dan. Staat er geen vraag, dan is het programma misschien vastgelopen: kies dan Stop programma en bekijk het volledige log.
+        </Alert>
+      )}
       {console.suspiciousSilence && (
         <Alert>
           {console.label?.includes("pdf2zcbs") && <b>Bij pdf2zcbs.exe is dat normaal als pdf2zcbs.ini de vragen al beantwoordt: het programma toont dan niets en klaar is klaar. </b>}
