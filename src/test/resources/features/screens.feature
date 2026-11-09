@@ -355,6 +355,7 @@ Feature: The screens of the frontend
     Then the screen is titled "Inloggen als beheerder"
     When the admin logs in on the screen with the right password
     Then the screen is titled "Instellingen"
+    And the screen does not say "meesturen naar het logboek"
 
   @wijzigt-instellingen
   Scenario: Changing a setting and testing the ftp connection

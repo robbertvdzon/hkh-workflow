@@ -20,9 +20,8 @@ class AppLogAppenderTest {
     private val dir: Path = Files.createTempDirectory("app-log-appender")
     private val context = LoggerContext()
 
-    private fun appender(url: String = "https://logboek.example") = AppLogAppender().also {
+    private fun appender() = AppLogAppender().also {
         it.context = context
-        it.adminLogUrl = url
         it.directory = dir.toString()
         it.start()
     }
@@ -73,12 +72,6 @@ class AppLogAppenderTest {
         val message = written().single().path("message").asString()
         assertTrue(message.startsWith("ze zei \"hoi\"\nregel twee\t\\ "))
         assertEquals(AppLogAppender.MAX_MESSAGE, message.length)
-    }
-
-    @Test
-    fun `zonder adres van het logboek doet de appender niets`() {
-        val a = appender(url = "")
-        assertFalse(a.isStarted)
     }
 
     @Test

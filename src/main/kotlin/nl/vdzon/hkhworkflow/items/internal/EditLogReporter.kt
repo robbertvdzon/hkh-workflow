@@ -40,12 +40,11 @@ class EditLogReporter(private val items: ItemEditService, private val client: Ad
 
     /** Vóór het opslaan aangeroepen: bewaart de wijzigingen om bij de melding te zetten zodra het record echt is opgeslagen. */
     fun willSave(number: String, changes: List<Change>) {
-        if (client.enabled) upcoming[number] = changes
+        upcoming[number] = changes
     }
 
     @Scheduled(initialDelay = 6_000, fixedDelay = 3_000)
     fun tick() {
-        if (!client.enabled) return
         val users = items.users()
         for (user in users) {
             try {

@@ -82,7 +82,7 @@ De beheerder is een apart account van de ZCBS-gebruikers: er is één beheerders
 - **Wachtwoord leesbaar:** het ftp-wachtwoord staat in dit bestand leesbaar. Geef het bestand dus alleen leesrechten voor het account waaronder de app draait en de beheerder.
 - **Schrijven:** bij **Opslaan** schrijft de app eerst een tijdelijk bestand (zelfde naam met `.tmp` erachter) en verplaatst dat daarna over het echte bestand. Een onderbroken schrijfactie laat zo geen half bestand achter. Bestaat de map nog niet, dan maakt de app hem aan.
 - **Eenmaal inlezen:** de app leest het bestand één keer en onthoudt de instellingen in het geheugen. Pas je het bestand met de hand aan, dan neemt de app dat pas over na een herstart (uit de code gelezen). Wijzig instellingen dus bij voorkeur via de pagina.
-- **Bestand ontbreekt of is onleesbaar:** de app start dan met standaardwaarden (alle paden leeg, **test-ZCBS aan**, PERLIO aan, logboek-optie aan, resolutie 6). Bij een onleesbaar bestand staat er een waarschuwing in het applicatielog. Let op: als je daarna opslaat, overschrijf je het onleesbare bestand.
+- **Bestand ontbreekt of is onleesbaar:** de app start dan met standaardwaarden (alle paden leeg, **test-ZCBS aan**, PERLIO aan, resolutie 6). Bij een onleesbaar bestand staat er een waarschuwing in het applicatielog. Let op: als je daarna opslaat, overschrijf je het onleesbare bestand.
 - **Afgeleide velden:** het bestand bevat ook `zcbsBaseUrl`, `ftpHost`, `ftpPort`, `ftpUser`, `ftpBaseDir` en `collection`. Die worden bij het inlezen altijd opnieuw bepaald uit de keuze "test-ZCBS" (zie 5.6). Handmatig aanpassen heeft dus geen effect.
 - **Oudere bestanden:** een bestand van vóór de instellingen per collectie krijgt zijn back-upmappen en zijn resolutie bij het archief. Een bestand zonder de keuze voor de test-ZCBS telt als test, tenzij het oude adres het echte archief was. Zo wijst een oude instelling nooit ineens naar het echte archief. Een oud wachtwoord onder de naam `sftpPassword` of als oud antwoord op "FTP wachtwoord" wordt overgenomen.
 
@@ -101,13 +101,13 @@ Naast het instellingenbestand staan nog andere bestanden van de app (alleen ter 
 
 Klik je op **Opslaan**, dan gebeurt dit in deze volgorde:
 
-1. De app leest alle velden van het formulier. Alle zeven collecties van HKH hebben een eigen blok met resolutie en back-upmappen (zie 5.11); ze worden allemaal meegestuurd en opgeslagen, ook de collecties waar de app nog niet mee werkt.
+1. De app leest alle velden van het formulier. Alle zeven collecties van HKH hebben een eigen blok met resolutie en back-upmappen (zie 5.10); ze worden allemaal meegestuurd en opgeslagen, ook de collecties waar de app nog niet mee werkt.
 2. De keuze voor de test-ZCBS bepaalt het adres van ZCBS en de ftp-server (zie 5.6); die worden opnieuw ingevuld.
 3. De app **schoont op** (`SettingsService.save`):
    - de werkmap, het pad van `pdf2zcbs.exe`, het pad van `images.exe`, de map voor resten en de back-upmappen: spaties vooraan en achteraan worden weggehaald;
    - de mappen met scans: elke regel wordt getrimd en lege regels verdwijnen;
    - de resolutie: staat er iets anders dan 1, 2, 3, 6, 7 of 8, dan wordt het 6;
-   - het ftp-wachtwoord wordt niet getrimd en niet gecontroleerd (zie 5.9).
+   - het ftp-wachtwoord wordt niet getrimd en niet gecontroleerd (zie 5.8).
 4. De app schrijft het bestand (zie hoofdstuk 3) en onthoudt de nieuwe instellingen. Is er echt iets veranderd, dan meldt hij dat aan het workflow-logboek (hoofdstuk 11).
 5. De pagina komt terug met "Instellingen opgeslagen."
 
@@ -137,10 +137,9 @@ Schermvolgorde:
 4. Start met PERLIO=:unix
 5. Groep **Bestanden van de server en ZCBS**: Mappen met scans; Gebruik de test-ZCBS op localhost
 6. Groep **Resten van een eerdere run**: Map voor resten van een eerdere run
-7. Groep **Logboek**: Het ftp-wachtwoord meesturen naar het logboek
-8. Groep **FTP-wachtwoord**: Wachtwoord van ... (met **wissen**)
-9. Groep **Per collectie**: Resolutie van images.exe; Back-upmap voor 100pct; Back-upmap voor de pdf's
-10. De knop **Opslaan**, daaronder de sectie **Test verbinding**
+7. Groep **FTP-wachtwoord**: Wachtwoord van ... (met **wissen**)
+8. Groep **Per collectie**: Resolutie van images.exe; Back-upmap voor 100pct; Back-upmap voor de pdf's
+9. De knop **Opslaan**, daaronder de sectie **Test verbinding**
 
 Gebruik overal **volledige paden**, bijvoorbeeld `C:\zcbs\images-werk\images.exe`. Een relatief pad is niet bedoeld en kan naar de verkeerde plek wijzen.
 
@@ -180,7 +179,7 @@ Gebruik overal **volledige paden**, bijvoorbeeld `C:\zcbs\images-werk\images.exe
 | **Controle bij opslaan** | Zoals bij 5.2. |
 | **Controle in fase 1** | Zoals bij 5.2 (dezelfde regel). |
 | **Controle voor de stap** | "Stel eerst het pad naar images.exe in." of "images.exe niet gevonden: ...". |
-| **Fout** | Zoals bij 5.2. Staat het ftp-wachtwoord niet in de instellingen, dan weigert **Automatisch uitvoeren** van images.exe (zie 5.9). |
+| **Fout** | Zoals bij 5.2. Staat het ftp-wachtwoord niet in de instellingen, dan weigert **Automatisch uitvoeren** van images.exe (zie 5.8). |
 | **Let op** | De echte `images.exe` heeft de ftp-server en de ftp-gebruiker zelf ingebouwd. Wat bij "test-ZCBS" is gekozen, bepaalt de ZCBS-verbinding en de ftp-upload van de app zelf, niet de verbinding van het programma `images.exe` (zie 5.6). |
 
 ### 5.4 Start met PERLIO=:unix
@@ -250,20 +249,7 @@ Het scriptpad in ZCBS is steeds `/cgi-bin/<collectie>.pl` (voor het archief `/cg
 | **Controle bij opslaan** | Alleen opschonen (spaties weg). Er is geen waarschuwing op de pagina en ook geen controle in fase 1: de map wordt pas gebruikt als iemand op **Verplaatsen** klikt. |
 | **Fout** | Een pad dat niet bestaat of niet schrijfbaar is: de app maakt de mappen aan zodra hij kan; lukt het niet dan meldt hij "Opruimen is niet helemaal gelukt: ..." Controleer dan de mappen van de programma's. Is werkmap én resten-map leeg, dan staat er "Stel eerst de invoermap of de map voor resten in bij Instellingen." |
 
-### 5.8 Het ftp-wachtwoord meesturen naar het logboek (groep "Logboek")
-
-![De groep Logboek](afbeeldingen/instellingen-3-logboek.jpg)
-
-
-| | |
-|---|---|
-| **Wat** | Een aanvinkvakje. Aan: bij elke melding aan het workflow-logboek van hkh-admin (instellingenwijzigingen en doorlopen) staat het ftp-wachtwoord leesbaar in de gemelde instellingen. |
-| **Waarom** | Alleen om in het begin te kunnen controleren wat er is ingesteld. Het wachtwoord staat dan leesbaar in het beheerscherm van hkh-admin en in de database daarvan. Andere wachtwoorden gaan nooit mee. |
-| **Standaard** | **Aan** (zo staat het in een nieuwe installatie). **Zet dit uit zodra het niet meer nodig is.** |
-| **Controle** | Geen. De optie heeft alleen effect als het workflow-logboek aan staat (`hkh.workflow.admin-log-url` niet leeg, zie hoofdstuk 7). |
-| **Fout / let op** | Staat de optie aan, dan is het wachtwoord leesbaar voor iedereen die bij dat beheerscherm kan. Dat een wachtwoord veranderde, staat er altijd bij, ook als het wachtwoord zelf is weggelaten. Alleen de nieuwe stand van de optie telt: zet je de optie uit en wijzig je in dezelfde keer het wachtwoord, dan wordt het nieuwe wachtwoord niet meegestuurd. |
-
-### 5.9 Wachtwoord van ... (groep "FTP-wachtwoord")
+### 5.8 Wachtwoord van ... (groep "FTP-wachtwoord")
 
 ![De groep FTP-wachtwoord](afbeeldingen/instellingen-4-ftp.jpg)
 
@@ -283,7 +269,7 @@ De naam van het account staat in het label: het ftp-account van images.exe. Het 
 | **Fout** | Zonder wachtwoord: fase 1 blijft rood bij de ftp-regel; **Automatisch uitvoeren** van images.exe weigert ("Voor automatisch uitvoeren moet bij Instellingen het FTP-wachtwoord staan. Gebruik anders Handmatig uitvoeren ..."); de upload-stap meldt "Ftp-wachtwoord is niet ingesteld". Een fout wachtwoord: "inloggen is mislukt: ..." bij Test verbinding en in fase 1. Het wachtwoord staat leesbaar in het instellingenbestand (zie hoofdstuk 3). |
 | **Let op** | Enkele meldingen in de app verwijzen nog naar "de antwoorden voor images.exe" in de instellingen. Die sectie bestaat niet meer; het wachtwoord staat in de groep **FTP-wachtwoord**. |
 
-### 5.10 Test verbinding
+### 5.9 Test verbinding
 
 ![Test verbinding](afbeeldingen/instellingen-6-test.jpg)
 
@@ -298,7 +284,7 @@ Het resultaat toont "Verbonden met ... als ..." en per map "bestaat" of "bestaat
 
 Bij het uploaden zelf werkt de app voorzichtig: hij overschrijft nooit een bestaand bestand, verwijdert nooit iets op de server en maakt nooit mappen aan. Hij controleert eerst of alle doelmappen bestaan en of geen enkel doelbestand al bestaat, uploadt onder een tijdelijke naam, hernoemt en controleert de grootte.
 
-### 5.11 Per collectie
+### 5.10 Per collectie
 
 ![De groep Per collectie](afbeeldingen/instellingen-5-collectie.jpg)
 
@@ -345,7 +331,7 @@ Er is een blok voor elk van de zeven collecties van HKH: archief, artikelen, bee
 | **Controle voor de stap** | Alleen als er pdf's in de batch zitten (bij alleen afbeeldingen is er geen pdf-back-up nodig): "Stel eerst de back-upmap voor de pdf's in" / "Back-upmap voor de pdf's bestaat niet: ...". |
 | **Fout** | Zoals bij de back-upmap voor 100pct. Let op: de pagina en fase 1 eisen beide mappen, ook al worden bij een batch met alleen afbeeldingen alleen de 100pct gebruikt. |
 
-### 5.12 Wat niet op het scherm staat (vast of afgeleid)
+### 5.11 Wat niet op het scherm staat (vast of afgeleid)
 
 | Onderwerp | Waarde |
 |---|---|
@@ -399,7 +385,6 @@ Een aantal instellingen staat niet op de pagina Instellingen maar in de configur
 | `hkh.workflow.console-charset` | `HKH_WORKFLOW_CONSOLE_CHARSET` | `IBM850` | Codepagina van de DOS-uitvoer van de exe's (Nederlandse Windows). |
 | `hkh.workflow.log-dir` | `HKH_WORKFLOW_LOG_DIR` | `logs` | Waar de logbestanden van de programma-runs komen (per collectie en gebruiker een submap). |
 | `hkh.workflow.admin-password` | `HKH_WORKFLOW_ADMIN_PASSWORD` | leeg in de code | Het beheerderswachtwoord. Leeg = niemand kan als beheerder inloggen, dus de instellingen zijn dicht. |
-| `hkh.workflow.admin-log-url` | `HKH_WORKFLOW_ADMIN_LOG_URL` | het adres van het workflow-logboek van hkh-admin | Waarheen de meldingen gaan. Leeg = niets melden. |
 | `hkh.workflow.test-zcbs-url` | (geen vaste naam in application.properties) | `http://localhost:8081` | Adres van de test-ZCBS als de test-keuze aan staat (zie 5.6). |
 | `hkh.workflow.test-ftp-host` | idem | `localhost` | Ftp-server van de test-ZCBS. |
 | `hkh.workflow.test-ftp-port` | idem | `21` | Poort van die ftp-server. |
@@ -417,7 +402,7 @@ Een aantal instellingen staat niet op de pagina Instellingen maar in de configur
 
 **De test-ZCBS-adressen** staan niet in de meegeleverde `application.properties`. Zet ze in een `application.properties` naast de jar (`hkh.workflow.test-zcbs-url=...`). Als omgevingsvariabele werkt de standaardomzetting van Spring Boot (`HKH_WORKFLOW_TEST_ZCBS_URL`, `HKH_WORKFLOW_TEST_FTP_HOST`, `HKH_WORKFLOW_TEST_FTP_PORT`); die schrijfwijze is niet apart op de server uitgeprobeerd.
 
-**Het workflow-logboek** (`admin-log-url`): zie hoofdstuk 11. De meldingen gaan op een eigen draad; een traag of onbereikbaar logboek houdt de app nooit op. Een leeg adres betekent dat er niets wordt gemeld (zo staat het in de code en de README). Of een lege omgevingsvariabele de standaardwaarde ook echt vervangt, is niet uitgeprobeerd; zet het leeg maken bij voorkeur in `application.properties`.
+**Het workflow-logboek**: zie hoofdstuk 11. De app meldt altijd aan hkh-admin; dat is geen instelling. De meldingen gaan op een eigen draad; een traag of onbereikbaar logboek houdt de app nooit op.
 
 **Sessietimeout:** `hkh.workflow.session-timeout-minutes` staat nog in `application.properties` en in de README ("Na zoveel minuten zonder activiteit komt een in gebruik zijnde collectie vrij"). In de huidige code wordt deze eigenschap door niets meer gelezen (er is geen slot per collectie meer). Instellen heeft dus geen effect; een doorloop blijft staan tot de gebruiker hem afrondt of de beheerder hem stopt (hoofdstuk 8).
 
@@ -541,7 +526,7 @@ Open **Instellingen > Logs** (adres `/instellingen/logs`). Elke start van een pr
 
 ## 11. Meldingen aan het workflow-logboek
 
-De app meldt (als `hkh.workflow.admin-log-url` is ingevuld) aan het workflow-logboek van hkh-admin:
+De app meldt altijd aan het workflow-logboek van hkh-admin:
 
 - elke ZCBS-inlogpoging;
 - de stand van elke doorloop (alle instellingen zonder wachtwoorden, de gekozen bestanden, stappen en de uitvoer van de programma's);
@@ -564,7 +549,7 @@ De app meldt (als `hkh.workflow.admin-log-url` is ingevuld) aan het workflow-log
 
 **Wat er niet als wijziging wordt gemeld:** `zcbsBaseUrl`, `ftpHost`, `ftpPort`, `ftpUser`, `ftpBaseDir` en `collection`. Die volgen uit de keuze van de test-ZCBS; de wijziging zie je terug als `useTestZcbs`.
 
-**Wachtwoorden:** velden waarvan de naam op een geheim lijkt (met onder meer password, wachtwoord, secret, token, of eindigend op key) worden vervangen door "(weggelaten)", ook in de oude en nieuwe waarde. Dat het wachtwoord veranderde, staat er altijd bij. **De enige uitzondering is het ftp-wachtwoord als de optie "Het ftp-wachtwoord meesturen naar het logboek" aan staat** (zie 5.8); dan staat het leesbaar in de melding. Alleen de nieuwe stand van die optie telt. Waarden van wachtwoorden worden ook uit de uitvoertekst van de programma's gehaald.
+**Wachtwoorden:** velden waarvan de naam op een geheim lijkt (met onder meer password, wachtwoord, secret, token, of eindigend op key) worden vervangen door "(weggelaten)", ook in de oude en nieuwe waarde. Dat het wachtwoord veranderde, staat er altijd bij. **De enige uitzondering is het ftp-wachtwoord: dat gaat voorlopig altijd leesbaar mee** en is dus te zien in het beheerscherm van hkh-admin en in de database. Dit is geen instelling en gaat er in een latere versie weer uit. Waarden van wachtwoorden worden ook uit de uitvoertekst van de programma's gehaald.
 
 **Betrouwbaarheid:** een melding die mislukt, houdt het opslaan nooit tegen. Is hkh-admin tijdelijk weg, dan probeert de app het nog een paar keer opnieuw (maximaal drie pogingen per melding), bij de eerstvolgende melding. Een weigering van het logboek leidt tot een korte pauze (30 seconden) voordat de app het weer probeert. Het logboek zelf weigert te grote berichten; lange teksten worden dan ingekort.
 
@@ -585,7 +570,6 @@ De echte `pdf2zcbs.exe` en `images.exe` zijn Windows-programma's. Op een Mac dra
 | Map voor resten | UNC-pad, bijvoorbeeld `\\server\resten`, of leeg | Een map op de Mac, of leeg |
 | Back-upmappen | UNC-paden die bij de scans horen, bijvoorbeeld `\\server\scans\backup_100pct` en `\\server\scans\backup_invoer_org` | Mappen op de Mac |
 | Resolutie | 6 voor het archief (foto's) | 6 |
-| Logboek-optie (ftp-wachtwoord meesturen) | Uit zodra gecontroleerd | Naar keuze |
 | `hkh.workflow.console-charset` | `IBM850` (Nederlandse Windows) | Niet van toepassing op de mock; laat staan |
 | `HKH_WORKFLOW_ADDRESS` | `0.0.0.0` (gebruikers komen vanaf hun eigen pc), alleen op een afgeschermd netwerk | idem |
 
@@ -609,7 +593,6 @@ Tips voor een Windows-service:
 | Mappen met scans | `sourceFolders` | bladeren, kiezen en kopiëren in fase 2; herkomst (wie scande); fase 1 regel 3; waarschuwing op Instellingen |
 | Gebruik de test-ZCBS op localhost | `useTestZcbs` | ZCBS-adres (`zcbsBaseUrl`), ftp-host en -poort; uitloggen bij wisseling; rode melding "Het echte archief"; ftp-test; fase 1 regels 1, 2 en 6 |
 | Map voor resten van een eerdere run | `leftoversFolder` | doel van **Verplaatsen** in fase 1 |
-| Het ftp-wachtwoord meesturen naar het logboek | `logFtpPassword` | bepaalt of het ftp-wachtwoord leesbaar in de logboekmeldingen staat |
 | Wachtwoord van ... / wissen | `ftpPassword` | antwoord op "FTP wachtwoord" voor images.exe; ftp-upload en ftp-test van de app; fase 1 regel 6; waarschuwing op Instellingen |
 | Resolutie van images.exe (per collectie) | `collections.<collectie>.imagesResolution` | antwoord op "Kies 1,2,3 ..." van images.exe |
 | Back-upmap voor 100pct (per collectie) | `collections.<collectie>.backup100pctFolder` | stap Back-up; fase 1 regel 5; waarschuwing op Instellingen |
@@ -617,7 +600,6 @@ Tips voor een Windows-service:
 | (niet op het scherm) | `collection`, `ftpUser`, `ftpBaseDir`, `ftpHost`, `ftpPort`, `zcbsBaseUrl` | afgeleid; ZCBS-script `/cgi-bin/archief.pl`, ftp-mappen `/public_html/archief/ocr` en `/pdf` |
 | (niet op Instellingen, maar op Versie) | `nightlyUpdate` | de nachtelijke update (hoofdstuk 9); standaard aan |
 | `hkh.workflow.admin-password` | (configuratie) | inloggen op `/beheer` |
-| `hkh.workflow.admin-log-url` | (configuratie) | meldingen aan het workflow-logboek |
 | `hkh.workflow.test-zcbs-url`, `test-ftp-host`, `test-ftp-port` | (configuratie) | adres van de test-ZCBS als `useTestZcbs` aan staat |
 | `hkh.workflow.settings-file` | (configuratie) | waar de instellingen worden bewaard |
 | `hkh.workflow.processed-log` | (configuratie) | het verwerkt-log |
@@ -654,8 +636,7 @@ Tips voor een Windows-service:
 | Een handmatige wijziging van het instellingenbestand verschijnt niet | De app leest het bestand maar één keer | Herstart de app, of wijzig via de pagina |
 | Een melding "Ftp-wachtwoord is niet ingesteld (Instellingen, bij de antwoorden voor images.exe)" | Verouderde tekst: het wachtwoord staat bij **FTP-wachtwoord** | Vul het daar in |
 | Een gebruiker zit vast in een doorloop of heeft de app verlaten | Doorloop is blijven staan (er is geen automatische timeout) | Open **Sessies** en klik op **Stoppen**; de gebruiker begint opnieuw en ruimt eventueel resten op |
-| Het wachtwoord staat leesbaar in het logboek van hkh-admin | De optie "Het ftp-wachtwoord meesturen naar het logboek" staat aan (standaard) | Zet de optie uit en sla op; wijzig het wachtwoord als het gelekt is |
-| Er komen geen meldingen in het workflow-logboek | `hkh.workflow.admin-log-url` is leeg, de server is onbereikbaar of het logboek kent het meldpunt nog niet | Controleer de configuratie en het applicatielog; een tijdelijke storing houdt de app niet op |
+| Er komen geen meldingen in het workflow-logboek | De server is onbereikbaar of het logboek kent het meldpunt nog niet | Controleer het applicatielog; een tijdelijke storing houdt de app niet op |
 
 ---
 
@@ -664,7 +645,7 @@ Tips voor een Windows-service:
 Alles in deze handleiding komt uit de code en de projectdocumentatie van de app. Het volgende is **niet op de echte HKH-server uitgeprobeerd**:
 
 - het gedrag van een Windows-service met UNC-paden en de rechten van het service-account (de README adviseert UNC-paden; de details hier zijn uit de code afgeleid);
-- de werking van omgevingsvariabelen voor `test-zcbs-url`, `test-ftp-host` en `test-ftp-port` en van een lege `HKH_WORKFLOW_ADMIN_LOG_URL` (standaardgedrag van Spring Boot);
+- de werking van omgevingsvariabelen voor `test-zcbs-url`, `test-ftp-host` en `test-ftp-port` (standaardgedrag van Spring Boot);
 - het effect van een gewijzigd pad voor een map met scans op de weergave "al verwerkt" (afgeleid uit de code van het verwerkt-log);
 - welke ftp-server de echte `images.exe` kiest als `useTestZcbs` aan staat (de meting van 30 oktober 2026 zegt dat de server in het programma is ingebouwd);
 - de waarden voor Windows en macOS in hoofdstuk 12 zijn voorbeelden en aanbevelingen, geen vastgelegde HKH-configuratie.

@@ -32,7 +32,6 @@ Instelbaar met omgevingsvariabelen:
 | `HKH_WORKFLOW_PROCESSED_LOG` | `hkh-workflow-verwerkt.tsv` | Het log van wat er verwerkt is (zonder pad: naast het instellingenbestand) |
 | `HKH_WORKFLOW_CONSOLE_CHARSET` | `IBM850` | Codepagina van de DOS-uitvoer van de exe's |
 | `HKH_WORKFLOW_SESSION_TIMEOUT_MINUTES` | `120` | Na zoveel minuten zonder activiteit komt een in gebruik zijnde collectie vrij |
-| `HKH_WORKFLOW_ADMIN_LOG_URL` | `https://hkh-admin.vdzonsoftware.nl` | Waar het workflow-logboek naartoe gaat; leeg = niets melden |
 
 ## Meerdere gebruikers
 
@@ -51,8 +50,7 @@ De app meldt elke inlogpoging en elke doorloop (nieuwe bestanden in ZCBS zetten,
 (`https://hkh-admin.vdzonsoftware.nl`, pagina Workflow-logboek): met een sessie-uuid, alle instellingen (zonder wachtwoorden), de
 gekozen bestanden, de stappen en de uitvoer en het log van pdf2zcbs.exe en images.exe. Bij elke stap wordt de volledige stand opnieuw
 gestuurd; een fout of onbereikbare server hindert de app niet. De **bron** van een melding is de naam van de computer; die staat bij elke melding en daarop is
-in het beheerscherm te filteren. Stel `hkh.workflow.admin-log-url` (of `HKH_WORKFLOW_ADMIN_LOG_URL`) in
-op een leeg adres om niets te melden, of op een lokale hkh-backend om te testen. De code staat in de module `adminlog` en de
+in het beheerscherm te filteren. De app meldt altijd aan `https://hkh-admin.vdzonsoftware.nl`; dat is geen instelling. De code staat in de module `adminlog` en de
 `FlowLogReporter` (flow) en `EditLogReporter` (items).
 
 ## Schermen

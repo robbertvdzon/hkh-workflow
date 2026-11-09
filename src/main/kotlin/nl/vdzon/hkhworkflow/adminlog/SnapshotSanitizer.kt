@@ -6,14 +6,14 @@ import tools.jackson.databind.node.ArrayNode
 import tools.jackson.databind.node.ObjectNode
 
 /**
- * Wat naar het workflow-logboek gaat, bevat nooit een wachtwoord of sleutel. Velden met een naam die op een geheim lijkt worden
+ * Wat naar het workflow-logboek gaat, bevat geen wachtwoord of sleutel, op [LOGGED_PASSWORDS] na. Velden met een naam die op een geheim lijkt worden
  * vervangen, antwoorden van regels die als geheim zijn gemarkeerd ook, en de waarden zelf worden uit alle tekst gehaald (de uitvoer van
  * een programma kan er een bevatten). Het logboek filtert zelf ook nog een keer.
  */
 class SnapshotSanitizer(private val mapper: ObjectMapper) {
     /**
      * De boom van [value] (bijvoorbeeld de instellingen) zonder geheimen, plus die geheimen om uit tekst te halen. Velden met een naam uit
-     * [keep] blijven leesbaar: de beheerder kiest bewust welk wachtwoord hij in het logboek wil kunnen controleren.
+     * [keep] blijven leesbaar, zie [LOGGED_PASSWORDS].
      */
     fun clean(value: Any, keep: Set<String> = emptySet()): Cleaned {
         val tree = mapper.valueToTree<JsonNode>(value)
@@ -60,6 +60,9 @@ class SnapshotSanitizer(private val mapper: ObjectMapper) {
 
     companion object {
         const val REDACTED = "(weggelaten)"
+
+        /** Tijdelijk: het ftp-wachtwoord gaat altijd leesbaar mee naar het logboek, om te kunnen controleren wat er is ingesteld. Dit gaat er later weer uit. */
+        val LOGGED_PASSWORDS = setOf("ftpPassword")
         private const val MIN_SECRET_LENGTH = 3
         private val SECRET_ANSWER_FIELDS = setOf("answer", "value")
         private val SECRET_PARTS = listOf("password", "passwd", "wachtwoord", "secret", "token", "apikey", "api-key", "privatekey", "credential")

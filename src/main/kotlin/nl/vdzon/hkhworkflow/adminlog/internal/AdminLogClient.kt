@@ -42,18 +42,17 @@ class AdminLogScheduling
  * Meldt inlogpogingen en de stand van elke doorloop aan het workflow-logboek van hkh-admin (`PUT /api/workflow-log/sessions/{uuid}`
  * en `POST /api/workflow-log/logins`). Het meldpunt vraagt geen inlog, wel een vaste sleutel. Alles gebeurt op een eigen draad en
  * een fout, een trage of een weigerende server mag de app nooit hinderen: elke melding bevat de volledige stand, dus een gemiste
- * melding herstelt zich bij de volgende. Zonder adres (`hkh.workflow.admin-log-url` leeg) doet deze klasse niets.
+ * melding herstelt zich bij de volgende. Het adres staat vast (zie [adminLogAddress]).
  */
 @Component
 class AdminLogClient(
     private val mapper: ObjectMapper,
-    @Value("\${hkh.workflow.admin-log-url:}") baseUrl: String,
+    @Value("\${hkh.workflow.test-admin-log-url:}") testAddress: String,
 ) : AdminLog {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val base = baseUrl.trim().trimEnd('/')
-    override val enabled: Boolean = base.isNotEmpty()
+    private val base = adminLogAddress(testAddress)
 
-    /** Het adres van het workflow-logboek zonder slash aan het eind; leeg als het uit staat. */
+    /** Het adres van het workflow-logboek zonder slash aan het eind. */
     val baseUrl: String get() = base
 
     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build()
@@ -82,7 +81,6 @@ class AdminLogClient(
 
     /** Meldt de stand van een doorloop. Een oudere, nog niet verstuurde melding van dezelfde sessie vervalt. */
     override fun session(report: SessionReport) {
-        if (!enabled) return
         try {
             synchronized(pending) {
                 pending[report.id] = report
@@ -97,7 +95,6 @@ class AdminLogClient(
 
     /** Meldt een inlogpoging. Dezelfde mislukte poging binnen vijf minuten wordt maar één keer gemeld. */
     override fun login(user: String?, success: Boolean, method: String, detail: String?) {
-        if (!enabled) return
         try {
             enqueueLogin(user, success, method, detail)
         } catch (e: Exception) {
@@ -124,7 +121,6 @@ class AdminLogClient(
      * computer en de versie aan. Een melding die niet aankomt (server weg) wordt nog een paar keer opnieuw geprobeerd.
      */
     fun settingsChange(body: ObjectNode) {
-        if (!enabled) return
         try {
             body.put("appVersion", appVersion)
             body.put("computer", computer)
@@ -240,4 +236,13 @@ class AdminLogClient(
         private const val MAX_PENDING_SESSIONS = 200
         private const val MAX_ATTEMPTS = 3
     }
+}
+
+private const val PRODUCTION_ADMIN_LOG = "https://hkh-admin.vdzonsoftware.nl"
+
+/** Het adres van het logboek: altijd hkh-admin. Alleen een nagemaakte server op deze computer kan het vervangen, voor de tests; al het andere wordt genegeerd. */
+internal fun adminLogAddress(testAddress: String): String {
+    val address = testAddress.trim().trimEnd('/')
+    val local = runCatching { URI.create(address).host in setOf("localhost", "127.0.0.1") }.getOrDefault(false)
+    return if (local) address else PRODUCTION_ADMIN_LOG
 }

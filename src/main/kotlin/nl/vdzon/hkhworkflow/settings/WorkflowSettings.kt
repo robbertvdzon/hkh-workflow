@@ -39,8 +39,6 @@ data class WorkflowSettings(
     val collections: Map<String, CollectionSettings> = emptyMap(),
     /** Hierheen worden resten van een eerdere run verplaatst als Carla ze opruimt. Leeg = de map `resten` van de gebruiker; er komt een submap per gebruiker en collectie onder. */
     val leftoversFolder: String = "",
-    /** Het ftp-wachtwoord ook meesturen naar het workflow-logboek (om de instelling te kunnen controleren). Zet dit uit zodra dat niet meer nodig is. */
-    val logFtpPassword: Boolean = true,
     /** Elke nacht om 00:00 automatisch bijwerken naar de nieuwste build (alleen als de app als service draait; zie `UpdateService`). */
     val nightlyUpdate: Boolean = true,
     /**

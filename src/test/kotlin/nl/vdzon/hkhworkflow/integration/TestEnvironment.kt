@@ -50,7 +50,7 @@ object TestEnvironment {
         registry.add("hkh.workflow.update-dir") { root.resolve("updates").toString() }
         registry.add("hkh.workflow.admin-password") { ADMIN_PASSWORD }
         registry.add("hkh.workflow.console-charset") { "UTF-8" }
-        registry.add("hkh.workflow.admin-log-url") { outside.baseUrl() }
+        registry.add("hkh.workflow.test-admin-log-url") { outside.baseUrl() }
         registry.add("hkh.workflow.update-api") { outside.baseUrl() }
     }
 
@@ -83,7 +83,6 @@ object TestEnvironment {
               "pdf2zcbsExe": "$pdf2zcbs",
               "perlioUnbuffered": true,
               "useTestZcbs": true,
-              "logFtpPassword": false,
               "nightlyUpdate": false,
               "sourceFolders": "Jelly=${scans.resolve("Jelly")}\nRia=${scans.resolve("Ria")}",
               "ftpPassword": "${ZcbsServer.FTP_PASSWORD}",

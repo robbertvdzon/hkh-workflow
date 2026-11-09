@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import nl.vdzon.hkhworkflow.adminlog.internal.AdminLogClient
+import nl.vdzon.hkhworkflow.adminlog.internal.adminLogAddress
 import tools.jackson.databind.json.JsonMapper
 
 class AdminLogClientTest {
@@ -89,16 +90,6 @@ class AdminLogClientTest {
     }
 
     @Test
-    fun `zonder adres wordt er niets gemeld`() {
-        val client = AdminLogClient(mapper, " ")
-        assertFalse(client.enabled)
-        client.session(report())
-        client.login("carla", true, "PASSWORD")
-        Thread.sleep(200)
-        assertTrue(received.isEmpty())
-    }
-
-    @Test
     fun `bij te veel meldingen wacht de client en zet hij niets door`() {
         status = 429
         val client = AdminLogClient(mapper, url)
@@ -149,12 +140,22 @@ class AdminLogClientTest {
     }
 
     @Test
+    fun `het adres is altijd hkh-admin, alleen een nagemaakte server op deze computer kan het vervangen`() {
+        val productie = "https://hkh-admin.vdzonsoftware.nl"
+        assertEquals(productie, adminLogAddress(""))
+        assertEquals(productie, adminLogAddress(" "))
+        assertEquals(productie, adminLogAddress("https://elders.example"))
+        assertEquals(productie, adminLogAddress("http://localhost.elders.example"))
+        assertEquals("http://localhost:8080", adminLogAddress("http://localhost:8080/"))
+        assertEquals("http://127.0.0.1:8080", adminLogAddress("http://127.0.0.1:8080"))
+    }
+
+    @Test
     fun `een onbereikbaar logboek geeft nooit een fout en houdt de wachtrij klein`() {
         val closed = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { it.stop(0) }
         val client = AdminLogClient(mapper, "http://127.0.0.1:${closed.address.port}")
         repeat(500) { client.session(report()) }
         repeat(100) { client.login("carla", false, "PASSWORD", "fout $it") }
         Thread.sleep(300)
-        assertTrue(client.enabled)
     }
 }

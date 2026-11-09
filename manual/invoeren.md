@@ -607,11 +607,11 @@ Het doorloop-id is de datum en tijd van de back-up (`yyyyMMdd-HHmmss`); alle bes
 
 ## 13. Het workflow-logboek naar hkh-admin
 
-Als `hkh.workflow.admin-log-url` (of `HKH_WORKFLOW_ADMIN_LOG_URL`) is ingesteld, meldt de app elke doorloop aan het workflow-logboek van hkh-admin (leeg = niets melden). Kort:
+De app meldt elke doorloop aan het workflow-logboek van hkh-admin. Kort:
 
 - Een doorloop is een **sessie** met een eigen uuid, vanaf het moment dat de gebruiker fase 1 heeft afgerond. Ze eindigt bij Klaar of bij Opnieuw beginnen ("Opnieuw begonnen bij stap 1; deze doorloop is niet afgemaakt").
 - Elke ± 3 seconden kijkt de app of er iets veranderd is en stuurt dan de **volledige stand**: fase, instellingen, gekozen bestanden, stappen met status en melding, de lijst van gemaakte bestanden, en de uitvoer en het log van `pdf2zcbs.exe` en `images.exe`. Het versturen gebeurt op een eigen draad: een fout of onbereikbare server hindert de app nooit, en een gemiste melding herstelt zich bij de volgende. De uitvoer van een programma gaat hooguit eens per zes seconden mee.
-- Wachtwoorden worden eruit gehaald. **Uitzondering:** de instelling "Het ftp-wachtwoord meesturen naar het logboek" (`logFtpPassword`, standaard aan) stuurt het ftp-wachtwoord leesbaar mee, bedoeld om in de beginperiode te controleren wat is ingesteld; zet die uit zodra het kan. Andere wachtwoorden gaan nooit mee.
+- Wachtwoorden worden eruit gehaald. **Uitzondering:** het ftp-wachtwoord gaat voorlopig altijd leesbaar mee, om te kunnen controleren wat er is ingesteld. Dit is geen instelling en gaat er later weer uit. Andere wachtwoorden gaan nooit mee.
 - Ook elke inlogpoging wordt gemeld, en volgens docs/specs.md gaan de app-logregels (INFO en hoger) ook mee (niet in deze handleiding nagelopen).
 
 ---

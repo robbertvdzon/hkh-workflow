@@ -59,7 +59,6 @@ class FlowLogReporter(
 
     @Scheduled(initialDelay = 5_000, fixedDelay = 3_000)
     fun tick() {
-        if (!client.enabled) return
         val active = flows.sessions()
         for (f in active) {
             try {
@@ -89,7 +88,7 @@ class FlowLogReporter(
             sessions[f] = current
         }
         val s = settingsService.get().copy(collection = f.collection)
-        val cleaned = sanitizer.clean(s, if (s.logFtpPassword) setOf("ftpPassword") else emptySet())
+        val cleaned = sanitizer.clean(s, SnapshotSanitizer.LOGGED_PASSWORDS)
         recordConsole(current, f.exeRunner, cleaned)
 
         val run = view.run

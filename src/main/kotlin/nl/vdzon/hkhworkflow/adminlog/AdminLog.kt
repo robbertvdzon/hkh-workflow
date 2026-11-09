@@ -25,9 +25,6 @@ data class SessionReport(
 
 /** Het workflow-logboek van hkh-admin. Een storing daar houdt de app nooit op: de meldingen gaan op de achtergrond. */
 interface AdminLog {
-    /** Zonder adres van het logboek wordt er niets gemeld. */
-    val enabled: Boolean
-
     /** Meldt de stand van een doorloop of bewerksessie. */
     fun session(report: SessionReport)
 

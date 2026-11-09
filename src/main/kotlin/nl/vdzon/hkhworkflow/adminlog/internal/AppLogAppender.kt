@@ -10,22 +10,19 @@ import nl.vdzon.hkhworkflow.adminlog.AppVersion
 
 /**
  * Logback-appender die elke logregel van INFO en hoger in de wachtrij ([AppLogSpool]) zet, voor het workflow-logboek van hkh-admin.
- * Hij wordt geconfigureerd in `logback-spring.xml` en doet niets zolang er geen adres van het logboek is ingesteld ([adminLogUrl] leeg).
+ * Hij wordt geconfigureerd in `logback-spring.xml`.
  *
  * Geheimen worden al hier gemaskeerd ([AppLogMasker]); de ontvanger doet dat nog een keer. De regels van de meldingen zelf (pakket `adminlog`)
  * blijven erbuiten, zodat de verzender zijn eigen werk niet in het logboek zet.
  */
 class AppLogAppender : AppenderBase<ILoggingEvent>() {
-    /** Het adres van het workflow-logboek; leeg = uit. */
-    var adminLogUrl: String = ""
-
     /** De map voor de wachtrij. */
     var directory: String = ""
 
     private var spool: AppLogSpool? = null
 
     override fun start() {
-        if (adminLogUrl.isBlank() || directory.isBlank()) return
+        if (directory.isBlank()) return
         spool = AppLogSpool.start(Path.of(directory).toAbsolutePath())
         super.start()
     }

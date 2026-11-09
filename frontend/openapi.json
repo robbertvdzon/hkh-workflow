@@ -2418,9 +2418,6 @@
           "leftoversFolder" : {
             "type" : "string"
           },
-          "logFtpPassword" : {
-            "type" : "boolean"
-          },
           "pdf2zcbsExe" : {
             "type" : "string"
           },
@@ -2437,7 +2434,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "collections", "imagesExe", "leftoversFolder", "logFtpPassword", "pdf2zcbsExe", "perlioUnbuffered", "sourceFolders", "useTestZcbs", "workFolder" ]
+        "required" : [ "collections", "imagesExe", "leftoversFolder", "pdf2zcbsExe", "perlioUnbuffered", "sourceFolders", "useTestZcbs", "workFolder" ]
       },
       "SettingsResponse" : {
         "type" : "object",
@@ -2469,9 +2466,6 @@
           },
           "leftoversFolder" : {
             "type" : "string"
-          },
-          "logFtpPassword" : {
-            "type" : "boolean"
           },
           "pdf2zcbsExe" : {
             "type" : "string"
@@ -2507,7 +2501,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "collections", "ftpBaseDir", "ftpHost", "ftpPasswordSet", "ftpPort", "ftpUser", "imagesExe", "leftoversFolder", "logFtpPassword", "pdf2zcbsExe", "perlioUnbuffered", "problems", "resolutions", "settingsFile", "sourceFolders", "testZcbsUrl", "useTestZcbs", "workFolder" ]
+        "required" : [ "collections", "ftpBaseDir", "ftpHost", "ftpPasswordSet", "ftpPort", "ftpUser", "imagesExe", "leftoversFolder", "pdf2zcbsExe", "perlioUnbuffered", "problems", "resolutions", "settingsFile", "sourceFolders", "testZcbsUrl", "useTestZcbs", "workFolder" ]
       },
       "SourceFileResponse" : {
         "type" : "object",

@@ -21,7 +21,6 @@ data class SettingsResponse(
     val useTestZcbs: Boolean,
     val testZcbsUrl: String,
     val leftoversFolder: String,
-    val logFtpPassword: Boolean,
     val ftpUser: String,
     val ftpHost: String,
     val ftpPort: Int,
@@ -45,7 +44,6 @@ data class SettingsRequest(
     val sourceFolders: String,
     val useTestZcbs: Boolean,
     val leftoversFolder: String,
-    val logFtpPassword: Boolean,
     /** Weggelaten is het opgeslagen wachtwoord houden, leeg is wissen. */
     val ftpPassword: String? = null,
     val collections: List<CollectionSettingsRequest>,
@@ -69,7 +67,6 @@ class SettingsApiController(private val settingsService: SettingsService, privat
             useTestZcbs = s.useTestZcbs,
             testZcbsUrl = properties.testZcbsUrl,
             leftoversFolder = s.leftoversFolder,
-            logFtpPassword = s.logFtpPassword,
             ftpUser = s.ftpUser,
             ftpHost = s.ftpHost,
             ftpPort = s.ftpPort,
@@ -100,7 +97,6 @@ class SettingsApiController(private val settingsService: SettingsService, privat
                 sourceFolders = body.sourceFolders,
                 useTestZcbs = body.useTestZcbs,
                 leftoversFolder = body.leftoversFolder,
-                logFtpPassword = body.logFtpPassword,
                 ftpPassword = body.ftpPassword ?: current.ftpPassword,
                 collections = WorkflowSettings.ALL_COLLECTIONS.associateWith { name ->
                     given[name]?.let { CollectionSettings(it.imagesResolution.trim().ifEmpty { CollectionSettings.DEFAULT_RESOLUTION }, it.backup100pctFolder, it.backupPdfFolder) }

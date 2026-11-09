@@ -146,7 +146,6 @@ async function chooseFiles(page, folder = 'Kerkplein', files = KERKPLEIN) {
   const sections = [
     ['instellingen-1-server', 'Bestanden van de server en ZCBS'],
     ['instellingen-2-resten', 'Resten van een eerdere run'],
-    ['instellingen-3-logboek', 'Logboek'],
     ['instellingen-4-ftp', 'FTP-wachtwoord'],
     ['instellingen-5-collectie', 'Per collectie'],
     ['instellingen-6-test', 'Test verbinding'],

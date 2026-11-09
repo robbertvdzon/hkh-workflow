@@ -32,13 +32,13 @@ class SettingsServiceTest {
     }
 
     @Test
-    fun `de keuze voor het ftp-wachtwoord in het logboek blijft bewaard`() {
+    fun `een oud bestand met de keuze voor het ftp-wachtwoord in het logboek werkt nog en verliest die keuze`() {
         val file = dir.resolve("settings.json")
+        Files.writeString(file, """{ "leftoversFolder": "/resten", "logFtpPassword": true }""")
         val service = DefaultSettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString()))
-        assertEquals(true, service.get().logFtpPassword)
-        service.save(WorkflowSettings(logFtpPassword = false))
-        val reloaded = DefaultSettingsService(ObjectMapper(), WorkflowProperties(settingsFile = file.toString())).get()
-        assertEquals(false, reloaded.logFtpPassword)
+        assertEquals("/resten", service.get().leftoversFolder)
+        service.save(service.get().copy(leftoversFolder = "/ander"))
+        assertFalse("logFtpPassword" in Files.readString(file))
     }
 
     @Test

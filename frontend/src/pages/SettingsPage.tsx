@@ -41,7 +41,6 @@ function requestOf(s: Settings): SettingsRequest {
     sourceFolders: s.sourceFolders,
     useTestZcbs: s.useTestZcbs,
     leftoversFolder: s.leftoversFolder,
-    logFtpPassword: s.logFtpPassword,
     collections: s.collections.map(({ name, imagesResolution, backup100pctFolder, backupPdfFolder }) => ({ name, imagesResolution, backup100pctFolder, backupPdfFolder })),
   }
 }
@@ -117,13 +116,6 @@ function SettingsForm({ settings }: { settings: Settings }) {
           <Text id="leftoversFolder" label="Map voor resten van een eerdere run" value={form.leftoversFolder} placeholder="K:\resten (leeg = de map resten van de gebruiker)" onChange={(value) => set("leftoversFolder", value)}>
             Staan er bij het begin nog bestanden in de mappen van pdf2zcbs.exe en images.exe, dan kunnen die hierheen verplaatst (of verwijderd) worden voordat de gebruiker begint.
           </Text>
-        </Group>
-
-        <Group title="Logboek">
-          <Check label="Het ftp-wachtwoord meesturen naar het logboek" checked={form.logFtpPassword} onChange={(value) => set("logFtpPassword", value)}>
-            Alleen om in het begin te kunnen controleren wat er is ingesteld. Het wachtwoord staat dan leesbaar in het beheerscherm van hkh-admin en in de database. Zet dit uit zodra het niet meer nodig
-            is; andere wachtwoorden gaan nooit mee.
-          </Check>
         </Group>
 
         <Group title="FTP-wachtwoord">

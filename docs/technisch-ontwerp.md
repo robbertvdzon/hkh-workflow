@@ -99,7 +99,7 @@ java -jar target/hkh-workflow.jar
 - **Zonder Windows:** `tools/mock/` bevat nep-versies van pdf2zcbs en images (Perl); `tools/docker/` een lokale ZCBS (poort 8081, ftp 2121/21);
   `tools/localfileserver/` testscans; `tools/windows-testlaptop/` scripts voor de echte exe's op een testlaptop.
 - **Handleidingen:** de screenshots en pdf's in `manual/` worden gemaakt met `tools/docs/` (Playwright en Chrome tegen de lokale testomgeving); zie `tools/docs/README.md`.
-- **Omgevingsvariabelen** (`application.properties`): `HKH_WORKFLOW_ADDRESS`, `…_PORT`, `…_SETTINGS_FILE`, `…_CONSOLE_CHARSET`, `…_ADMIN_PASSWORD`, `…_PROCESSED_LOG`, `…_ADMIN_LOG_URL` (leeg = geen meldingen), `…_LOG_DIR`.
+- **Omgevingsvariabelen** (`application.properties`): `HKH_WORKFLOW_ADDRESS`, `…_PORT`, `…_SETTINGS_FILE`, `…_CONSOLE_CHARSET`, `…_ADMIN_PASSWORD`, `…_PROCESSED_LOG`, `…_LOG_DIR`.
 - **Draaien op de server:** nu macOS (Windows benadert mappen via de localfileserver); op Windows als service (`tools/windows-server`, zie §8a en [auto-update.md](auto-update.md)).
   Bij een Windows-service UNC-paden (`\\server\…`) gebruiken voor werkmap en scans.
 

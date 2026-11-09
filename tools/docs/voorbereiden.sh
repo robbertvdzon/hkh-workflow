@@ -46,7 +46,6 @@ cat > "$W/settings.json" <<JSON
   "perlioUnbuffered": true,
   "collections": { "archief": { "imagesResolution": "6", "backup100pctFolder": "$W/e2e2/k/backup/100pct", "backupPdfFolder": "$W/e2e2/k/backup/pdf" } },
   "leftoversFolder": "$W/e2e2/k/resten",
-  "logFtpPassword": false,
   "useTestZcbs": true,
   "sourceFolders": "Jelly=$W/e2e3/scans",
   "ftpPassword": "hkhtest"
@@ -60,7 +59,7 @@ if [ -z "$JAR" ]; then
   JAR="$W/jar/hkh-workflow.jar"; echo "release $TAG"
 fi
 cd "$W"
-HKH_WORKFLOW_PORT="$PORT" HKH_WORKFLOW_ADMIN_PASSWORD=abc HKH_WORKFLOW_ADMIN_LOG_URL= HKH_WORKFLOW_SETTINGS_FILE="$W/settings.json" \
+HKH_WORKFLOW_PORT="$PORT" HKH_WORKFLOW_ADMIN_PASSWORD=abc HKH_WORKFLOW_TEST_ADMIN_LOG_URL=http://127.0.0.1:9 HKH_WORKFLOW_SETTINGS_FILE="$W/settings.json" \
   HKH_WORKFLOW_PROCESSED_LOG="$W/verwerkt.tsv" HKH_WORKFLOW_LOG_DIR="$W/logs" nohup java -jar "$JAR" > "$W/app.log" 2>&1 &
 echo $! > "$W/app.pid"
 for i in $(seq 1 60); do curl -s -m 2 -o /dev/null -w '%{http_code}' "http://localhost:$PORT/actuator/health" | grep -q 200 && { echo "app draait op poort $PORT"; exit 0; }; sleep 2; done

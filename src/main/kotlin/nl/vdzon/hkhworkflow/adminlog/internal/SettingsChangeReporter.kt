@@ -11,8 +11,8 @@ import tools.jackson.databind.node.ObjectNode
 
 /**
  * Meldt elke wijziging van de instellingen aan het workflow-logboek van hkh-admin: wie en waarom, per veld de oude en de nieuwe waarde, en de
- * volledige nieuwe instellingen. Geheimen worden weggelaten ([SnapshotSanitizer]); alleen het ftp-wachtwoord is leesbaar als de beheerder dat
- * zelf heeft aangezet (`logFtpPassword`), net als bij de doorlopen. Dat een wachtwoord veranderde, staat er altijd bij.
+ * volledige nieuwe instellingen. Geheimen worden weggelaten ([SnapshotSanitizer]), behalve het ftp-wachtwoord
+ * ([SnapshotSanitizer.LOGGED_PASSWORDS]). Dat een wachtwoord veranderde, staat er altijd bij.
  */
 @Component
 class SettingsChangeReporter(private val mapper: ObjectMapper, private val client: AdminLogClient) {
@@ -21,17 +21,15 @@ class SettingsChangeReporter(private val mapper: ObjectMapper, private val clien
 
     @EventListener
     fun changed(event: SettingsChanged) {
-        if (!client.enabled) return
         try {
-            val keep = if (event.after.logFtpPassword) setOf("ftpPassword") else emptySet()
-            val changes = changes(mapper.valueToTree(event.before), mapper.valueToTree(event.after), keep)
+            val changes = changes(mapper.valueToTree(event.before), mapper.valueToTree(event.after), SnapshotSanitizer.LOGGED_PASSWORDS)
             if (changes.isEmpty()) return
             val body = mapper.createObjectNode().apply {
                 put("reason", event.reason.take(200))
                 put("user", event.by.orEmpty())
                 put("address", event.address.orEmpty())
                 set("changes", mapper.createArrayNode().also { list -> changes.forEach { list.add(it) } })
-                set("settings", sanitizer.clean(event.after, keep).tree)
+                set("settings", sanitizer.clean(event.after, SnapshotSanitizer.LOGGED_PASSWORDS).tree)
             }
             client.settingsChange(body)
         } catch (e: Exception) {

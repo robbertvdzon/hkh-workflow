@@ -146,13 +146,6 @@ class AppLogShipperTest {
     }
 
     @Test
-    fun `zonder adres van het logboek gebeurt er niets`() {
-        spool.add(line("a"))
-        assertEquals(0, shipper(address = " ").sendPending())
-        assertTrue(received.isEmpty())
-    }
-
-    @Test
     fun `een groot bestand gaat in meerdere pakketten`() {
         repeat(2_500) { spool.add(line("regel $it")) }
         assertEquals(2, shipper().sendPending())

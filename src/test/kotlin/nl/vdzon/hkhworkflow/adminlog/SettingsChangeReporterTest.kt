@@ -70,22 +70,18 @@ class SettingsChangeReporterTest {
     }
 
     @Test
-    fun `het ftp-wachtwoord staat alleen leesbaar in het bericht als de beheerder dat wil, en dat het veranderde staat er altijd`() {
-        val before = WorkflowSettings(ftpPassword = "oud-geheim", logFtpPassword = false)
+    fun `het ftp-wachtwoord staat altijd leesbaar in het bericht`() {
+        val before = WorkflowSettings(ftpPassword = "oud-geheim")
         val after = before.copy(ftpPassword = "nieuw-geheim")
 
         reporter.changed(event(before, after))
         waitFor(1)
 
         val text = mapper.writeValueAsString(received.single().body)
-        assertFalse(text.contains("oud-geheim") || text.contains("nieuw-geheim"), text)
+        assertTrue(text.contains("nieuw-geheim"), text)
         val change = received.single().body.path("changes").get(0)
         assertEquals("ftpPassword", change.path("field").asString())
-        assertEquals(SnapshotSanitizer.REDACTED, change.path("new").asString())
-
-        received.clear()
-        reporter.changed(event(before.copy(logFtpPassword = true), after.copy(logFtpPassword = true)))
-        waitFor(1)
+        assertEquals("nieuw-geheim", change.path("new").asString())
         assertEquals("nieuw-geheim", received.single().body.path("settings").path("ftpPassword").asString())
     }
 
@@ -102,9 +98,8 @@ class SettingsChangeReporterTest {
     }
 
     @Test
-    fun `zonder wijziging of zonder logboek wordt niets gemeld`() {
+    fun `zonder wijziging wordt niets gemeld`() {
         reporter.changed(event(WorkflowSettings(), WorkflowSettings()))
-        SettingsChangeReporter(mapper, AdminLogClient(mapper, " ")).changed(event(WorkflowSettings(), WorkflowSettings(testFolder = "C:\\x")))
         TimeUnit.MILLISECONDS.sleep(200)
         assertTrue(received.isEmpty())
         assertEquals(CollectionSettings(), WorkflowSettings().collectionSettings("archief"))

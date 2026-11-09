@@ -60,7 +60,6 @@ class AppLogShipper internal constructor(
 
     /** Verstuurt wat er in de wachtrij staat als er een kwartier voorbij is sinds de laatste poging. Geeft het aantal verstuurde pakketten terug. */
     internal fun sendPending(): Int {
-        if (!client.enabled) return 0
         val spool = spoolSource() ?: return 0
         val now = clock()
         if (now < blockedUntil || now - spool.lastAttempt() < interval.toMillis()) return 0
