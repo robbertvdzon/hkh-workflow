@@ -47,9 +47,11 @@ export function NewFilesPage() {
   const flow = useFlow(collection)
   const action = useFlowAction(collection)
   const [info, setInfo] = useState<string | null>(null)
+  const [viewing, setViewing] = useState<number | null>(null)
 
   const act: Act = (run, message) => {
     setInfo(null)
+    setViewing(null)
     action.mutate(() => run(flowActions(collection)), {
       onSuccess: (result) => {
         const text = typeof message === "function" ? message(result as never) : message
@@ -72,8 +74,12 @@ export function NewFilesPage() {
       <QueryState query={flow}>
         {(data) => (
           <>
-            <PhaseStrip flow={data} />
-            <CurrentPhase collection={collection} flow={data} act={act} busy={action.isPending} />
+            <PhaseStrip flow={data} viewing={viewing} onView={setViewing} />
+            {viewing !== null && data.phases.find((it) => it.number === viewing)?.state === "done" ? (
+              <PastPhase collection={collection} flow={data} act={act} busy={action.isPending} number={viewing} onClose={() => setViewing(null)} />
+            ) : (
+              <CurrentPhase collection={collection} flow={data} act={act} busy={action.isPending} />
+            )}
           </>
         )}
       </QueryState>
@@ -97,32 +103,44 @@ function StartOver({ phase, act }: { phase: number; act: Act }) {
   )
 }
 
-function PhaseStrip({ flow }: { flow: Flow }) {
+/** De stappen bovenaan. Een stap die klaar is, kun je openen om terug te kijken. */
+function PhaseStrip({ flow, viewing, onView }: { flow: Flow; viewing: number | null; onView: (number: number | null) => void }) {
   return (
     <ol className="flex flex-wrap gap-2">
-      {flow.phases.map((phase) => (
-        <li
-          key={phase.number}
-          aria-current={phase.state === "now" ? "step" : undefined}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full border border-line bg-card py-1.25 pr-3 pl-1.5 text-[13px] text-muted",
-            phase.state === "done" && "border-ok-soft bg-ok-soft text-ok",
-            phase.state === "now" && "border-primary bg-primary-soft font-semibold text-primary",
-          )}
-        >
-          <span
-            className={cn(
-              "flex size-5.5 items-center justify-center rounded-full border border-neutral-line text-xs font-semibold",
-              phase.state === "done" && "border-ok bg-ok text-white",
-              phase.state === "now" && "border-primary text-primary",
+      {flow.phases.map((phase) => {
+        const done = phase.state === "done"
+        const content = (
+          <>
+            <span
+              className={cn(
+                "flex size-5.5 items-center justify-center rounded-full border border-neutral-line text-xs font-semibold",
+                done && "border-ok bg-ok text-white",
+                phase.state === "now" && "border-primary text-primary",
+              )}
+            >
+              {done ? "✓" : phase.number}
+            </span>
+            {phase.title}
+            {phase.note && <span className="text-xs font-medium">{phase.note}</span>}
+          </>
+        )
+        const look = cn(
+          "inline-flex items-center gap-2 rounded-full border border-line bg-card py-1.25 pr-3 pl-1.5 text-[13px] text-muted",
+          done && "border-ok-soft bg-ok-soft text-ok",
+          phase.state === "now" && "border-primary bg-primary-soft font-semibold text-primary",
+        )
+        return (
+          <li key={phase.number} aria-current={phase.state === "now" ? "step" : undefined}>
+            {done ? (
+              <button type="button" aria-label={`Bekijk ${phase.title}`} title="Terugkijken" className={cn(look, "cursor-pointer hover:border-ok", viewing === phase.number && "ring-2 ring-ok")} onClick={() => onView(viewing === phase.number ? null : phase.number)}>
+                {content}
+              </button>
+            ) : (
+              <span className={look}>{content}</span>
             )}
-          >
-            {phase.state === "done" ? "✓" : phase.number}
-          </span>
-          {phase.title}
-          {phase.note && <span className="text-xs font-medium">{phase.note}</span>}
-        </li>
-      ))}
+          </li>
+        )
+      })}
     </ol>
   )
 }
@@ -138,6 +156,66 @@ function CurrentPhase(props: PhaseProps) {
   return <StepsPhase {...props} />
 }
 
+// ---- Terugkijken ----
+
+/** Een stap die al klaar is, alleen om te bekijken. Alleen van de nummers terug naar het kiezen kan echt, want daarna is er al iets gebeurd. */
+function PastPhase({ collection, flow, act, busy, number, onClose }: PhaseProps & { number: number; onClose: () => void }) {
+  const title = flow.phases.find((it) => it.number === number)?.title
+  const step = STEP_OF_PHASE[number]
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="text-xl">
+          {number}. {title}
+        </h2>
+        <Chip variant="neutral">Alleen bekijken</Chip>
+      </div>
+      {number === 1 && <PastChecks collection={collection} />}
+      {number >= 2 && number <= 3 && <FileList collection={collection} />}
+      {step && <PastStep collection={collection} step={step} />}
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={onClose}>Terug naar de huidige stap</Button>
+        {number === 2 && flow.phase === 3 && (
+          <Button variant="secondary" disabled={busy} onClick={() => act((a) => a.reopenFiles())}>
+            Keuze aanpassen
+          </Button>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function PastChecks({ collection }: { collection: string }) {
+  const checks = useChecks(collection)
+  return (
+    <>
+      <p className="text-[13px] text-muted">Zo staat het er nu voor.</p>
+      <QueryState query={checks} loading="Controleren…">
+        {(data) => <CheckList checks={data.checks} />}
+      </QueryState>
+    </>
+  )
+}
+
+function PastStep({ collection, step }: { collection: string; step: StepName }) {
+  const steps = useSteps(collection, false)
+  const program = PROGRAM_NAME[step]
+  const message = steps.data?.find((it) => it.name === step)?.message
+  return (
+    <>
+      {message && <p className="whitespace-pre-line text-muted">{message}</p>}
+      {program ? (
+        <>
+          <h3 className="font-semibold">Dit heeft {program} gemaakt</h3>
+          <ResultsTable collection={collection} step={step} />
+        </>
+      ) : (
+        <FileList collection={collection} />
+      )}
+    </>
+  )
+}
+
 // ---- 1. Controleren ----
 
 function ChecksPhase({ collection, act, busy }: PhaseProps) {
@@ -148,17 +226,7 @@ function ChecksPhase({ collection, act, busy }: PhaseProps) {
       <QueryState query={checks} loading="Controleren…">
         {(data) => (
           <>
-            <ul className="flex flex-col gap-2">
-              {data.checks.map((check) => (
-                <li key={check.id} className="flex items-start gap-3">
-                  <span className={cn("mt-px flex size-5.5 flex-none items-center justify-center rounded-full text-[13px] font-bold", check.ok ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger")}>{check.ok ? "✓" : "✗"}</span>
-                  <span>
-                    <b>{check.label}</b>
-                    {check.detail && <span className={cn("mt-0.5 block text-[13px] wrap-anywhere", check.ok ? "text-muted" : "text-danger")}>{check.detail}</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <CheckList checks={data.checks} />
             {data.leftovers.length > 0 && (
               <div className="flex flex-col gap-3.5 rounded-[10px] border border-busy bg-busy-soft p-4">
                 <h3 className="font-semibold">Eerst opruimen: er staat nog werk van een eerdere keer</h3>
@@ -213,6 +281,22 @@ function ChecksPhase({ collection, act, busy }: PhaseProps) {
         )}
       </QueryState>
     </Card>
+  )
+}
+
+function CheckList({ checks }: { checks: { id: string; label: string; ok: boolean; detail?: string | null }[] }) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {checks.map((check) => (
+        <li key={check.id} className="flex items-start gap-3">
+          <span className={cn("mt-px flex size-5.5 flex-none items-center justify-center rounded-full text-[13px] font-bold", check.ok ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger")}>{check.ok ? "✓" : "✗"}</span>
+          <span>
+            <b>{check.label}</b>
+            {check.detail && <span className={cn("mt-0.5 block text-[13px] wrap-anywhere", check.ok ? "text-muted" : "text-danger")}>{check.detail}</span>}
+          </span>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -516,7 +600,7 @@ function FileList({ collection }: { collection: string }) {
           <span className="truncate" title={file.name}>
             {file.name}
           </span>
-          <span className="font-mono">{file.newName}</span>
+          <span className="font-mono">{file.newName ?? "–"}</span>
         </TableRow>
       ))}
     </Table>
@@ -711,58 +795,65 @@ function AnswerForm({ suggestion, act }: { suggestion: string | null; act: Act }
 
 // ---- Controleren wat een programma heeft gemaakt ----
 
-function Review({ collection, step, steps, act, busy }: { collection: string; step: StepName; steps: Step[]; act: Act; busy: boolean }) {
+function ResultsTable({ collection, step }: { collection: string; step: StepName }) {
   const results = useResults(collection, step)
   const viewer = useFileViewer()
   const images = step === "images"
   const columns = `76px minmax(40px,1fr) 62px 70px 124px ${images ? "84px " : ""}62px`
+  return (
+    <QueryState query={results}>
+      {(data) => (
+        <Table>
+          <TableHead columns={columns}>
+            <span>Nummer</span>
+            <span>Bestand</span>
+            <span>Soort</span>
+            <span>Grootte</span>
+            <span>Afmeting</span>
+            {images && <span>Op de server</span>}
+            <span />
+          </TableHead>
+          {data.map((result, index) => {
+            const first = data[index - 1]?.number !== result.number
+            return (
+              <TableRow key={`${result.number}/${result.kind}`} columns={columns} className={first ? "border-t border-line" : ""}>
+                <span className="font-mono">{first ? result.number : ""}</span>
+                <span className="truncate text-muted" title={result.originalName ?? undefined}>
+                  {first ? result.originalName : ""}
+                </span>
+                <span>{result.label}</span>
+                <span>{result.size}</span>
+                <span>
+                  {result.resolution || "–"}
+                  {result.note && <span className="text-[13px] text-busy"> {result.note}</span>}
+                </span>
+                {images && <span>{result.onServer === null ? <span className="text-muted">–</span> : <Chip variant={result.onServer ? "ok" : "error"}>{result.onServer ? "ja" : "nee"}</Chip>}</span>}
+                <Button
+                  variant="secondary"
+                  size="small"
+                  aria-label={`Open ${result.number} ${result.label}`}
+                  onClick={() => viewer({ url: resultUrl(collection, result.number, result.kind), title: `${result.number} – ${result.label}`, kind: result.kind === "pdf" ? "pdf" : result.kind === "tekst" ? "text" : "image" })}
+                >
+                  Open
+                </Button>
+              </TableRow>
+            )
+          })}
+        </Table>
+      )}
+    </QueryState>
+  )
+}
+
+function Review({ collection, step, steps, act, busy }: { collection: string; step: StepName; steps: Step[]; act: Act; busy: boolean }) {
+  const images = step === "images"
   const message = steps.find((it) => it.name === step)?.message
   const program = PROGRAM_NAME[step]
   return (
     <Card>
       <h3 className="font-semibold">Dit heeft {program} gemaakt</h3>
       {images && message && <Alert variant="ok" className="whitespace-pre-line">{message}</Alert>}
-      <QueryState query={results}>
-        {(data) => (
-          <Table>
-            <TableHead columns={columns}>
-              <span>Nummer</span>
-              <span>Bestand</span>
-              <span>Soort</span>
-              <span>Grootte</span>
-              <span>Afmeting</span>
-              {images && <span>Op de server</span>}
-              <span />
-            </TableHead>
-            {data.map((result, index) => {
-              const first = data[index - 1]?.number !== result.number
-              return (
-                <TableRow key={`${result.number}/${result.kind}`} columns={columns} className={first ? "border-t border-line" : ""}>
-                  <span className="font-mono">{first ? result.number : ""}</span>
-                  <span className="truncate text-muted" title={result.originalName ?? undefined}>
-                    {first ? result.originalName : ""}
-                  </span>
-                  <span>{result.label}</span>
-                  <span>{result.size}</span>
-                  <span>
-                    {result.resolution || "–"}
-                    {result.note && <span className="text-[13px] text-busy"> {result.note}</span>}
-                  </span>
-                  {images && <span>{result.onServer === null ? <span className="text-muted">–</span> : <Chip variant={result.onServer ? "ok" : "error"}>{result.onServer ? "ja" : "nee"}</Chip>}</span>}
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    aria-label={`Open ${result.number} ${result.label}`}
-                    onClick={() => viewer({ url: resultUrl(collection, result.number, result.kind), title: `${result.number} – ${result.label}`, kind: result.kind === "pdf" ? "pdf" : result.kind === "tekst" ? "text" : "image" })}
-                  >
-                    Open
-                  </Button>
-                </TableRow>
-              )
-            })}
-          </Table>
-        )}
-      </QueryState>
+      <ResultsTable collection={collection} step={step} />
       <div className="flex flex-wrap gap-2">
         <Button disabled={busy} onClick={() => act((a) => a.approve(step))}>
           {images ? "Ja, goed: verder met de upload" : "Ja, goed: verder met images.exe"}

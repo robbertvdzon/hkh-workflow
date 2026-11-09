@@ -112,6 +112,9 @@ class ScreenSteps {
         assertThat(dialog.getByText(title).first()).isVisible()
     }
 
+    @Then("{string} cannot be found")
+    fun cannotBeFound(name: String) = assertThat(screen.button(name)).hasCount(0)
+
     @Then("the window shows the text {string}")
     fun windowShowsText(text: String) = assertThat(screen.page.getByRole(AriaRole.DIALOG).frameLocator("iframe").getByText(text).first()).isVisible()
 

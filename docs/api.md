@@ -98,6 +98,7 @@ Iedere gebruiker heeft per collectie één doorloop. Daarom is het `flow` in het
 | `GET /flow/files` | Wat er nu gekozen is |
 | `PUT /flow/files` | Kiezen met `{source, path, names}` en door naar de nummers |
 | `DELETE /flow/files` | Keuze wissen |
+| `DELETE /flow/files/confirmation` | Terug van de nummers naar het kiezen; de keuze blijft staan |
 
 **3. Nummers**
 

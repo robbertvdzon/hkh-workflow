@@ -273,6 +273,35 @@ Feature: The screens of the frontend
     Then the screen says "kapot.jpg is geen geldige afbeelding"
     And "Automatisch uitvoeren" cannot be clicked
 
+  Scenario: Looking back at an earlier step changes nothing
+    Given Jelly scanned "kerk.pdf"
+    And Carla has chosen "kerk.pdf" of Jelly on the screen
+    When "Bekijk Bestanden kiezen" is clicked
+    Then the screen is titled "2. Bestanden kiezen"
+    And the screen says "Alleen bekijken"
+    And the screen says "kerk.pdf"
+    When "Terug naar de huidige stap" is clicked
+    Then the screen is titled "3. Nummers"
+    When Carla has given the numbers on the screen
+    And "Automatisch uitvoeren" is clicked
+    Then the screen says "Dit heeft pdf2zcbs.exe gemaakt" within a minute
+    When "Ja, goed: verder met images.exe" is clicked
+    And "Bekijk pdf2zcbs" is clicked
+    Then the screen is titled "4. pdf2zcbs"
+    And the screen says "Dit heeft pdf2zcbs.exe gemaakt"
+    And the screen does not say "Ja, goed"
+    When "Bekijk Bestanden kiezen" is clicked
+    Then the screen says "99068.pdf"
+    And "Keuze aanpassen" cannot be found
+
+  Scenario: Going back from the numbers to change the chosen files
+    Given Jelly scanned "kerk.pdf"
+    And Carla has chosen "kerk.pdf" of Jelly on the screen
+    When "Bekijk Bestanden kiezen" is clicked
+    And "Keuze aanpassen" is clicked
+    Then the screen is titled "2. Bestanden kiezen"
+    And the screen says "1 bestand stond al klaar en doet mee:"
+
   Scenario: Choosing several files with shift, and nothing means no way on
     Given Jelly scanned "a.pdf, b.pdf, c.pdf"
     And Carla is logged in on the screen

@@ -100,6 +100,10 @@ class FlowSession(
         return null
     }
 
+    /** Terug van de nummers naar het kiezen. De gekozen bestanden blijven in de invoermap staan. */
+    @Synchronized
+    fun reopenFiles() { filesConfirmed = false }
+
     /** De gekozen bestanden (pdf's en jpg's) die nu in de invoermap van de gebruiker staan (alleen de map zelf, geen submappen). */
     fun filesInInputFolder(): List<Path> {
         val dir = input.invoer() ?: return emptyList()

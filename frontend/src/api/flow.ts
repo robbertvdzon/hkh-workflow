@@ -114,6 +114,7 @@ export function flowActions(collection: string) {
     deleteLeftovers: () => unwrap(api.DELETE("/api/collections/{collection}/flow/leftovers", params)),
     chooseFiles: (source: string, path: string, names: string[]) => unwrap(api.PUT("/api/collections/{collection}/flow/files", { ...params, body: { source, path, names } })),
     clearFiles: () => unwrap(api.DELETE("/api/collections/{collection}/flow/files", params)),
+    reopenFiles: () => unwrap(api.DELETE("/api/collections/{collection}/flow/files/confirmation", params)),
     assignNumbers: (start: string) => unwrap(api.PUT("/api/collections/{collection}/flow/numbers", { ...params, body: { start } })),
     run: (name: StepName, answers: "auto" | "manual") => unwrap(api.POST("/api/collections/{collection}/flow/steps/{step}/run", { ...step(name), body: { answers } })),
     retry: (name: StepName) => unwrap(api.POST("/api/collections/{collection}/flow/steps/{step}/retry", step(name))),

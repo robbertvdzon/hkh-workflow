@@ -133,6 +133,8 @@ Bij elke fase staat: wat het scherm toont, wat de knoppen doen, welke controles 
 gebeurt. Alle meldingen verschijnen in een rode balk bovenaan de pagina (fouten) of een groene/blauwe balk (info). Een volledige lijst met
 oorzaak en oplossing staat in [hoofdstuk 14](#14-problemen-en-oplossingen).
 
+Een fase die klaar is, kun je bovenaan aanklikken om terug te kijken, bijvoorbeeld welke bestanden je hebt gekozen. Dat is alleen bekijken. Zolang je nog geen nummers hebt gegeven, kun je bij Bestanden kiezen ook op **Keuze aanpassen** drukken; daarna kan dat alleen nog met **Opnieuw beginnen**.
+
 ### Fase 1. Controleren
 
 ![Fase 1: alle controles zijn groen](afbeeldingen/invoeren-1-controleren.jpg)

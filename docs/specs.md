@@ -287,6 +287,7 @@ oude manier kan worden afgemaakt. Er wordt pas iets verwijderd of gearchiveerd a
 5. Een exe-stap is pas **klaar** als de verwachte bestanden er zijn; exitcode 0 alleen is niet genoeg (Perl-programma's geven
    die bijna altijd). Ontbreekt er iets, dan is de stap mislukt met de lijst van ontbrekende bestanden.
    Een gemaakte small, large of 100pct moet ook echt een afbeelding zijn. Een gekozen jpg die dat niet is, houdt de stap images tegen voordat het programma start, want images.exe uploadt zelf en maakt records aan (8 november 2026).
+   Een fase die klaar is, kun je openen om terug te kijken, alleen om te bekijken. Echt terug kan alleen van de nummers naar het kiezen (`DELETE /flow/files/confirmation`), want daarna is er al iets gebeurd (8 november 2026).
 
 | Stap | Wat er gebeurt | Weigert als |
 |---|---|---|

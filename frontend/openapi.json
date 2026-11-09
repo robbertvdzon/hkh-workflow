@@ -310,6 +310,25 @@
         "tags" : [ "flow-api-controller" ]
       }
     },
+    "/api/collections/{collection}/flow/files/confirmation" : {
+      "delete" : {
+        "operationId" : "reopenFiles",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
     "/api/collections/{collection}/flow/leftovers" : {
       "delete" : {
         "operationId" : "deleteLeftovers",

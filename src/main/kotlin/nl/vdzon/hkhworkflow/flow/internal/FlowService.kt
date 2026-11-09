@@ -122,6 +122,7 @@ class FlowService(
 
     fun acceptInput() = current().acceptInput()
     fun confirmFiles(): String? = current().confirmFiles()
+    fun reopenFiles() = current().reopenFiles()
     fun filesInInputFolder(): List<Path> = current().filesInInputFolder()
     fun start(startNumber: String) = current().start(startNumber)
     fun reset() = current().reset()

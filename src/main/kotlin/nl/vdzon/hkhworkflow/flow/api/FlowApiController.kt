@@ -237,6 +237,15 @@ class FlowApiController(
         flow.sources().removeAllCopies()
     }
 
+    /** Terug van de nummers naar het kiezen. Kan zolang er nog geen nummers zijn gegeven. */
+    @DeleteMapping("/files/confirmation")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun reopenFiles() {
+        requireNoRun()
+        requirePhase(3)
+        flow.reopenFiles()
+    }
+
     // ---- 3. Nummers ----
 
     @GetMapping("/numbers")
