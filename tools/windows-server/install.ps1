@@ -1,10 +1,10 @@
 # Installeert hkh-workflow als Windows-service (met WinSW) en start hem. Draai dit als administrator.
 # Opnieuw draaien mag: een bestaande service wordt eerst gestopt en opnieuw geinstalleerd; instellingen, logs en updates blijven staan.
 #
-#   .\install.ps1                                  # WinSW.exe en hkh-workflow.jar naast dit script; de service draait als de huidige gebruiker
-#                                                  # en het script vraagt om diens Windows-wachtwoord
-#   .\install.ps1 -Account '.\hkhservice'          # onder een ander account; vraagt om het wachtwoord
-#   .\install.ps1 -LocalSystem -GeenVragen         # als LocalSystem en zonder vragen (zo doet deploy-testlaptop.sh het)
+#   .\install.ps1                                  # WinSW.exe en hkh-workflow.jar naast dit script; de service draait als LocalSystem (het
+#                                                  # systeemaccount van Windows), dus onafhankelijk van een gebruiker en diens wachtwoord
+#   .\install.ps1 -Account '.\hkhservice'          # onder een eigen account (nodig voor netwerkmappen); vraagt om het wachtwoord
+#   .\install.ps1 -GeenVragen                      # zonder vragen (zo doet deploy-testlaptop.sh het)
 #   .\install.ps1 -WinSw C:\pad\WinSW.exe -Jar C:\pad\hkh-workflow.jar
 #
 # Alleen ASCII in dit bestand: Windows PowerShell 5.1 leest bestanden zonder BOM als ANSI.
@@ -119,10 +119,9 @@ $javaVersie = (Get-Item $Java).VersionInfo.ProductMajorPart
 if ($javaVersie -gt 0 -and $javaVersie -lt 21) { Write-Host "Let op: $Java lijkt Java $javaVersie te zijn; de app heeft Java 21 of nieuwer nodig." }
 if ($LocalSystem -and $Account) { throw 'Geef -LocalSystem of -Account op, niet allebei.' }
 
-# Onder welk account draait de service? Standaard de gebruiker die dit script draait.
+# Onder welk account draait de service? Standaard LocalSystem; alleen met -Account een gewoon account (-LocalSystem bestaat nog voor oudere aanroepen).
 $accountSid = $null
-if (-not $LocalSystem) {
-    if (-not $Account) { $Account = [Security.Principal.WindowsIdentity]::GetCurrent().Name }
+if ($Account) {
     if ($Account -notmatch '\\') { $Account = "$env:COMPUTERNAME\$Account" }
     $domein, $gebruiker = $Account -split '\\', 2
     if ($domein -eq '.') { $domein = $env:COMPUTERNAME }
@@ -135,13 +134,15 @@ if (-not $LocalSystem) {
     $gevraagd = -not $Wachtwoord
     for ($poging = 1; ; $poging++) {
         if ($gevraagd) { $Wachtwoord = Lees-Geheim "Windows-wachtwoord van $domein\$gebruiker" }
-        if (-not $Wachtwoord) { throw 'Een account zonder wachtwoord kan geen service draaien. Geef het account een wachtwoord, of gebruik -LocalSystem.' }
+        if (-not $Wachtwoord) { throw 'Een account zonder wachtwoord kan geen service draaien. Geef het account een wachtwoord, of laat -Account weg (LocalSystem).' }
         $klopt = Test-Wachtwoord $domein $gebruiker $Wachtwoord
         if ($klopt -ne $false) { break }
         if (-not $gevraagd -or $poging -ge 3) { throw "Het wachtwoord van $domein\$gebruiker klopt niet." }
         Write-Host 'Dat wachtwoord klopt niet; probeer het opnieuw.'
     }
     if ($null -eq $klopt) { Write-Host 'Het wachtwoord kon niet vooraf gecontroleerd worden; dat blijkt bij het starten van de service.' }
+} else {
+    Write-Host 'De service gaat draaien als LocalSystem (het systeemaccount van Windows).'
 }
 
 $dienst = 'hkh-workflow'
