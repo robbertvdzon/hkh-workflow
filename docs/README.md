@@ -31,7 +31,8 @@ Stand: 1 november 2026.
 | [integratietests.md](integratietests.md) | De Cucumber-scenario's tegen de hele app, de nagebouwde ZCBS in Docker en het ijkpunt met de echte ZCBS |
 | [zcbs-edit-formulier.md](zcbs-edit-formulier.md) | Hoe het bewerkformulier van ZCBS in elkaar zit (velden, a0, vergrendeling, opslaan) |
 | [zcbs-api.openapi.yaml](zcbs-api.openapi.yaml) | De HTTP-aanroepen naar ZCBS als OpenAPI-beschrijving |
-| [auto-update.md](auto-update.md) | Voorstel: draaien als Windows-service met automatisch bijwerken (nog niet gebouwd) |
+| [auto-update.md](auto-update.md) | Draaien als Windows-service met automatisch bijwerken: ontwerp, besluiten en wat getest is |
+| [installatie-windows-server.md](installatie-windows-server.md) | Stap voor stap met de hand installeren op een Windows-server (HKH), en eerst proberen op de testlaptop |
 
 ## Achtergrond over ZCBS en de programma's
 

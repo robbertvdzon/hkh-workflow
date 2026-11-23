@@ -14,9 +14,15 @@ for f in *.pdf; do
   fi
   if grep -q vastloper "output/pdf/$f"; then
     echo "Verwerking: $f : bevat 0 zinnen"
-    # macOS stopt een kopie van een systeemprogramma meteen; Linux toont bij een symlink de echte naam.
-    if [ "$(uname)" = Darwin ]; then ln -sf "$(command -v sleep)" i_view32; else cp "$(command -v sleep)" i_view32; fi
-    ./i_view32 600
+    # macOS stopt een kopie van een systeemprogramma meteen; Linux toont bij een symlink de echte naam. Op Linux is het een kopie van sh
+    # en niet van sleep: sleep is daar soms een gezamenlijk programma dat op zijn naam afgaat (Ubuntu 26.04) en als i_view32 meteen stopt.
+    if [ "$(uname)" = Darwin ]; then
+      ln -sf "$(command -v sleep)" i_view32
+      ./i_view32 600
+    else
+      cp "$(command -v sh)" i_view32
+      ./i_view32 -c 'sleep 600; :'
+    fi
     exit 0
   fi
   echo "Tekst uit scan $b" > "output/ocr/$b.txt"

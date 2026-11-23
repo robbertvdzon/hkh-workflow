@@ -37,6 +37,9 @@ Alles buiten `app\` blijft bij een update onaangeroerd.
 
 ## Installeren (op de server)
 
+Een volledige handleiding om dit met de hand op de server te doen (bestanden ophalen, configuratie, controleren, instellen) staat in
+[../../docs/installatie-windows-server.md](../../docs/installatie-windows-server.md).
+
 Vereist Java 21 of nieuwer en een administratorvenster.
 
 ```powershell
