@@ -1,0 +1,56 @@
+hkh-workflow (ZcbsServer) installeren als Windows-service
+=========================================================
+
+Deze map bevat alles om de app te installeren. Kopieer de hele map naar de server
+(bijvoorbeeld C:\zcbs-workflow-install); de app zelf komt in C:\zcbs-workflow.
+
+Wat er in deze map staat
+  installeren.cmd     start de installatie
+  verwijderen.cmd     haalt de service weer weg
+  install.ps1         het installatiescript (door installeren.cmd gestart)
+  uninstall.ps1       het script dat de service weghaalt
+  run.ps1             het startscript van de service (start java, regelt bijwerken)
+  hkh-workflow.xml    de configuratie van de service
+  WinSW.exe           Windows Service Wrapper 2.12.0 (github.com/winsw/winsw), maakt van het script een service
+  hkh-workflow.jar    de app (welke build: zie VERSIE.txt)
+
+Vooraf
+  1. Log in met het account waaronder de service moet draaien. Dat account moet
+     administrator zijn en een wachtwoord hebben.
+  2. Java 21 of nieuwer moet er staan. Controleer in een opdrachtvenster:  java -version
+     Staat het er niet: installeer Temurin 21 JRE (adoptium.net) en laat "Add to PATH" aan.
+
+Installeren
+  1. Rechtsklik op installeren.cmd en kies "Als administrator uitvoeren".
+  2. Het script zegt onder welk account de service gaat draaien (het account waarmee
+     je bent ingelogd) en vraagt om het Windows-wachtwoord van dat account. Het
+     wachtwoord wordt niet getoond en nergens in een bestand opgeslagen.
+  3. De eerste keer vraagt het ook om een beheerderswachtwoord voor de app zelf
+     (voor de pagina Instellingen). Dat kies je zelf; het komt in
+     C:\zcbs-workflow\config\application.properties.
+  4. Na een halve minuut staat er "De app draait" met het adres (poort 9000).
+
+  Opnieuw installeren mag altijd: de service wordt vervangen, instellingen en logs blijven.
+
+Wat het script doet
+  - maakt C:\zcbs-workflow met de mappen app, updates, logs, service en config
+  - zet de jar, het startscript en WinSW daar neer
+  - maakt een firewallregel "hkh-workflow (9000)", alleen voor het lokale netwerk
+  - geeft het account het recht "Aanmelden als service"
+  - registreert de service hkh-workflow (start vanzelf na een reboot) en start hem
+
+Daarna
+  - Open http://localhost:9000, kies Beheer en log in met het beheerderswachtwoord.
+  - Vul bij Instellingen de mappen en programma's in. Gebruik lokale paden of
+    UNC-paden (\\server\map): een service kent geen gekoppelde schijven zoals K:.
+  - "Gebruik de test-ZCBS" staat standaard AAN. Uitzetten betekent: het echte archief.
+
+Verwijderen
+  Rechtsklik op verwijderen.cmd en kies "Als administrator uitvoeren". De service en
+  de firewallregel gaan weg; C:\zcbs-workflow met instellingen en logs blijft staan.
+
+Als het niet werkt
+  - Kijk in C:\zcbs-workflow\logs\update.log en app-fout.log.
+  - Andere opties (ander account, andere poort of map): zie de eerste regels van install.ps1.
+  - Volledige handleiding: docs/installatie-windows-server.md in de repository
+    github.com/robbertvdzon/hkh-workflow

@@ -100,6 +100,6 @@ echo "   jar: $(basename "$jar") ($(du -h "$jar" | cut -f1))"
 scp "${ssh_opts[@]}" -q "$jar" "$doel:$(scp_pad "$installmap\\hkh-workflow.jar")"
 
 echo "== Installeren en starten"
-ps "$installmap\\install.ps1 -WinSw $installmap\\WinSW.exe -Jar $installmap\\hkh-workflow.jar -Map $MAP -Poort $POORT"
+ps "$installmap\\install.ps1 -WinSw $installmap\\WinSW.exe -Jar $installmap\\hkh-workflow.jar -Map $MAP -Poort $POORT -LocalSystem -GeenVragen"
 echo
 echo "Klaar: http://$LAPTOP:$POORT/   (status: $0 --status)"

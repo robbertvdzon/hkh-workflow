@@ -12,8 +12,10 @@ Gebouwd en getest op de testlaptop (Windows 10 Home, Java, 2 november 2026); zie
 |---|---|
 | `run.ps1` | De kern: draait `java -jar`, wacht tot `/actuator/health` antwoordt, plaatst een nieuwe jar uit `updates\` en draait terug als die niet start |
 | `hkh-workflow.xml` | Configuratie voor [WinSW](https://github.com/winsw/winsw) (v2.12.0): de service start `run.ps1`, vertraagd automatisch, herstart bij een crash |
-| `install.ps1` | Eenmalig, als administrator: zet de mappen, WinSW, het script en de jar neer, maakt de firewallregel en installeert en start de service |
+| `install.ps1` | Eenmalig, als administrator: zet de mappen, WinSW, het script en de jar neer, maakt de firewallregel en installeert en start de service. Standaard draait de service als de gebruiker die het script start; het script vraagt om diens wachtwoord en om een beheerderswachtwoord voor de app |
 | `uninstall.ps1` | Haalt de service weg; mappen, instellingen en logs blijven staan |
+| `installeren.cmd`, `verwijderen.cmd` | Starten de twee scripts met een rechtsklik (*Als administrator uitvoeren*) |
+| `maak-installatiemap.sh` | Vanaf de Mac: stelt `target/zcbs-workflow-install` samen (scripts, WinSW, de jar van de nieuwste Release, `LEESMIJ.txt`) om mee te nemen naar een server; `--laptop` zet hem op de testlaptop |
 | `deploy-testlaptop.sh` | Vanaf de Mac: bouwt de jar en installeert of werkt bij op de testlaptop (`--status`, `--update`, `--verwijderen`) |
 | `firewall-werkmap.ps1` | Alleen testlaptop: blokkeert de kopieen van images.exe en pdf2zcbs.exe in de werkmap voor alles behalve de test-ZCBS |
 | `winsw/WinSW.exe` | Niet in git; haal `WinSW.NET461.exe` van v2.12.0 op bij github.com/winsw/winsw/releases en noem hem zo |
@@ -43,16 +45,17 @@ Een volledige handleiding om dit met de hand op de server te doen (bestanden oph
 Vereist Java 21 of nieuwer en een administratorvenster.
 
 ```powershell
-.\install.ps1 -WinSw C:\pad\WinSW.exe -Jar C:\pad\hkh-workflow.jar                  # draait als LocalSystem
-.\install.ps1 -WinSw ... -Jar ... -Account '.\hkhservice' -Wachtwoord '...'          # onder een eigen account (aanbevolen)
+.\install.ps1                              # WinSW.exe en hkh-workflow.jar naast het script; draait als de huidige gebruiker en vraagt om het wachtwoord
+.\install.ps1 -Account '.\hkhservice'      # onder een ander account; vraagt om het wachtwoord
+.\install.ps1 -LocalSystem -GeenVragen     # als LocalSystem en zonder vragen (zo doet deploy-testlaptop.sh het)
 ```
 
-- **Eigen account (aanbevolen voor de echte server):** dat account heeft schrijfrechten nodig op `C:\zcbs-workflow`, de mappen met scans, de
-  werkmap en de back-upmappen, en het recht "Aanmelden als service". Bij mappen op het netwerk moet het account daar ook bij kunnen
-  (gebruik UNC-paden zoals `\\server\scans`, geen stationsletters).
+- Het account krijgt van het script het recht "Aanmelden als service". Het heeft schrijfrechten nodig op `C:\zcbs-workflow`, de mappen met scans, de
+  werkmap en de back-upmappen. Bij mappen op het netwerk moet het account daar ook bij kunnen (gebruik UNC-paden zoals `\\server\scans`, geen stationsletters).
+- Het wachtwoord van het account gaat via Windows naar de service en staat in geen enkel bestand. `-Wachtwoord` bestaat nog voor scripts, maar staat dan in de geschiedenis van het venster.
 - Opnieuw draaien mag; een bestaande service wordt eerst gestopt en opnieuw geinstalleerd.
 - De poort is 9000 (`-Poort` om dat te wijzigen). De firewallregel laat alleen het lokale netwerk toe.
-- Instellingen via omgevingsvariabelen (bijvoorbeeld `HKH_WORKFLOW_ADMIN_PASSWORD`) kunnen in `config\application.properties` (`hkh.workflow.admin-password=...`).
+- Het beheerderswachtwoord van de app komt in `config\application.properties` (`hkh.workflow.admin-password=...`); staat het er nog niet, dan vraagt het script erom (niet met `-GeenVragen`).
 
 Beheer met gewone Windows-middelen: `Get-Service hkh-workflow`, `Stop-Service`, `Start-Service`, of het venster Services.
 
@@ -90,7 +93,7 @@ Op de testlaptop (Windows 10 Home, Java, service als LocalSystem), met de echte 
 | Reboot van de laptop | Service startte zelf (ruim 3 minuten na het opstarten door de vertraagde start); app antwoordt na nog 35 s |
 
 **Nog niet getest:**
-- Een eigen servicegebruiker in plaats van LocalSystem, en mappen op het netwerk.
+- Een servicegebruiker in plaats van LocalSystem (sinds 23 november de standaard van `install.ps1`, met het recht "Aanmelden als service"), en mappen op het netwerk.
 - Een reboot zonder dat iemand inlogt: de testlaptop logt zelf in (explorer draaide), dus dat is niet te scheiden van een service die wacht op een inlog. Een service start
   in Windows los van een inlog, maar dit is niet apart bewezen.
 - Een nette afsluiting van de app: WinSW beeindigt het proces (`Stop-Service` doet dat binnen 1 s); lopende stappen van `images.exe` en dergelijke worden dan afgebroken. De stand
