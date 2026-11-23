@@ -4,6 +4,7 @@ target/
 hkh-workflow-settings.json
 logs/
 hkh-workflow-verwerkt.tsv
+hkh-workflow-bewerkt.tsv
 tools/mock/pdf2zcbs/*.pdf
 tools/mock/pdf2zcbs/output/
 tools/mock/images-werk/images/
