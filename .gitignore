@@ -23,3 +23,5 @@ hkh-workflow-inloggen.key
 # Code van de echte ZCBS hoort nooit in deze publieke repository (ook niet als testdata)
 objecten.pl
 cfg-cbs*.pl
+hkh-workflow-versie.txt
+hkh-workflow-afgebroken.tsv
