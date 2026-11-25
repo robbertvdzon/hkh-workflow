@@ -116,7 +116,7 @@ Zo is de service zelf eenvoudig (alleen "start dit script en herstart als het ei
 Bij het opstarten vergelijkt de app zijn versie met die van de vorige start (`VersionWatch`; de vorige staat in `hkh-workflow-versie.txt` naast het
 instellingenbestand). Is die anders, dan schrijft hij "Nieuwe versie geïnstalleerd: build 19 (...) (de vorige was build 18 (...))" in het app-log, of
 "Vorige versie teruggezet" als het buildnummer lager is (het startscript draaide terug). Dezelfde melding gaat naar hkh-admin en staat daar op het
-tabblad Instellingen als wijziging van het veld `appVersion`, met de computernaam en het tijdstip; die blijft bewaard, het app-log 30 dagen. De eerste
+tabblad **Versies** van het workflow-logboek, met de bron, de computernaam, het tijdstip en de vorige en de nieuwe versie; die blijft bewaard, het app-log 30 dagen. De eerste
 start met deze versie meldt niets: er is dan nog geen vorige versie bekend.
 
 ## 7. Waar de nieuwe versie vandaan komt

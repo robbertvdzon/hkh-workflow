@@ -64,6 +64,23 @@ class AdminLogClientTest {
     }
 
     @Test
+    fun `een andere versie gaat naar het eigen meldpunt voor versies`() {
+        val client = AdminLogClient(mapper, url)
+        client.versionChanged("build 18 (a)", "build 19 (b)", "Nieuwe versie geïnstalleerd")
+        waitFor(1)
+        val r = received.single()
+        assertEquals("POST", r.method)
+        assertEquals("/api/workflow-log/version-changes", r.path)
+        assertEquals(AdminLogClient.INGEST_KEY, r.key)
+        val body = mapper.readTree(r.body)
+        assertEquals("build 18 (a)", body.path("previous").asString())
+        assertEquals("build 19 (b)", body.path("current").asString())
+        assertEquals("Nieuwe versie geïnstalleerd", body.path("reason").asString())
+        assertTrue(body.path("computer").asString().isNotEmpty())
+        assertTrue(body.path("source").asString().isNotEmpty())
+    }
+
+    @Test
     fun `de bron is de computernaam`() {
         val client = AdminLogClient(mapper, url)
         client.login("carla", true, "PASSWORD")

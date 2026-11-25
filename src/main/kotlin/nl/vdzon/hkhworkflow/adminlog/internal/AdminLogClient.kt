@@ -132,20 +132,21 @@ class AdminLogClient(
         }
     }
 
-    /**
-     * Meldt een andere versie van de app. Het logboek heeft daar geen eigen meldpunt voor; het komt als een wijziging van het veld `appVersion`
-     * bij de wijzigingen van de instellingen (tabblad Instellingen in hkh-admin), en blijft daar bewaard.
-     */
+    /** Meldt een andere versie van de app (`POST /api/workflow-log/version-changes`); hkh-admin toont ze op het tabblad Versies en bewaart ze. */
     override fun versionChanged(previous: String, current: String, reason: String) {
-        settingsChange(
-            mapper.createObjectNode().apply {
-                put("reason", reason)
-                put("user", "")
-                put("address", "")
-                set("changes", mapper.createArrayNode().add(mapper.createObjectNode().put("field", "appVersion").put("old", previous).put("new", current)))
-                set("settings", mapper.createObjectNode())
-            },
-        )
+        try {
+            val body = mapper.createObjectNode().apply {
+                put("previous", previous.take(120))
+                put("current", current.take(120))
+                put("reason", reason.take(200))
+                put("computer", computer)
+                put("source", source())
+            }
+            synchronized(logins) { if (logins.size < MAX_QUEUED_LOGINS) logins.addLast(Outgoing("/api/workflow-log/version-changes", body)) }
+            schedule()
+        } catch (e: Exception) {
+            log.debug("Melding aan het workflow-logboek overgeslagen: {}", e.message)
+        }
     }
 
     private fun schedule() {
