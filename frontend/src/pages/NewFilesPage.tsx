@@ -261,6 +261,13 @@ function ChecksPhase({ collection, act, busy }: PhaseProps) {
   return (
     <Card>
       <h2 className="text-xl">1. Controleer of alles klaarstaat</h2>
+      {checks.data === undefined && checks.isError && (
+        <div>
+          <Button variant="secondary" disabled={checks.isFetching} onClick={() => checks.refetch()}>
+            {checks.isFetching ? "Controleren…" : "Opnieuw controleren"}
+          </Button>
+        </div>
+      )}
       <QueryState query={checks} loading="Controleren…">
         {(data) => (
           <>
@@ -310,9 +317,17 @@ function ChecksPhase({ collection, act, busy }: PhaseProps) {
                 )}
               </div>
             )}
-            <div>
+            {!data.allOk && (
+              <p className="text-[13px] text-muted">
+                Was een schijf of de server even niet bereikbaar? Klik dan op <b>Opnieuw controleren</b>. Blijft een punt rood, vraag dan de beheerder.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
               <Button disabled={busy || !data.allOk} onClick={() => act((a) => a.start())}>
                 {data.allOk ? "Alles in orde: verder met bestanden kiezen" : "Los eerst de rode punten op"}
+              </Button>
+              <Button variant={data.allOk ? "secondary" : "primary"} disabled={busy || checks.isFetching} onClick={() => checks.refetch()}>
+                {checks.isFetching ? "Controleren…" : "Opnieuw controleren"}
               </Button>
             </div>
           </>

@@ -656,7 +656,7 @@ Alle meldingen komen uit de code. Hoofdletters en leestekens kunnen in het scher
 | De ftp-server is niet bereikbaar: *melding* (bijv. "Verbinden mislukt: ...", "de server weigert de verbinding", "inloggen is mislukt") | Server uit de lucht, firewall, verkeerd wachtwoord. Time-out 5 seconden | Beheerder: **Test verbinding** bij Instellingen; controleren van host, poort 21, gebruiker, wachtwoord |
 | Op de ftp-server ontbreken mappen: Niet gevonden: *map* | `<basismap>/<collectie>/ocr` of `/pdf` bestaat niet; de app maakt nooit mappen aan | Beheerder: de map op de server laten aanmaken of de collectie/basismap corrigeren |
 | Er staat nog werk van een eerdere keer | Zie hoofdstuk 8 | **Verplaats ze naar een map met resten** (veilig), of **Verwijder ze** |
-| Los eerst de rode punten op | Minstens één punt van fase 1 is rood | Alle rode punten oplossen |
+| Los eerst de rode punten op | Minstens één punt van fase 1 is rood | Alle rode punten oplossen en op **Opnieuw controleren** klikken (de knop ernaast voert de controles opnieuw uit zonder de pagina te verlaten; ook te gebruiken als een schijf of de server even niet bereikbaar was) |
 | Stel eerst de werkmap in bij Instellingen. / De werkmap bestaat niet: *pad* | Werkmap leeg of bestaat niet (de app maakt alleen de submappen aan) | Beheerder: werkmap instellen en aanmaken |
 
 ### Bestanden kiezen en nummers

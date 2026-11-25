@@ -346,6 +346,15 @@ Feature: The screens of the frontend
     And the screen does not say "Eerst opruimen"
     And the originals "kerk.pdf" of Jelly are still there
 
+  Scenario: A red check can be tried again without leaving the screen
+    Given Carla left the file "oud.pdf" in the folder of pdf2zcbs
+    And Carla is logged in on the screen
+    When the app is opened at "/collectie/archief/nieuw"
+    Then "Los eerst de rode punten op" cannot be clicked
+    When someone removes the file "oud.pdf" from the folder of pdf2zcbs of Carla
+    And "Opnieuw controleren" is clicked
+    Then the screen says "Alles in orde: verder met bestanden kiezen"
+
   Scenario: Leftovers of an earlier time are cleared on the screen
     Given Carla left the file "oud.pdf" in the folder of pdf2zcbs
     And Carla is logged in on the screen

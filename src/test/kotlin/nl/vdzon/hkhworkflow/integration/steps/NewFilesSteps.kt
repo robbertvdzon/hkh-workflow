@@ -169,6 +169,12 @@ class NewFilesSteps {
         TestEnvironment.copy("integration/scans/scan.pdf", target)
     }
 
+    /** Iemand lost buiten de app op wat een controle rood maakte. */
+    @When("someone removes the file {string} from the folder of pdf2zcbs of {word}")
+    fun removesFile(file: String, name: String) {
+        Files.delete(TestEnvironment.work.resolve(World.actor(name).account).resolve("archief/pdf2zcbs").resolve(file))
+    }
+
     @When("{word} moves the leftovers away")
     fun movesLeftovers(name: String) { assertEquals(200, World.actor(name).api.post("$flow/leftovers/move").status) }
 

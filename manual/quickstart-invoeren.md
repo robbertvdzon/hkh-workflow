@@ -80,6 +80,7 @@ Bovenaan het scherm staan zeven stappen; de nummers hieronder zijn dezelfde.
 
 > ### Gaat er iets mis?
 >
+> 0. **Is in stap 1 een punt rood** omdat een schijf of de server even niet bereikbaar was? Klik op **Opnieuw controleren**.
 > 1. **Lees de melding** in de rode balk of onder de stap. Er staat meestal wat er mis is, bijvoorbeeld dat een schijf niet gekoppeld is of dat een nummer intussen door iemand anders is gebruikt.
 > 2. **Staat de stap op "Mislukt"?** Klik één keer op **Opnieuw** (of volg wat de melding zegt, bijvoorbeeld **Opnieuw beginnen** met een ander beginnummer).
 > 3. **Lukt het dan weer niet?** Probeer het niet nog eens. Bel de beheerder en zeg: bij welke stap je bent, wat de melding zegt en welke nummers je had gekozen.
