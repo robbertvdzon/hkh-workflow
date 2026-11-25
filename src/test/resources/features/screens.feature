@@ -189,7 +189,11 @@ Feature: The screens of the frontend
     Then the screen says "Deze nummers hebben de bestanden gekregen"
     And the screen says "99068.pdf"
     And the screen says "99069.pdf"
-    When "Klopt: verder" is clicked
+    And the screen does not say "0,0 s"
+    When "Andere nummers kiezen" is clicked
+    Then "Eerste recordnummer" on the screen is "99068"
+    When "Geef de bestanden deze nummers" is clicked
+    And "Klopt: verder" is clicked
     And "Automatisch uitvoeren" is clicked
     Then the screen says "Dit heeft pdf2zcbs.exe gemaakt" within a minute
     When "Bekijk log" is clicked

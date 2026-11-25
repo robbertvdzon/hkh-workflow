@@ -401,6 +401,30 @@
       }
     },
     "/api/collections/{collection}/flow/numbers" : {
+      "delete" : {
+        "operationId" : "reopenNumbers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FlowResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      },
       "get" : {
         "operationId" : "numbers",
         "parameters" : [ {

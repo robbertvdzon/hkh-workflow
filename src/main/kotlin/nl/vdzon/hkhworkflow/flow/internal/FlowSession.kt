@@ -316,6 +316,26 @@ class FlowSession(
     private fun numbersPending(current: FlowRun?): Boolean =
         current != null && current.gated && !current.numbersConfirmed && current.steps.filter { it.type == StepType.RENAME }.all { it.finished }
 
+    /**
+     * Terug van het overzicht naar het kiezen van de nummers: de kopieën met recordnummer gaan weg en de nummers vervallen. De gekozen
+     * bestanden blijven staan. Kan alleen zolang het overzicht openstaat: daarna hebben de programma's de nummers al gebruikt.
+     * @return een melding als het niet kan, anders null.
+     */
+    @Synchronized
+    fun reopenNumbers(): String? {
+        val current = run ?: return "Er zijn nog geen nummers gegeven."
+        if (!numbersPending(current)) return "De nummers zijn al in gebruik. Andere nummers kiezen kan alleen via Opnieuw beginnen."
+        return try {
+            current.files.forEach { Files.deleteIfExists(current.workDir.resolve(it.newName)) }
+            runCatching { Files.deleteIfExists(current.workDir) } // alleen als de map leeg is
+            run = null
+            log.info("De nummers {} t/m {} zijn teruggenomen; de gebruiker kiest andere", current.files.first().number, current.files.last().number)
+            null
+        } catch (e: Exception) {
+            "De kopieën met recordnummer konden niet worden verwijderd: ${e.message ?: e.javaClass.simpleName}"
+        }
+    }
+
     /** De gebruiker heeft gezien welk bestand welk nummer kreeg; nu mogen de programma's. @return een melding of null. */
     @Synchronized
     fun confirmNumbers(): String? {

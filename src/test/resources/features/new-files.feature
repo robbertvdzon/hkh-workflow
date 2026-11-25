@@ -177,6 +177,20 @@ Feature: Putting new files in ZCBS
     And nothing of Carla is left in the work folders
     And ZCBS has no record 99068
 
+  Scenario: Choosing other numbers from the overview keeps the chosen files
+    When Carla starts adding new files
+    And Carla picks "kerk.pdf, school.pdf" from Jelly
+    And Carla gives the files the offered numbers
+    And Carla wants other numbers
+    Then Carla has reached step 3
+    And Carla is offered 99068 as the first number
+    When Carla chooses 99100 as the first number
+    Then Carla is shown that "kerk.pdf" became record 99100
+    And Carla is shown that "school.pdf" became record 99101
+    When Carla confirms the numbers
+    And Carla wants other numbers without success
+    Then Carla is refused with "wrong-phase"
+
   Scenario: Starting over before images removes everything without a word
     When Carla starts adding new files
     And Carla picks "kerk.pdf" from Jelly

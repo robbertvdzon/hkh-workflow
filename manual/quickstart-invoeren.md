@@ -34,7 +34,7 @@ Bovenaan het scherm staan zeven stappen; de nummers hieronder zijn dezelfde.
 
 3. **Nummers.** Je ziet het laatste record en de vrije nummers. Meestal staat het goede beginnummer al ingevuld. Controleer de regel
    "De bestanden krijgen de nummers … t/m …" en klik op **Geef de bestanden deze nummers**. Wil je een ander begin, klik dan op **Begin hier** bij een
-   reeks waar "Ja, past" staat. Je ziet daarna per bestand welk nummer het heeft gekregen. Noteer de nummers als je ze nodig hebt en klik op **Klopt: verder**.
+   reeks waar "Ja, past" staat. Je ziet daarna per bestand welk nummer het heeft gekregen. Noteer de nummers als je ze nodig hebt en klik op **Klopt: verder**. Klopt het niet, klik dan op **Andere nummers kiezen**.
 
    ![Stap 3: controleer het eerste nummer (1) en klik op Geef de bestanden deze nummers (2)](afbeeldingen/invoeren-3-nummers.jpg)
 

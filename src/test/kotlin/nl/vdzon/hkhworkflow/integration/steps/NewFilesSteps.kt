@@ -93,6 +93,15 @@ class NewFilesSteps {
         assertEquals(number, row["number"], row.toString())
     }
 
+    @When("{word} wants other numbers")
+    fun otherNumbers(name: String) {
+        val actor = World.actor(name)
+        assertEquals(200, actor.api.delete("$flow/numbers").status, actor.last.toString())
+    }
+
+    @When("{word} wants other numbers without success")
+    fun otherNumbersRefused(name: String) { World.actor(name).api.delete("$flow/numbers") }
+
     @When("{word} confirms the numbers")
     fun confirmsNumbers(name: String) {
         val actor = World.actor(name)

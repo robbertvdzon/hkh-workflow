@@ -283,6 +283,14 @@ class FlowApiController(
         return get()
     }
 
+    /** Terug van het overzicht naar het kiezen van de nummers; de gekozen bestanden blijven staan. Kan zolang het overzicht openstaat. */
+    @DeleteMapping("/numbers")
+    fun reopenNumbers(): FlowResponse {
+        requirePhase(3)
+        flow.reopenNumbers()?.let { throw ApiProblem(409, "wrong-phase", it) }
+        return get()
+    }
+
     /** De gebruiker heeft het overzicht gezien van welk bestand welk nummer kreeg: verder naar de programma's. */
     @PostMapping("/numbers/approve")
     fun approveNumbers(): FlowResponse {

@@ -134,6 +134,7 @@ class FlowService(
     fun summary(): List<SummaryLine> = current().summary()
     fun prepare(startNumber: String): String? = current().prepare(startNumber)
     fun confirmNumbers(): String? = current().confirmNumbers()
+    fun reopenNumbers(): String? = current().reopenNumbers()
     fun timings(): Timings = current().timings
     fun confirmReview(type: StepType): String? = current().confirmReview(type)
     fun flowView(): FlowView = current().flowView()

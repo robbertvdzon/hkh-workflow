@@ -76,6 +76,7 @@ Iedere gebruiker heeft per collectie één doorloop. Daarom is het `flow` in het
 |---|---|
 | `GET /flow` | De stand: `{phase, phases, review, finished}` |
 | `DELETE /flow` | Opnieuw beginnen: de werkmappen van de gebruiker gaan leeg, de originelen blijven staan. Was images.exe al gestart (`imagesStarted` in het antwoord van `GET /flow`), dan komt de doorloop bij `aborted` in `GET /api/sessions` |
+| `DELETE /flow/numbers` | Terug van het overzicht naar het kiezen van de nummers; de gekozen bestanden blijven staan |
 | `POST /flow/numbers/approve` | De gebruiker heeft gezien welk bestand welk nummer kreeg (`review` in fase 3); daarna beginnen de programma's |
 | `POST /flow/start` | Controles zijn groen: door naar bestanden kiezen |
 

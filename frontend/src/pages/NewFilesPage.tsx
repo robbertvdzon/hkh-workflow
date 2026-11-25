@@ -337,7 +337,7 @@ function ChecksPhase({ collection, act, busy }: PhaseProps) {
   )
 }
 
-function CheckList({ checks }: { checks: { id: string; label: string; ok: boolean; detail?: string | null; millis?: number }[] }) {
+function CheckList({ checks }: { checks: { id: string; label: string; ok: boolean; detail?: string | null }[] }) {
   return (
     <ul className="flex flex-col gap-2">
       {checks.map((check) => (
@@ -345,11 +345,6 @@ function CheckList({ checks }: { checks: { id: string; label: string; ok: boolea
           <span className={cn("mt-px flex size-5.5 flex-none items-center justify-center rounded-full text-[13px] font-bold", check.ok ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger")}>{check.ok ? "✓" : "✗"}</span>
           <span>
             <b>{check.label}</b>
-            {check.millis !== undefined && (
-              <span className="ml-2 text-xs whitespace-nowrap text-muted" title="Zo lang duurde deze controle">
-                {(check.millis / 1000).toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s
-              </span>
-            )}
             {check.detail && <span className={cn("mt-0.5 block text-[13px] wrap-anywhere", check.ok ? "text-muted" : "text-danger")}>{check.detail}</span>}
           </span>
         </li>
@@ -553,10 +548,13 @@ function NumbersOverview({ collection, act, busy }: { collection: string; act: A
         <b>Deze nummers hebben de bestanden gekregen.</b> Kijk of het klopt voordat je verder gaat.
       </p>
       <FileList collection={collection} />
-      <p className="text-[13px] text-muted">Er is nog niets naar ZCBS gegaan. Klopt het niet, kies dan rechtsboven Opnieuw beginnen.</p>
-      <div>
+      <p className="text-[13px] text-muted">Er is nog niets naar ZCBS gegaan. Klopt het niet, kies dan andere nummers.</p>
+      <div className="flex flex-wrap gap-2">
         <Button disabled={busy} onClick={() => act((a) => a.approveNumbers())}>
           Klopt: verder
+        </Button>
+        <Button variant="secondary" disabled={busy} onClick={() => act((a) => a.reopenNumbers())}>
+          Andere nummers kiezen
         </Button>
       </div>
     </Card>
