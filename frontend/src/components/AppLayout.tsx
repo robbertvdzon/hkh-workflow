@@ -57,6 +57,13 @@ function Sidebar({ session }: { session: Session }) {
 
       {session.user && (
         <div className="px-3 pt-3.5 text-[13px] text-muted">
+          <b>Ingelogd als</b>
+          <br />
+          <span className="wrap-anywhere">{session.user}</span>
+        </div>
+      )}
+      {session.user && (
+        <div className="px-3 pt-3.5 text-[13px] text-muted">
           <b>Rechten in ZCBS</b>
           <br />
           {session.rights.length ? session.rights.join(", ") : "geen"}

@@ -11,7 +11,13 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
-data class SessionsResponse(val users: List<String>, val flows: List<ActiveFlowResponse>)
+data class SessionsResponse(val users: List<String>, val flows: List<ActiveFlowResponse>, val aborted: List<AbortedFlowResponse>)
+
+/**
+ * Een doorloop die is afgebroken nadat images.exe was gestart: de records [numbers] kunnen al in ZCBS staan. [steps] is hoe ver de stappen waren en
+ * [by] wie het afbrak (`gebruiker` of `beheerder`).
+ */
+data class AbortedFlowResponse(val at: String, val user: String, val collection: String, val numbers: String, val fileCount: Int, val steps: String, val by: String)
 data class ActiveFlowResponse(val collection: String, val user: String, val since: String, val lastActive: String, val phase: Int)
 data class ProgramLogResponse(val file: String, val startedAt: String?, val label: String, val running: Boolean, val exitCode: Int?, val stopped: Boolean, val duration: String?)
 data class DeletedLogsResponse(val deleted: Int)
@@ -25,6 +31,7 @@ class AdminApiController(private val flowService: FlowService, private val items
     fun sessions() = SessionsResponse(
         items.users(),
         flowService.active().map { ActiveFlowResponse(it.collection, it.owner, it.since.toString(), it.lastActive.toString(), it.phase) },
+        flowService.aborted().take(100).map { AbortedFlowResponse(it.at.atZone(java.time.ZoneId.systemDefault()).toInstant().toString(), it.user, it.collection, it.numbers, it.fileCount, it.steps, it.by) },
     )
 
     @DeleteMapping("/sessions/flows/{collection}/{user}")

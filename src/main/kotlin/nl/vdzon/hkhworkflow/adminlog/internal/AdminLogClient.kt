@@ -132,6 +132,22 @@ class AdminLogClient(
         }
     }
 
+    /**
+     * Meldt een andere versie van de app. Het logboek heeft daar geen eigen meldpunt voor; het komt als een wijziging van het veld `appVersion`
+     * bij de wijzigingen van de instellingen (tabblad Instellingen in hkh-admin), en blijft daar bewaard.
+     */
+    override fun versionChanged(previous: String, current: String, reason: String) {
+        settingsChange(
+            mapper.createObjectNode().apply {
+                put("reason", reason)
+                put("user", "")
+                put("address", "")
+                set("changes", mapper.createArrayNode().add(mapper.createObjectNode().put("field", "appVersion").put("old", previous).put("new", current)))
+                set("settings", mapper.createObjectNode())
+            },
+        )
+    }
+
     private fun schedule() {
         if (draining.compareAndSet(false, true)) executor.execute(::drain)
     }

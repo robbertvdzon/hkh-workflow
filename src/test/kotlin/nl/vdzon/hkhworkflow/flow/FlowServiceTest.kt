@@ -20,6 +20,7 @@ import nl.vdzon.hkhworkflow.settings.SettingsService
 import nl.vdzon.hkhworkflow.settings.WorkflowProperties
 import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import nl.vdzon.hkhworkflow.settings.internal.DefaultSettingsService
+import nl.vdzon.hkhworkflow.flow.internal.AbortedLog
 import nl.vdzon.hkhworkflow.flow.internal.FlowSession
 import nl.vdzon.hkhworkflow.flow.internal.ProcessedLog
 import nl.vdzon.hkhworkflow.flow.internal.ProgramFiles
@@ -356,6 +357,12 @@ class FlowServiceTest {
         // 12 en 13 zijn vrij en sluiten aan
         assertEquals(null, service.prepare("90000012"))
         assertEquals(listOf("90000012.pdf", "90000013.pdf"), filesIn(werk))
+        // eerst het overzicht van welk bestand welk nummer kreeg; pas daarna de programma's
+        assertEquals(3, service.flowView().current)
+        assertTrue(service.flowView().review, "het overzicht van de nummers staat klaar")
+        assertTrue(service.prepare("90000012")!!.contains("hebben hun nummers al"))
+        assertEquals(null, service.confirmNumbers())
+        assertFalse(service.flowView().imagesStarted)
         assertEquals(4, service.flowView().current)
         assertEquals(listOf("done", "done", "done", "now", "todo", "todo", "todo"), service.flowView().phases.map { it.state })
         assertEquals("90000012 t/m 90000013", service.flowView().phases[2].note)
@@ -543,7 +550,7 @@ class FlowServiceTest {
     }
 
     @Test
-    fun `opnieuw beginnen voor de doorloop wist de gekozen kopieen en laat de originelen en eigen bestanden staan`() {
+    fun `opnieuw beginnen maakt de invoermap leeg en laat de originelen staan`() {
         Files.writeString(dir.resolve("k-scans/a.pdf"), "scan a")
         sources.copy("Ria", "", listOf("a.pdf"))
         service.acceptInput()
@@ -551,9 +558,69 @@ class FlowServiceTest {
 
         service.reset()
 
-        assertEquals(listOf("notes.txt", "xx01.pdf", "xx02.pdf"), filesIn(inbox), "wat Carla zelf neerzette blijft staan")
+        assertEquals(emptyList(), filesIn(inbox), "alles in de invoermap gaat weg, zodat er daarna niets te kiezen valt")
         assertTrue(Files.exists(dir.resolve("k-scans/a.pdf")), "het origineel blijft staan")
         assertEquals(1, service.flowView().current)
+        assertEquals(emptyList(), service.leftovers())
+        assertEquals(emptyList(), AbortedLog(settings).all(), "er was nog niets in ZCBS gedaan")
+    }
+
+    @Test
+    fun `opnieuw beginnen na pdf2zcbs ruimt alles op zonder melding aan de beheerder`() {
+        assertNull(items.login("Test Beheerder", "Beheer1"))
+        service.acceptInput()
+        assertNull(service.confirmFiles())
+        assertEquals(null, service.prepare("90000012"))
+        assertEquals(null, service.confirmNumbers())
+        assertEquals("DONE", runNext(auto = true).status)
+        assertTrue(Files.exists(p2zDir.resolve("output/ocr/90000012.txt")), "pdf2zcbs heeft zijn uitvoer gemaakt")
+
+        service.reset()
+
+        assertEquals(1, service.flowView().current)
+        assertEquals(emptyList(), service.leftovers(), "niets meer om over te kiezen")
+        assertEquals(emptyList(), filesIn(inbox))
+        assertFalse(Files.exists(werk.resolve("90000012.pdf")))
+        assertEquals(emptyList(), AbortedLog(settings).all())
+    }
+
+    @Test
+    fun `opnieuw beginnen na images ruimt alles op en komt in het log voor de beheerder`() {
+        assertNull(items.login("Test Beheerder", "Beheer1"))
+        service.acceptInput()
+        assertNull(service.confirmFiles())
+        assertEquals(null, service.prepare("90000012"))
+        assertEquals(null, service.confirmNumbers())
+        assertEquals("DONE", runNext(auto = true).status)
+        assertEquals(null, service.confirmReview(StepType.PDF2ZCBS))
+        assertEquals("DONE", runNext(auto = true).status)
+        assertTrue(service.flowView().imagesStarted)
+
+        service.reset()
+
+        assertEquals(1, service.flowView().current)
+        assertEquals(emptyList(), service.leftovers())
+        val entry = AbortedLog(settings).all().single()
+        assertEquals("90000012 t/m 90000013", entry.numbers)
+        assertEquals(2, entry.fileCount)
+        assertEquals("gebruiker", entry.by)
+        assertTrue(entry.steps.contains("images.exe: klaar"), entry.steps)
+        assertTrue(entry.steps.contains("Upload (ftp): wacht"), entry.steps)
+    }
+
+    @Test
+    fun `de tijden van de controles en de stappen worden bijgehouden`() {
+        assertNull(items.login("Test Beheerder", "Beheer1"))
+        val checks = service.environment()
+        assertTrue(checks.all { it.millis >= 0 })
+        service.acceptInput()
+        assertNull(service.confirmFiles())
+        assertEquals(null, service.prepare("90000012"))
+        val what = service.timings.all().map { it.what }
+        assertTrue("Controleren (fase 1)" in what, what.toString())
+        assertTrue("Vrije nummers ophalen uit ZCBS" in what, what.toString())
+        assertTrue(what.count { it == "Hernoemen" } == 2, what.toString())
+        assertTrue(service.timings.all().first { it.what == "Controleren (fase 1)" }.detail.contains("ftp-server"))
     }
 
     // ---- fase 1: de omgeving controleren ----

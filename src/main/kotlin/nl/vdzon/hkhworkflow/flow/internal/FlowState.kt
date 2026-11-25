@@ -16,8 +16,10 @@ data class FlowState(
     val filesConfirmed: Boolean,
     val inputAcceptedFor: String?,
     val claimedSince: String?,
+    /** Ontbreekt in een bestand van voor het overzicht van de nummers: zo'n doorloop was dat punt al voorbij. */
+    val numbersConfirmed: Boolean = true,
 )
 
 data class StateFile(val index: Int, val original: String, val number: String, val by: String, val folder: String)
 
-data class StateStep(val id: Int, val type: String, val fileIndexes: List<Int>, val status: String, val message: String?, val uploaded: List<String>)
+data class StateStep(val id: Int, val type: String, val fileIndexes: List<Int>, val status: String, val message: String?, val uploaded: List<String>, val attempted: Boolean = false)

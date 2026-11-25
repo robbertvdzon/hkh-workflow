@@ -57,6 +57,22 @@ class AdminSteps {
     fun seesNoSession(name: String) = assertFalse(flowUsers().contains(World.actor(name).account), flowUsers().toString())
 
     @Suppress("UNCHECKED_CAST")
+    private fun aborted(): List<Map<String, Any?>> {
+        adminLoggedIn()
+        return admin.read("/api/sessions")["aborted"] as List<Map<String, Any?>>
+    }
+
+    @Then("the administrator sees that {word} stopped after images with record {word}")
+    fun seesAborted(name: String, number: String) {
+        val row = aborted().firstOrNull { it["user"] == World.actor(name).account } ?: error("Geen afgebroken doorloop van $name: ${aborted()}")
+        assertEquals(number, row["numbers"], row.toString())
+        assertEquals("gebruiker", row["by"], row.toString())
+    }
+
+    @Then("the administrator sees no flow of {word} that stopped after images")
+    fun seesNoAborted(name: String) = assertTrue(aborted().none { it["user"] == World.actor(name).account }, aborted().toString())
+
+    @Suppress("UNCHECKED_CAST")
     private fun flowUsers() = (admin.read("/api/sessions")["flows"] as List<Map<String, Any?>>).map { it["user"] }
 
     @When("the administrator deletes all program logs")

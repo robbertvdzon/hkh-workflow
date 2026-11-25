@@ -417,7 +417,7 @@ Open **Instellingen > Sessies** (menu: **Sessies**, onder **Instellingen**; adre
 
 **Er is geen slot per collectie.** Elke gebruiker heeft een eigen doorloop van Nieuwe bestanden, met eigen mappen en een eigen kopie van de programma's. Meer mensen kunnen tegelijk werken, ook in dezelfde collectie. Het enige dat ze kunnen delen zijn de recordnummers. Daarom controleert de app vlak voor `images.exe` nog eens of de nummers vrij zijn in ZCBS en meldt hij het als iemand anders ze intussen gebruikte (dan begint de gebruiker opnieuw met een ander beginnummer).
 
-De pagina toont twee blokken.
+De pagina toont drie blokken.
 
 **Bezig met nieuwe bestanden**: een tabel met een regel per doorloop waar iemand mee bezig is. Een doorloop telt mee zodra de gebruiker in fase 1 op **Verder** heeft gedrukt (of er een doorloop loopt). Nog niet gestarte doorlopen staan er niet in.
 
@@ -432,15 +432,28 @@ De pagina toont twee blokken.
 
 Staat er niemand: "Er werkt nu niemand aan nieuwe bestanden."
 
+**Afgebroken nadat images.exe was gestart** (sinds 25 november 2026): een regel per doorloop waarbij iemand opnieuw is begonnen, of jij de doorloop hebt gestopt, nadat images.exe was gestart en voordat de back-up klaar was. De records kunnen dan al in ZCBS staan en de afbeeldingen op de server, terwijl de upload van tekst en pdf of de back-up niet is gedaan. Kijk in ZCBS wat er van die nummers is geworden.
+
+| Kolom | Betekenis |
+|---|---|
+| Wanneer | datum en tijd van het afbreken |
+| Gebruiker | de ZCBS-naam |
+| Collectie | de collectie |
+| Records | de nummers van deze doorloop, bijvoorbeeld "11935 t/m 11946" |
+| Hoe ver het was | de stand van elke stap, bijvoorbeeld "pdf2zcbs.exe: klaar; images.exe: klaar; Upload (ftp): wacht; Back-up en opruimen: wacht" |
+| Gestopt door | `gebruiker` (Opnieuw beginnen) of `beheerder` (Stoppen op deze pagina) |
+
+De regels staan in `hkh-workflow-afgebroken.tsv` naast het instellingenbestand; de pagina toont de nieuwste honderd. Er is geen knop om een regel af te vinken of te verwijderen. Zonder regels staat er "Geen."
+
 **Ingelogd bij ZCBS**: de namen van wie nu bij ZCBS is ingelogd (bijvoorbeeld "Carla, Jelly"), of "Niemand." Na een herstart van de app zijn de ZCBS-logins weg; gebruikers met een "onthoud mijn login"-cookie worden bij hun volgende verzoek automatisch weer ingelogd.
 
 **Een doorloop stoppen**
 
-1. Klik op **Stoppen** bij de regel en bevestig de vraag "Deze doorloop stoppen? Wat de gebruiker hier doet wordt gestopt en hij moet opnieuw beginnen."
-2. De app stopt een lopend programma van die gebruiker en wist de stand van de doorloop. Is de doorloop nog niet met de stappen begonnen (alleen bestanden gekozen), dan verwijdert hij ook de kopieën die de app zelf in de invoermap heeft gezet; de originelen op de scanschijf blijven altijd staan.
+1. Klik op **Stoppen** bij de regel en bevestig de vraag "Deze doorloop stoppen? Wat de gebruiker hier doet wordt gestopt, zijn bestanden in de werkmappen worden verwijderd en hij moet opnieuw beginnen. De scans op K: blijven staan."
+2. De app stopt een lopend programma van die gebruiker, wist de stand van de doorloop en maakt zijn werkmappen leeg, net als bij **Opnieuw beginnen** (zie de handleiding Invoeren, hoofdstuk 9); de originelen op de scanschijf blijven altijd staan. Was images.exe al gestart, dan komt de doorloop in het blok hierboven.
 3. Je ziet "De doorloop is gestopt." Was de doorloop er al niet meer: "Deze doorloop was er al niet meer."
 
-Wat blijft staan: bestanden in de mappen van de gebruiker (bijvoorbeeld de kopieën met recordnummer, de pdf's in de map van pdf2zcbs, resultaten van images.exe) en wat al naar de ftp-server is gegaan. Begint de gebruiker opnieuw, dan toont fase 1 dat als "Er staat nog werk van een eerdere keer", met de keuze verplaatsen of verwijderen (zie 5.7). Kijk daarom eerst naar de kolom Fase voordat je stopt. Was er al iets geüpload of waren de records al aangemaakt, dan staat dat op de server; de app overschrijft nooit en verwijdert nooit iets op de ftp-server.
+Wat blijft staan: wat al naar de ftp-server is gegaan en de records die images.exe heeft aangemaakt. De app overschrijft nooit en verwijdert nooit iets op de ftp-server. Kijk daarom eerst naar de kolom Fase voordat je stopt.
 
 De stand van een doorloop wordt elke vijf seconden bewaard in `sessie.json` in de map van de gebruiker en bij het opstarten van de app teruggezet, dus een herstart van de app (of van de service) verliest geen doorlopen.
 
@@ -635,7 +648,7 @@ Tips voor een Windows-service:
 | De instellingen "verdwijnen" na een herstart, de app start met lege paden | Het instellingenbestand ontbreekt of is onleesbaar (nieuwe werkmap, ander `HKH_WORKFLOW_SETTINGS_FILE`, of defecte JSON) | Zoek het bestand (de plek staat onderaan de pagina Instellingen); controleer `HKH_WORKFLOW_SETTINGS_FILE` en het applicatielog; herstel een back-up. De standaardwaarden zetten de test-ZCBS aan |
 | Een handmatige wijziging van het instellingenbestand verschijnt niet | De app leest het bestand maar één keer | Herstart de app, of wijzig via de pagina |
 | Een melding "Ftp-wachtwoord is niet ingesteld (Instellingen, bij de antwoorden voor images.exe)" | Verouderde tekst: het wachtwoord staat bij **FTP-wachtwoord** | Vul het daar in |
-| Een gebruiker zit vast in een doorloop of heeft de app verlaten | Doorloop is blijven staan (er is geen automatische timeout) | Open **Sessies** en klik op **Stoppen**; de gebruiker begint opnieuw en ruimt eventueel resten op |
+| Een gebruiker zit vast in een doorloop of heeft de app verlaten | Doorloop is blijven staan (er is geen automatische timeout) | Open **Sessies** en klik op **Stoppen**; de werkmappen van de gebruiker gaan leeg en hij begint opnieuw |
 | Er komen geen meldingen in het workflow-logboek | De server is onbereikbaar of het logboek kent het meldpunt nog niet | Controleer het applicatielog; een tijdelijke storing houdt de app niet op |
 
 ---

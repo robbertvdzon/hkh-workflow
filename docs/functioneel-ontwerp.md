@@ -59,7 +59,8 @@ Belangrijke regels:
 - **Nummercontrole vlak voor images.** Meer mensen kunnen tegelijk werken, ook in dezelfde collectie. De recordnummers zijn het enige dat ze
   kunnen delen; daarom controleert de app vlak voordat images de records aanmaakt nog eens of de nummers vrij zijn. Is er intussen een nummer
   ingenomen, dan start images niet en moet je opnieuw beginnen met een ander beginnummer.
-- **Opnieuw beginnen** is altijd mogelijk; het wist de gekozen kopieën maar laat originelen en eigen bestanden staan.
+- **Opnieuw beginnen** is altijd mogelijk; het maakt de werkmappen van de gebruiker leeg en laat de originelen in de mappen met scans staan. Zolang images.exe niet is gestart gebeurt dat zonder vragen; daarna met een waarschuwing en een regel voor de beheerder (pagina Sessies), omdat de records dan al in ZCBS kunnen staan.
+- **Na het geven van de nummers** toont fase 3 eerst per bestand welk nummer het kreeg; pas na **Klopt: verder** beginnen de programma's.
 - **Herstart:** de stand van elke doorloop wordt bewaard. Na een herstart van de app staat de gebruiker in dezelfde fase; een stap die op dat
   moment liep staat dan op *mislukt* en kan opnieuw.
 - Wat al op het archief is gezet, staat onder **Recent toegevoegd** bij ZCBS records aanpassen (de pagina Verwerkt bestaat niet meer).

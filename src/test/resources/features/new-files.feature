@@ -8,13 +8,22 @@ Feature: Putting new files in ZCBS
   Scenario: Two pdf files all the way into ZCBS
     When Carla opens the page for new files
     Then all checks are green for Carla
+    And every check says how long it took for Carla
     When Carla starts adding new files
     Then Carla has reached step 2
     When Carla picks "kerk.pdf, school.pdf" from Jelly
     Then Carla has reached step 3
     And Carla is offered 99068 as the first number
-    When Carla accepts the offered numbers
-    And Carla runs pdf2zcbs
+    When Carla gives the files the offered numbers
+    Then Carla has reached step 3
+    And Carla is shown that "kerk.pdf" became record 99068
+    And Carla is shown that "school.pdf" became record 99069
+    When Carla tries to run pdf2zcbs
+    Then Carla is refused with "review-pending"
+    When Carla confirms the numbers
+    Then Carla has reached step 4
+    And the workflow log gets the timings of this run
+    When Carla runs pdf2zcbs
     Then Carla is asked to check what pdf2zcbs made
     And Carla can view the tekst result of record 99068
     When Carla approves the result
@@ -167,6 +176,47 @@ Feature: Putting new files in ZCBS
     Then the originals "kerk.pdf, school.pdf" of Jelly are still there
     And nothing of Carla is left in the work folders
     And ZCBS has no record 99068
+
+  Scenario: Starting over before images removes everything without a word
+    When Carla starts adding new files
+    And Carla picks "kerk.pdf" from Jelly
+    And Carla accepts the offered numbers
+    And Carla runs pdf2zcbs
+    Then Carla is told that images has not started yet
+    When Carla starts over
+    Then Carla has reached step 1
+    And nothing of Carla is left in the work folders
+    And all checks are green for Carla
+    And the originals "kerk.pdf, school.pdf" of Jelly are still there
+    And ZCBS has no record 99068
+    And the administrator sees no flow of Carla that stopped after images
+
+  Scenario: Starting over after images removes everything and tells the administrator
+    When Carla starts adding new files
+    And Carla picks "kerk.pdf" from Jelly
+    And Carla accepts the offered numbers
+    And Carla runs pdf2zcbs
+    And Carla approves the result
+    And Carla runs images
+    Then Carla is told that images has already started
+    When Carla starts over
+    Then Carla has reached step 1
+    And nothing of Carla is left in the work folders
+    And all checks are green for Carla
+    And ZCBS has a record 99068 that still has to be described
+    And the administrator sees that Carla stopped after images with record 99068
+
+  Scenario: The numbers were refused in the meantime: starting over is not reported
+    When Carla starts adding new files
+    And Carla picks "kerk.pdf" from Jelly
+    And Carla accepts the offered numbers
+    And Carla runs pdf2zcbs
+    And Carla approves the result
+    And someone else already used number 99068 in ZCBS
+    And Carla runs images
+    Then Carla is told that images has not started yet
+    When Carla starts over
+    Then the administrator sees no flow of Carla that stopped after images
 
   Scenario: Two people work next to each other
     Given Bob is logged in

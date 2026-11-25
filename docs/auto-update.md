@@ -111,6 +111,14 @@ Zo is de service zelf eenvoudig (alleen "start dit script en herstart als het ei
   versie draait.
 - Het workflow-logboek (`adminlog`) kan de versie erbij melden, zodat in het beheerscherm van hkh te zien is welke versie van de app wat deed.
 
+### Zien wanneer er is bijgewerkt (25 november 2026)
+
+Bij het opstarten vergelijkt de app zijn versie met die van de vorige start (`VersionWatch`; de vorige staat in `hkh-workflow-versie.txt` naast het
+instellingenbestand). Is die anders, dan schrijft hij "Nieuwe versie geïnstalleerd: build 19 (...) (de vorige was build 18 (...))" in het app-log, of
+"Vorige versie teruggezet" als het buildnummer lager is (het startscript draaide terug). Dezelfde melding gaat naar hkh-admin en staat daar op het
+tabblad Instellingen als wijziging van het veld `appVersion`, met de computernaam en het tijdstip; die blijft bewaard, het app-log 30 dagen. De eerste
+start met deze versie meldt niets: er is dan nog geen vorige versie bekend.
+
 ## 7. Waar de nieuwe versie vandaan komt
 
 - **Map op de server (gekozen voor de eerste versie).** `deploy-app.sh` bouwt de jar en kopieert hem met scp naar `updates\`, net zoals nu

@@ -150,7 +150,8 @@ class ScreenSteps {
 
     @Given("{word} has given the numbers on the screen")
     fun hasGivenNumbers(name: String) {
-        screen.action("Geef de bestanden deze nummers en ga verder").click()
+        screen.action("Geef de bestanden deze nummers").click()
+        screen.action("Klopt: verder").click()
         assertThat(screen.heading("4. ")).isVisible()
     }
 

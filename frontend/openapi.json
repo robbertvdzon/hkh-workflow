@@ -460,6 +460,32 @@
         "tags" : [ "flow-api-controller" ]
       }
     },
+    "/api/collections/{collection}/flow/numbers/approve" : {
+      "post" : {
+        "operationId" : "approveNumbers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "collection",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FlowResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "flow-api-controller" ]
+      }
+    },
     "/api/collections/{collection}/flow/results" : {
       "get" : {
         "operationId" : "results",
@@ -1557,6 +1583,34 @@
   },
   "components" : {
     "schemas" : {
+      "AbortedFlowResponse" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string"
+          },
+          "by" : {
+            "type" : "string"
+          },
+          "collection" : {
+            "type" : "string"
+          },
+          "fileCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "numbers" : {
+            "type" : "string"
+          },
+          "steps" : {
+            "type" : "string"
+          },
+          "user" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "at", "by", "collection", "fileCount", "numbers", "steps", "user" ]
+      },
       "ActiveFlowResponse" : {
         "type" : "object",
         "properties" : {
@@ -1630,11 +1684,15 @@
           "label" : {
             "type" : "string"
           },
+          "millis" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "ok" : {
             "type" : "boolean"
           }
         },
-        "required" : [ "detail", "id", "label", "ok" ]
+        "required" : [ "detail", "id", "label", "millis", "ok" ]
       },
       "ChecksResponse" : {
         "type" : "object",
@@ -1939,6 +1997,9 @@
           "finished" : {
             "type" : "boolean"
           },
+          "imagesStarted" : {
+            "type" : "boolean"
+          },
           "phase" : {
             "type" : "integer",
             "format" : "int32"
@@ -1956,7 +2017,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "finished", "phase", "phases", "review", "running" ]
+        "required" : [ "finished", "imagesStarted", "phase", "phases", "review", "running" ]
       },
       "FolderResponse" : {
         "type" : "object",
@@ -2385,6 +2446,12 @@
       "SessionsResponse" : {
         "type" : "object",
         "properties" : {
+          "aborted" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AbortedFlowResponse"
+            }
+          },
           "flows" : {
             "type" : "array",
             "items" : {
@@ -2398,7 +2465,7 @@
             }
           }
         },
-        "required" : [ "flows", "users" ]
+        "required" : [ "aborted", "flows", "users" ]
       },
       "SettingsRequest" : {
         "type" : "object",

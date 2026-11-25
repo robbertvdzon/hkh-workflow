@@ -33,8 +33,8 @@ Bovenaan het scherm staan zeven stappen; de nummers hieronder zijn dezelfde.
    ![Vink de scans aan (1), bekijk ze met Open (2) en klik op Verder (3)](afbeeldingen/invoeren-2-bestanden-kiezen.jpg)
 
 3. **Nummers.** Je ziet het laatste record en de vrije nummers. Meestal staat het goede beginnummer al ingevuld. Controleer de regel
-   "De bestanden krijgen de nummers … t/m …" en klik op **Geef de bestanden deze nummers en ga verder**. Wil je een ander begin, klik dan op **Begin hier** bij een
-   reeks waar "Ja, past" staat. Noteer de nummers als je ze nodig hebt.
+   "De bestanden krijgen de nummers … t/m …" en klik op **Geef de bestanden deze nummers**. Wil je een ander begin, klik dan op **Begin hier** bij een
+   reeks waar "Ja, past" staat. Je ziet daarna per bestand welk nummer het heeft gekregen. Noteer de nummers als je ze nodig hebt en klik op **Klopt: verder**.
 
    ![Stap 3: controleer het eerste nummer (1) en klik op Geef de bestanden deze nummers (2)](afbeeldingen/invoeren-3-nummers.jpg)
 
@@ -76,7 +76,7 @@ Bovenaan het scherm staan zeven stappen; de nummers hieronder zijn dezelfde.
 - Je mag de pagina sluiten en later terugkomen: als je bent ingelogd, ga je verder waar je was.
 - Je ziet "Bezig…"? Wacht, de pagina laadt vanzelf opnieuw.
 - Een jpg of png gaat niet door alle stappen: dat klopt zo.
-- **Opnieuw beginnen** (rechtsboven) wist je keuze of wat je tot nu toe hebt gedaan en brengt je terug naar stap 1. Gebruik dit alleen als de melding het zegt of de beheerder het vraagt, vooral als je al bij stap 4 of verder bent.
+- **Opnieuw beginnen** (rechtsboven) wist wat je tot nu toe hebt gedaan, ruimt je bestanden op deze computer op en brengt je terug naar stap 1. De scans op K: blijven staan. Tot en met stap 4 kan dat zonder gevolgen. Heeft images.exe (stap 5) al gedraaid, dan krijg je eerst een waarschuwing: de records staan dan al in ZCBS. Doe het dan alleen in overleg met de beheerder.
 
 > ### Gaat er iets mis?
 >

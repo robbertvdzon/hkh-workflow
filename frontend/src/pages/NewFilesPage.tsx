@@ -67,7 +67,7 @@ export function NewFilesPage() {
         <PageHeader title="Nieuwe bestanden in ZCBS zetten" tabTitle="Nieuwe bestanden">
           Van de scans op K: naar het archief, stap voor stap. De gegevens (titel enzovoort) vul je op een andere dag in bij ZCBS records aanpassen.
         </PageHeader>
-        {flow.data && flow.data.phase >= 2 && !flow.data.finished && <StartOver phase={flow.data.phase} act={act} />}
+        {flow.data && flow.data.phase >= 2 && !flow.data.finished && <StartOver flow={flow.data} act={act} />}
       </div>
       {action.isError && <Alert variant="error" className="whitespace-pre-line">{errorMessage(action.error)}</Alert>}
       {info && <Alert variant="ok">{info}</Alert>}
@@ -87,15 +87,25 @@ export function NewFilesPage() {
   )
 }
 
-function StartOver({ phase, act }: { phase: number; act: Act }) {
-  const question = phase <= 3 ? "Opnieuw beginnen? Je keuze van bestanden wordt gewist; de bestanden op K: blijven staan." : "Opnieuw beginnen? Wat je hier hebt gedaan wordt gewist; bestanden op schijf blijven staan."
+/**
+ * Opnieuw beginnen maakt de werkmappen altijd leeg; de scans op K: blijven staan. Zolang images.exe niet is gestart, is er nog niets naar ZCBS gegaan
+ * en gebeurt dat zonder vragen. Daarna kunnen de records al in ZCBS staan: dan eerst een waarschuwing, en de beheerder krijgt het te zien.
+ */
+function StartOver({ flow, act }: { flow: Flow; act: Act }) {
+  const numbers = flow.phases.find((it) => it.number === 3)?.note
+  const records = numbers ? `De records ${numbers}` : "De records"
+  const warning =
+    `images.exe is al gestart. ${records} kunnen al in ZCBS staan en de afbeeldingen op de server. Die blijven daar staan: opnieuw beginnen verwijdert alleen je bestanden op deze computer.\n\n` +
+    "De beheerder krijgt hiervan een melding en moet nakijken wat er in ZCBS staat.\n\nWeet je zeker dat je opnieuw wilt beginnen?"
   return (
     <Button
       variant="secondary"
       size="small"
-      title="Stopt een nog lopend programma en begint opnieuw"
+      title="Stopt een nog lopend programma, verwijdert je bestanden in de werkmappen en begint opnieuw. De scans op K: blijven staan."
       onClick={() => {
-        if (window.confirm(question)) act((actions) => actions.reset())
+        if (!flow.imagesStarted) act((actions) => actions.reset())
+        else if (window.confirm(warning))
+          act((actions) => actions.reset(), `Je bent opnieuw begonnen. ${records} kunnen al in ZCBS staan; de beheerder ziet dat bij Sessies. Gebruik deze nummers niet opnieuw zonder overleg met de beheerder.`)
       }}
     >
       Opnieuw beginnen
@@ -312,7 +322,7 @@ function ChecksPhase({ collection, act, busy }: PhaseProps) {
   )
 }
 
-function CheckList({ checks }: { checks: { id: string; label: string; ok: boolean; detail?: string | null }[] }) {
+function CheckList({ checks }: { checks: { id: string; label: string; ok: boolean; detail?: string | null; millis?: number }[] }) {
   return (
     <ul className="flex flex-col gap-2">
       {checks.map((check) => (
@@ -320,6 +330,11 @@ function CheckList({ checks }: { checks: { id: string; label: string; ok: boolea
           <span className={cn("mt-px flex size-5.5 flex-none items-center justify-center rounded-full text-[13px] font-bold", check.ok ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger")}>{check.ok ? "✓" : "✗"}</span>
           <span>
             <b>{check.label}</b>
+            {check.millis !== undefined && (
+              <span className="ml-2 text-xs whitespace-nowrap text-muted" title="Zo lang duurde deze controle">
+                {(check.millis / 1000).toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s
+              </span>
+            )}
             {check.detail && <span className={cn("mt-0.5 block text-[13px] wrap-anywhere", check.ok ? "text-muted" : "text-danger")}>{check.detail}</span>}
           </span>
         </li>
@@ -509,7 +524,31 @@ function extension(name: string) {
 
 const RANGE_COLUMNS = "minmax(0,1.4fr) 110px 150px 130px"
 
-function NumbersPhase({ collection, act, busy }: PhaseProps) {
+function NumbersPhase({ collection, flow, act, busy }: PhaseProps) {
+  if (flow.review) return <NumbersOverview collection={collection} act={act} busy={busy} />
+  return <NumbersChoice collection={collection} act={act} busy={busy} />
+}
+
+/** De bestanden hebben hun nummers: eerst zien welk bestand welk nummer kreeg, dan pas verder naar de programma's. */
+function NumbersOverview({ collection, act, busy }: { collection: string; act: Act; busy: boolean }) {
+  return (
+    <Card>
+      <h2 className="text-xl">3. Nummers</h2>
+      <p>
+        <b>Deze nummers hebben de bestanden gekregen.</b> Kijk of het klopt voordat je verder gaat.
+      </p>
+      <FileList collection={collection} />
+      <p className="text-[13px] text-muted">Er is nog niets naar ZCBS gegaan. Klopt het niet, kies dan rechtsboven Opnieuw beginnen.</p>
+      <div>
+        <Button disabled={busy} onClick={() => act((a) => a.approveNumbers())}>
+          Klopt: verder
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+function NumbersChoice({ collection, act, busy }: { collection: string; act: Act; busy: boolean }) {
   const numbers = useNumbers(collection)
   return (
     <Card>
@@ -585,7 +624,7 @@ function NumbersForm({ numbers, act, busy }: { numbers: { count: number; width: 
         <p className="text-[13px] text-muted">De app geeft de bestanden het recordnummer als naam, op een kopie. De originelen blijven staan.</p>
         <div>
           <Button type="submit" disabled={busy}>
-            Geef de bestanden deze nummers en ga verder
+            Geef de bestanden deze nummers
           </Button>
         </div>
       </form>
@@ -615,20 +654,25 @@ function StepsPhase({ collection, flow, act, busy }: PhaseProps) {
   )
 }
 
+const NUMBERED_COLUMNS = "minmax(0,1fr) 130px 140px"
+
+/** Welk bestand welk recordnummer heeft gekregen. */
 function FileList({ collection }: { collection: string }) {
   const files = useChosenFiles(collection)
   return (
-    <div className="max-w-xl">
+    <div className="max-w-2xl">
       <Table>
-        <TableHead columns="minmax(0,1fr) 140px">
+        <TableHead columns={NUMBERED_COLUMNS}>
           <span>Bestand</span>
+          <span>Recordnummer</span>
           <span>Wordt</span>
         </TableHead>
         {files.data?.map((file) => (
-          <TableRow key={file.name} columns="minmax(0,1fr) 140px">
+          <TableRow key={file.name} columns={NUMBERED_COLUMNS}>
             <span className="truncate" title={file.name}>
               {file.name}
             </span>
+            <span className="font-mono font-semibold">{file.number ?? "–"}</span>
             <span className="font-mono">{file.newName ?? "–"}</span>
           </TableRow>
         ))}

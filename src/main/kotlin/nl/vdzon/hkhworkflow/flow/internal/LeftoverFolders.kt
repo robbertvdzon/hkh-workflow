@@ -21,7 +21,7 @@ import nl.vdzon.hkhworkflow.settings.WorkflowSettings
 import org.slf4j.LoggerFactory
 
 /** Wat er van het opruimen is gekomen; [inputCleared] zegt dat de gekozen bestanden in de invoermap er ook bij zaten. */
-data class ClearOutcome(val message: String, val inputCleared: Boolean)
+data class ClearOutcome(val message: String, val inputCleared: Boolean, val complete: Boolean = true)
 
 /** De resten van een eerdere run in de mappen van de gebruiker: vinden en opruimen. pdf2zcbs.exe wist zijn uitvoer bij de start en images.exe zou oude afbeeldingen opnieuw uploaden. */
 class LeftoverFolders(private val input: WorkFolders) {
@@ -70,7 +70,7 @@ class LeftoverFolders(private val input: WorkFolders) {
         var inputCleared = false
         val total = items.sumOf { it.files.size }
         val target = if (move) {
-            val root = input.resten() ?: return ClearOutcome("Stel eerst de invoermap of de map voor resten in bij Instellingen.", false)
+            val root = input.resten() ?: return ClearOutcome("Stel eerst de invoermap of de map voor resten in bij Instellingen.", false, complete = false)
             root.resolve(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")))
         } else null
         try {
@@ -93,7 +93,7 @@ class LeftoverFolders(private val input: WorkFolders) {
             }
         } catch (e: Exception) {
             log.warn("Resten opruimen mislukt: {}", e.message)
-            return ClearOutcome("Opruimen is niet helemaal gelukt: ${e.message ?: e.javaClass.simpleName}. Controleer de mappen van de programma's.", inputCleared)
+            return ClearOutcome("Opruimen is niet helemaal gelukt: ${e.message ?: e.javaClass.simpleName}. Controleer de mappen van de programma's.", inputCleared, complete = false)
         }
         log.info("{} bestanden van een eerdere run {}", total, if (target != null) "verplaatst naar $target" else "verwijderd")
         return ClearOutcome(if (target != null) "$total bestanden verplaatst naar $target." else "$total bestanden verwijderd.", inputCleared)

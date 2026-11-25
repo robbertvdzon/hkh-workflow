@@ -187,7 +187,7 @@ Bestand, Grootte, Afmeting / pagina's, Gescand (wijzigingsdatum van het bestand)
 **Knoppen.**
 
 - **Verder** kopieert de aangevinkte bestanden naar `invoer` en gaat door naar fase 3.
-- **Opnieuw beginnen** (rechtsboven) wist je keuze en gaat terug naar fase 1; zie [hoofdstuk 9](#9-opnieuw-beginnen).
+- **Opnieuw beginnen** (rechtsboven) wist je keuze, maakt je werkmappen leeg en gaat terug naar fase 1; zie [hoofdstuk 9](#9-opnieuw-beginnen).
 - Staan er al bestanden in `invoer` die "bij deze doorloop horen" (na **Mijn gekozen bestanden horen erbij**), dan staat er een blauw kader "*N* bestanden stonden al klaar en doen mee" met de knop **Haal ze weg**. Die haalt alleen de kopieën weg die de app zelf heeft neergezet.
 
 **Controles en meldingen.**
@@ -221,7 +221,7 @@ Daaronder "Laatste record in ZCBS: *11934*" en een tabel van de **vrije nummers*
 die het beginnummer invult. Het veld **Eerste recordnummer** is vooringevuld met een voorstel: het nummer na het laatste record als daar ruimte is, anders het
 begin van de eerste reeks die groot genoeg is. Onder het veld staat live: "De bestanden krijgen de nummers *11935* t/m *11946*."
 
-**Knoppen.** **Geef de bestanden deze nummers en ga verder** en (rechtsboven) **Opnieuw beginnen**. Is de lijst met vrije nummers niet op te halen, dan staat er
+**Knoppen.** **Geef de bestanden deze nummers** en (rechtsboven) **Opnieuw beginnen**. Is de lijst met vrije nummers niet op te halen, dan staat er
 een rode melding met een link **Log opnieuw in** en kan niet worden doorgegaan.
 
 **Controles** (bij het indrukken van de knop, in deze volgorde):
@@ -240,8 +240,13 @@ origineel in `invoer` en op `K:` blijft staan. De nummers worden uitgedeeld in d
 onderscheid tussen hoofd- en kleine letters**. Let op: dat is niet de natuurlijke volgorde van de lijst in fase 2, dus "scan 10" komt vóór "scan 2" (uit de code gelezen; niet getest met zulke namen).
 
 De stappen zijn nu in de app aangemaakt: per bestand een stap Hernoemen (die meteen wordt uitgevoerd), en daarna één stap voor pdf2zcbs, images.exe, Upload (ftp) en Back-up en opruimen. Mislukt het hernoemen
-(bijvoorbeeld "Origineel niet gevonden: *pad*" of "*11935.pdf* bestaat al in *werkmap*."), dan blijft de gebruiker in fase 3 met die melding; **Opnieuw beginnen** is dan de weg
-(en de resten opruimen in fase 1).
+(bijvoorbeeld "Origineel niet gevonden: *pad*" of "*11935.pdf* bestaat al in *werkmap*."), dan blijft de gebruiker in fase 3 met die melding; **Opnieuw beginnen** is dan de weg.
+
+**Het overzicht (sinds 25 november 2026).** Na **Geef de bestanden deze nummers** gaat de flow niet meteen door naar fase 4. Fase 3 toont eerst
+"Deze nummers hebben de bestanden gekregen", met een tabel per bestand: de oorspronkelijke naam, het recordnummer en de nieuwe naam. Er is dan
+nog niets naar ZCBS gegaan. Met **Klopt: verder** gaat de flow naar fase 4 (of fase 5 bij alleen afbeeldingen). Klopt het niet, dan is
+**Opnieuw beginnen** de weg; zolang het overzicht openstaat weigert de app een programma te starten ("Bekijk eerst welke nummers de bestanden hebben
+gekregen.") en opnieuw nummers te geven. Of het overzicht is gezien, staat in `sessie.json` en overleeft dus een herstart.
 
 ### Fase 4. pdf2zcbs
 
@@ -505,7 +510,7 @@ Slaat de app pdf2zcbs over (alleen afbeeldingen), dan is die controle ook weg. W
 > Voordat images.exe de records aanmaakt: *(reden)* Waarschijnlijk heeft iemand anders intussen dezelfde nummers gebruikt. Er is niets aangemaakt. Kies "Opnieuw beginnen" en begin met een ander beginnummer.
 
 *(reden)* is dezelfde tekst als bij fase 3, bijvoorbeeld "Recordnummer 11936 is niet vrij in ZCBS ...". Er is dan nog niets gekopieerd naar `images.exe` (de test controleert dat).
-Gebruiker: **Opnieuw beginnen**; de bestanden staan nog op schijf en worden bij fase 1 als resten aangeboden (verplaatsen), waarna een nieuwe doorloop met een ander beginnummer kan.
+Gebruiker: **Opnieuw beginnen**; de werkmappen worden leeggemaakt, waarna een nieuwe doorloop met een ander beginnummer kan. Omdat images.exe niet is gestart, komt er geen waarschuwing en geen melding voor de beheerder.
 
 Randgevallen (uit de code gelezen):
 
@@ -547,17 +552,32 @@ De app raakt alleen de genoemde bestanden aan en weigert alles buiten de map van
 
 ## 9. Opnieuw beginnen
 
-De knop **Opnieuw beginnen** staat rechtsboven en verschijnt in twee situaties; telkens met een bevestiging.
+De knop **Opnieuw beginnen** staat rechtsboven vanaf fase 2, zolang de flow niet klaar is. Sinds 25 november 2026 **maakt hij altijd de
+werkmappen van de gebruiker leeg**: de gekozen bestanden in `invoer` (ook wat de gebruiker er zelf neerzette), de kopieën met recordnummer in
+`werk`, de pdf's en de `output` in de map van pdf2zcbs en de mappen `images`, `small`, `large` en `100pct` van images.exe. De programma's zelf,
+hun ini en de logs blijven staan, net als **de originelen in de mappen met scans**. Daarna staat er in fase 1 geen "werk van een eerdere keer": de
+gebruiker hoeft niets te kiezen.
 
-| Wanneer | Bevestiging | Wat er gebeurt |
+| Wanneer | Vraag | Wat er gebeurt |
 |---|---|---|
-| Fase 2 of 3, nog **voor** de nummers zijn uitgedeeld | "Opnieuw beginnen? Je keuze van bestanden wordt gewist; de bestanden op K: blijven staan." | De door de app gemaakte kopieën in `invoer` worden weggehaald (wat de gebruiker er zelf neerzette blijft staan); de doorloop begint weer bij fase 1 |
-| Vanaf het uitdelen van de nummers: fase 4 t/m 7 (en fase 3 als het hernoemen mislukte), zolang het niet klaar is | "Opnieuw beginnen? Wat je hier hebt gedaan wordt gewist; bestanden op schijf blijven staan." | Een nog lopend programma wordt gestopt, de stand wordt gewist en de doorloop begint bij fase 1. **Alle bestanden op schijf blijven staan** (`invoer`, `werk`, de mappen van de programma's) en komen bij fase 1 terug als resten |
+| images.exe is nog **niet** gestart (fase 2, 3, 4, of fase 5 zolang het programma niet is gestart) | Geen: er is nog niets naar ZCBS gegaan | Een lopend programma stopt, de stand en de werkmappen worden gewist en de doorloop begint bij fase 1 |
+| images.exe is **wel** gestart (ook als het mislukte of is gestopt), tot de back-up klaar is | "images.exe is al gestart. De records *11935 t/m 11946* kunnen al in ZCBS staan en de afbeeldingen op de server. Die blijven daar staan: opnieuw beginnen verwijdert alleen je bestanden op deze computer. De beheerder krijgt hiervan een melding en moet nakijken wat er in ZCBS staat. Weet je zeker dat je opnieuw wilt beginnen?" | Hetzelfde, en de doorloop komt in het **log met afgebroken doorlopen**. Daarna staat er een groene melding dat de nummers niet zonder overleg opnieuw gebruikt moeten worden |
+
+Een stap images.exe die door de controle vooraf is tegengehouden (bijvoorbeeld omdat een nummer intussen bezet was, hoofdstuk 7) telt niet als gestart.
+
+**Het log met afgebroken doorlopen.** Een regel per doorloop in `hkh-workflow-afgebroken.tsv` naast het instellingenbestand: wanneer, wie, de collectie, de
+recordnummers, het aantal bestanden, hoe ver elke stap was ("pdf2zcbs.exe: klaar; images.exe: klaar; Upload (ftp): wacht; ...") en wie het afbrak
+(`gebruiker` of `beheerder`). De beheerder ziet ze op de pagina **Sessies** onder "Afgebroken nadat images.exe was gestart". Dezelfde melding gaat als
+waarschuwing naar het app-log, en de sessie in het workflow-logboek van hkh-admin krijgt de status mislukt met "Afgebroken nadat images.exe was gestart: de
+records ... kunnen al in ZCBS staan".
+
+Lukt het leegmaken niet helemaal (een bestand is nog in gebruik), dan staat dat in het app-log en toont fase 1 alsnog "Er staat nog werk van een eerdere
+keer" (hoofdstuk 8).
 
 Opnieuw beginnen **maakt niets ongedaan** wat al op de server of in ZCBS staat: heeft `images.exe` records aangemaakt of heeft de upload bestanden neergezet, dan blijven die staan; de app zet niets terug.
 Een nieuwe doorloop met dezelfde nummers stuit dan al in fase 3 op "niet vrij in ZCBS", en bij de upload op "Bestaat al op de server". Wat daar mee moet gebeuren is een beslissing voor de beheerder.
 
-Na de afgeronde flow heet de knop **Nieuwe bestanden verwerken**; hij doet hetzelfde. De beheerder kan een doorloop van een ander stoppen via **Sessies** (hoofdstuk 11); de gebruiker moet dan opnieuw beginnen.
+Na de afgeronde flow heet de knop **Nieuwe bestanden verwerken**; hij doet hetzelfde. De beheerder kan een doorloop van een ander stoppen via **Sessies** (hoofdstuk 11); dat doet hetzelfde (ook het leegmaken van de werkmappen en, na images.exe, de regel in het log) en de gebruiker moet dan opnieuw beginnen.
 
 ---
 
@@ -609,7 +629,9 @@ Het doorloop-id is de datum en tijd van de back-up (`yyyyMMdd-HHmmss`); alle bes
 
 De app meldt elke doorloop aan het workflow-logboek van hkh-admin. Kort:
 
-- Een doorloop is een **sessie** met een eigen uuid, vanaf het moment dat de gebruiker fase 1 heeft afgerond. Ze eindigt bij Klaar of bij Opnieuw beginnen ("Opnieuw begonnen bij stap 1; deze doorloop is niet afgemaakt").
+- Een doorloop is een **sessie** met een eigen uuid, vanaf het moment dat de gebruiker fase 1 heeft afgerond. Ze eindigt bij Klaar of bij Opnieuw beginnen ("Opnieuw begonnen bij stap 1; deze doorloop is niet afgemaakt", of na images.exe "Afgebroken nadat images.exe was gestart ..." met de status mislukt).
+- **Tijdmetingen.** In de stand zit het blok `tijdmetingen`: per regel het tijdstip, wat er gebeurde, hoe lang het duurde en waar de tijd in zat. Gemeten worden de controles van fase 1 (per onderdeel: ZCBS-login, vrije nummers uit ZCBS, elke map met scans apart, de programma's, de back-upmappen, de ftp-server en het zoeken naar resten), het lezen van een map met scans (de lijst ophalen en de gegevens per bestand apart), het lezen van pagina's en afmetingen, het kopiëren van de gekozen bestanden (met MB en MB/s), het ophalen van de vrije nummers, het hernoemen per bestand, de programma's (klaarzetten en het programma zelf), de upload, de back-up en opnieuw beginnen. Elke meting staat ook als regel "Tijdmeting ..." in het app-log. Zo is te zien of een schijf, het netwerk, ZCBS of de ftp-server de tijd kost. Fase 1 toont de duur ook achter elke controle.
+- **Een nieuwe versie.** Start de app met een andere versie dan de vorige keer (na bijwerken, of als het startscript de vorige versie terugzette), dan staat dat in het app-log ("Nieuwe versie geïnstalleerd: build 19 ... (de vorige was build 18 ...)") en komt het in hkh-admin op het tabblad Instellingen als wijziging van het veld `appVersion`. De versie van de vorige start staat in `hkh-workflow-versie.txt` naast het instellingenbestand.
 - Elke ± 3 seconden kijkt de app of er iets veranderd is en stuurt dan de **volledige stand**: fase, instellingen, gekozen bestanden, stappen met status en melding, de lijst van gemaakte bestanden, en de uitvoer en het log van `pdf2zcbs.exe` en `images.exe`. Het versturen gebeurt op een eigen draad: een fout of onbereikbare server hindert de app nooit, en een gemiste melding herstelt zich bij de volgende. De uitvoer van een programma gaat hooguit eens per zes seconden mee.
 - Wachtwoorden worden eruit gehaald. **Uitzondering:** het ftp-wachtwoord gaat voorlopig altijd leesbaar mee, om te kunnen controleren wat er is ingesteld. Dit is geen instelling en gaat er later weer uit. Andere wachtwoorden gaan nooit mee.
 - Ook elke inlogpoging wordt gemeld, en volgens docs/specs.md gaan de app-logregels (INFO en hoger) ook mee (niet in deze handleiding nagelopen).

@@ -70,11 +70,56 @@ class NewFilesSteps {
     @Then("{word} is offered {word} as the first number")
     fun offered(name: String, number: String) = assertEquals(number, World.actor(name).api.read("$flow/numbers")["suggestion"])
 
+    /** Geeft de voorgestelde nummers en gaat na het overzicht meteen verder, zoals iemand die ziet dat het klopt. */
     @When("{word} accepts the offered numbers")
     fun acceptsNumbers(name: String) {
+        givesNumbers(name)
+        confirmsNumbers(name)
+    }
+
+    @When("{word} gives the files the offered numbers")
+    fun givesNumbers(name: String) {
         val actor = World.actor(name)
         actor.api.put("$flow/numbers", mapOf("start" to actor.api.read("$flow/numbers")["suggestion"]))
         assertEquals(200, actor.last.status, actor.last.toString())
+    }
+
+    @Then("{word} is shown that {string} became record {word}")
+    fun shownNumber(name: String, file: String, number: String) {
+        val api = World.actor(name).api
+        assertEquals(true, api.read(flow)["review"], "het overzicht van de nummers staat niet klaar")
+        assertEquals(3, api.read(flow)["phase"])
+        val row = api.read("$flow/files").list.firstOrNull { it["name"] == file } ?: error("$file staat niet in het overzicht")
+        assertEquals(number, row["number"], row.toString())
+    }
+
+    @When("{word} confirms the numbers")
+    fun confirmsNumbers(name: String) {
+        val actor = World.actor(name)
+        assertEquals(200, actor.api.post("$flow/numbers/approve").status, actor.last.toString())
+    }
+
+    @When("{word} tries to run pdf2zcbs")
+    fun triesPdf2zcbs(name: String) { World.actor(name).api.post("$flow/steps/pdf2zcbs/run", mapOf("answers" to "auto")) }
+
+    @Then("{word} is told that images has not started yet")
+    fun imagesNotStarted(name: String) = assertEquals(false, World.actor(name).api.read(flow)["imagesStarted"])
+
+    @Then("{word} is told that images has already started")
+    fun imagesStarted(name: String) = assertEquals(true, World.actor(name).api.read(flow)["imagesStarted"])
+
+    @Suppress("UNCHECKED_CAST")
+    @Then("every check says how long it took for {word}")
+    fun checksTimed(name: String) {
+        val rows = checks(name)
+        assertTrue(rows.isNotEmpty() && rows.all { (it["millis"] as? Number) != null }, rows.toString())
+    }
+
+    /** De app meldt de doorloop om de paar seconden; de tijdmetingen staan in de momentopname. */
+    @Then("the workflow log gets the timings of this run")
+    fun logHasTimings() = Await.until("de tijdmetingen in het workflow-logboek", seconds = 30) {
+        TestEnvironment.outside.findAll(com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor(com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching("/api/workflow-log/sessions/.*")))
+            .any { it.bodyAsString.contains("tijdmetingen") && it.bodyAsString.contains("Controleren (fase 1)") && it.bodyAsString.contains("Gekozen bestanden kopi") }
     }
 
     @When("{word} chooses {word} as the first number")
@@ -148,8 +193,8 @@ class NewFilesSteps {
     fun approves(name: String) = approve(World.actor(name))
 
     private fun approve(actor: Actor) {
-        val step = when (phase(actor)) { 4 -> "pdf2zcbs"; 5 -> "images"; else -> error("Niets te controleren in fase ${phase(actor)}") }
-        assertEquals(200, actor.api.post("$flow/steps/$step/approve").status, actor.last.toString())
+        val path = when (phase(actor)) { 3 -> "numbers/approve"; 4 -> "steps/pdf2zcbs/approve"; 5 -> "steps/images/approve"; else -> error("Niets te controleren in fase ${phase(actor)}") }
+        assertEquals(200, actor.api.post("$flow/$path").status, actor.last.toString())
     }
 
     @When("{word} runs the upload")

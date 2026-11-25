@@ -8,6 +8,7 @@ Feature: The screens of the frontend
     Then the screen is titled "Welkom bij ZcbsServer"
     When Carla logs in on the screen
     Then the screen is titled "Met welke collectie wil je werken?"
+    And the screen says "Ingelogd als"
     And the screen says "Rechten in ZCBS"
     And the collection "archief" can be chosen on the screen
     And the collection "artikelen" cannot be chosen on the screen
@@ -184,7 +185,11 @@ Feature: The screens of the frontend
     Then the screen is titled "3. Nummers"
     And "Eerste recordnummer" on the screen is "99068"
     And the screen says "99069"
-    When "Geef de bestanden deze nummers en ga verder" is clicked
+    When "Geef de bestanden deze nummers" is clicked
+    Then the screen says "Deze nummers hebben de bestanden gekregen"
+    And the screen says "99068.pdf"
+    And the screen says "99069.pdf"
+    When "Klopt: verder" is clicked
     And "Automatisch uitvoeren" is clicked
     Then the screen says "Dit heeft pdf2zcbs.exe gemaakt" within a minute
     When "Bekijk log" is clicked
@@ -269,7 +274,8 @@ Feature: The screens of the frontend
   Scenario: A file that is not really an image cannot go to images
     Given Ria scanned "kapot.jpg"
     And Carla has chosen "kapot.jpg" of Ria on the screen
-    When "Geef de bestanden deze nummers en ga verder" is clicked
+    When "Geef de bestanden deze nummers" is clicked
+    And "Klopt: verder" is clicked
     Then the screen says "kapot.jpg is geen geldige afbeelding"
     And "Automatisch uitvoeren" cannot be clicked
 
@@ -326,7 +332,7 @@ Feature: The screens of the frontend
     Given Jelly scanned "kerk.pdf"
     And Carla has chosen "kerk.pdf" of Jelly on the screen
     When "Eerste recordnummer" is filled in as "99003"
-    And "Geef de bestanden deze nummers en ga verder" is clicked
+    And "Geef de bestanden deze nummers" is clicked
     Then the screen says "Recordnummer 99003 is niet vrij in ZCBS"
     And the screen is titled "3. Nummers"
     When "Begin hier" is clicked
@@ -337,6 +343,7 @@ Feature: The screens of the frontend
     And Carla has chosen "kerk.pdf" of Jelly on the screen
     When "Opnieuw beginnen" is clicked
     Then the screen is titled "1. Controleer of alles klaarstaat"
+    And the screen does not say "Eerst opruimen"
     And the originals "kerk.pdf" of Jelly are still there
 
   Scenario: Leftovers of an earlier time are cleared on the screen

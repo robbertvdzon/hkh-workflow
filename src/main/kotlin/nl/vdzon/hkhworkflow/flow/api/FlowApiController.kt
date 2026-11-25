@@ -34,11 +34,19 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 
-data class FlowResponse(val phase: Int, val phases: List<PhaseResponse>, val review: Boolean, val finished: Boolean, val running: Boolean)
+data class FlowResponse(
+    val phase: Int,
+    val phases: List<PhaseResponse>,
+    val review: Boolean,
+    val finished: Boolean,
+    val running: Boolean,
+    /** images.exe is al eens gestart: de records kunnen al in ZCBS staan. Opnieuw beginnen laat die staan en meldt het aan de beheerder. */
+    val imagesStarted: Boolean,
+)
 data class PhaseResponse(val number: Int, val title: String, val state: String, val note: String?)
 
 data class ChecksResponse(val checks: List<CheckResponse>, val allOk: Boolean, val leftovers: List<LeftoverResponse>, val leftoversTarget: String?)
-data class CheckResponse(val id: String, val label: String, val ok: Boolean, val detail: String)
+data class CheckResponse(val id: String, val label: String, val ok: Boolean, val detail: String, /** Hoe lang deze controle duurde, in milliseconden. */ val millis: Long)
 data class LeftoverResponse(val area: String, val label: String, val files: List<String>)
 data class MessageResponse(val message: String)
 
@@ -129,10 +137,14 @@ class FlowApiController(
             view.review,
             view.finished,
             flow.exe().isRunning() || view.run?.next?.status == StepStatus.RUNNING.name,
+            view.imagesStarted,
         )
     }
 
-    /** Opnieuw beginnen. De originelen blijven staan. */
+    /**
+     * Opnieuw beginnen: alles in de werkmappen van de gebruiker gaat weg; de originelen in de mappen met scans blijven staan. Was images.exe al
+     * gestart ([FlowResponse.imagesStarted]), dan blijven de records in ZCBS en de afbeeldingen op de server staan en ziet de beheerder de doorloop bij Sessies.
+     */
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun reset() = flow.reset()
@@ -149,7 +161,7 @@ class FlowApiController(
     fun checks(): ChecksResponse {
         val checks = flow.environment()
         return ChecksResponse(
-            checks.map { CheckResponse(it.id, it.label, it.ok, it.detail) },
+            checks.map { CheckResponse(it.id, it.label, it.ok, it.detail, it.millis) },
             checks.all { it.ok },
             flow.leftovers().map { LeftoverResponse(it.area, it.label, it.names) },
             flow.leftoversTarget()?.toString(),
@@ -251,7 +263,7 @@ class FlowApiController(
     @GetMapping("/numbers")
     fun numbers(): NumbersResponse {
         val count = flow.filesInInputFolder().size
-        val free = zcbs.freeNumbers()
+        val free = flow.timings().measure("Vrije nummers ophalen uit ZCBS") { zcbs.freeNumbers() }
             ?: throw ApiProblem(502, "zcbs-failed", "ZCBS gaf de lijst met vrije nummers niet. Is je sessie verlopen, heb je geen recht om records aan te maken, of is ZCBS niet bereikbaar?")
         return NumbersResponse(
             count,
@@ -262,11 +274,20 @@ class FlowApiController(
         )
     }
 
-    /** Geeft de bestanden hun nummers en maakt kopieën met het nummer als naam. */
+    /** Geeft de bestanden hun nummers en maakt kopieën met het nummer als naam. Daarna toont fase 3 het overzicht ([FlowResponse.review]); zie [approveNumbers]. */
     @PutMapping("/numbers")
     fun assignNumbers(@RequestBody body: NumbersRequest): FlowResponse {
         requirePhase(3)
+        if (flow.flowView().review) throw ApiProblem(409, "wrong-phase", "De bestanden hebben hun nummers al. Bekijk het overzicht en ga verder, of begin opnieuw.")
         flow.prepare(body.start)?.let { throw ApiProblem(400, "numbers-refused", it) }
+        return get()
+    }
+
+    /** De gebruiker heeft het overzicht gezien van welk bestand welk nummer kreeg: verder naar de programma's. */
+    @PostMapping("/numbers/approve")
+    fun approveNumbers(): FlowResponse {
+        requirePhase(3)
+        flow.confirmNumbers()?.let { throw ApiProblem(409, "wrong-phase", it) }
         return get()
     }
 
@@ -283,7 +304,8 @@ class FlowApiController(
     @PostMapping("/steps/{step}/run")
     fun run(@PathVariable("step") name: String, @RequestBody(required = false) body: RunStepRequest?): StepResponse {
         val type = stepType(name)
-        if (flow.flowView().review) throw ApiProblem(409, "review-pending", "Controleer eerst wat het programma heeft gemaakt.")
+        val view = flow.flowView()
+        if (view.review) throw ApiProblem(409, "review-pending", if (view.current == 3) "Bekijk eerst welke nummers de bestanden hebben gekregen." else "Controleer eerst wat het programma heeft gemaakt.")
         val auto = when (body?.answers ?: "auto") {
             "auto" -> true
             "manual" -> false

@@ -50,6 +50,9 @@ class FlowLogReporter(
         val recordedRuns = mutableSetOf<Long>()
         val numbers = mutableSetOf<String>()
 
+        /** images.exe is in deze doorloop gestart: de records kunnen al in ZCBS staan. */
+        var imagesStarted = false
+
         /** Wat er sinds de laatste melding gebeurde; blijft staan tot er echt een melding is verstuurd. */
         val pendingEvents = mutableListOf<String>()
     }
@@ -104,7 +107,8 @@ class FlowLogReporter(
         val events = current.pendingEvents
         if (current.phase == 0) events += "Gestart" + (if (fileCount > 0) ": $fileCount ${if (fileCount == 1) "bestand" else "bestanden"}" else "")
         else if (view.current != current.phase) events += if (view.finished) "Klaar" else "Fase ${view.current}: $phaseLabel"
-        if (view.review != current.review && view.review) events += "Wacht op controle van de uitvoer (${phaseLabel})"
+        if (view.review != current.review && view.review) events += if (view.current == 3) "Toont welk bestand welk nummer kreeg" else "Wacht op controle van de uitvoer (${phaseLabel})"
+        if (view.imagesStarted) current.imagesStarted = true
         stepViews.filter { it.type != StepType.RENAME.name }.forEach { step ->
             val before = current.stepStatus[step.type]
             if (before != null && before != step.status) {
@@ -169,6 +173,10 @@ class FlowLogReporter(
         }
         if (current.produced.isNotEmpty()) core.set("gemaakteBestanden", mapper.valueToTree<JsonNode>(current.produced.mapKeys { (k, _) -> StepType.valueOf(k).label }))
         current.summary?.let { core.set("overzichtKlaar", mapper.valueToTree<JsonNode>(it)) }
+        // Hoe lang alles duurde, om te zien of een schijf, het netwerk, ZCBS of de ftp-server de tijd kost.
+        f.timings.all().takeIf { it.isNotEmpty() }?.let { list ->
+            core.set("tijdmetingen", mapper.createArrayNode().also { out -> list.forEach { out.add("${TIME.format(it.at)}  ${it.text}") } })
+        }
 
         val consoles = mapper.createObjectNode().also { out -> current.consoles.forEach { (k, v) -> out.set(k, v) } }
         val coreJson = core.toString()
@@ -204,7 +212,13 @@ class FlowLogReporter(
         val since = java.time.LocalDateTime.ofInstant(ended.startedAt, java.time.ZoneId.systemDefault()).minusSeconds(5)
         val done = if (ended.numbers.isEmpty()) emptyList() else processed.all().filter { it.number in ended.numbers && !it.at.isBefore(since) }
         if (done.isEmpty()) {
-            client.session(last.copy(event = "Opnieuw begonnen bij stap 1; deze doorloop is niet afgemaakt"))
+            val numbers = ended.numbers.sorted().let { if (it.isEmpty()) "" else if (it.size == 1) it.first() else "${it.first()} t/m ${it.last()}" }
+            client.session(
+                if (ended.imagesStarted) last.copy(
+                    status = "FAILED",
+                    event = "Afgebroken nadat images.exe was gestart: de records $numbers kunnen al in ZCBS staan en de afbeeldingen op de server. De werkmappen zijn leeggemaakt.",
+                ) else last.copy(event = "Opnieuw begonnen bij stap 1; deze doorloop is niet afgemaakt. De werkmappen zijn leeggemaakt."),
+            )
             return
         }
         val snapshot = last.snapshot.deepCopy()
@@ -261,5 +275,6 @@ class FlowLogReporter(
         const val MIN_MILLIS = 2_500L
         const val CONSOLE_MILLIS = 6_000L
         const val OUTPUT_CHARS = 150_000
+        val TIME: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(java.time.ZoneId.systemDefault())
     }
 }

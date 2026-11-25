@@ -30,4 +30,7 @@ interface AdminLog {
 
     /** Meldt een inlogpoging. [method] zegt hoe: met het wachtwoord of met het cookie. */
     fun login(user: String?, success: Boolean, method: String, detail: String? = null)
+
+    /** Meldt dat de app met een andere versie is gestart dan de vorige keer: er is bijgewerkt, of de vorige versie is teruggezet. */
+    fun versionChanged(previous: String, current: String, reason: String) {}
 }

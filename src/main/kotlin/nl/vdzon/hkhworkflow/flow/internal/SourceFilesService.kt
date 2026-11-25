@@ -44,7 +44,12 @@ data class CopyResult(val copied: List<String>, val skipped: List<String>)
  * invoermap. De originelen blijven staan en er wordt nooit iets overschreven. Wie het gescand heeft, is niet in de pdf te
  * vinden maar blijkt uit de bronmap: die wordt per bestand onthouden.
  */
-class SourceFilesService(private val settingsService: SettingsService, private val processed: ProcessedLog, private val input: WorkFolders) {
+class SourceFilesService(
+    private val settingsService: SettingsService,
+    private val processed: ProcessedLog,
+    private val input: WorkFolders,
+    private val timings: Timings = Timings(input.user, input.collection),
+) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val dateFormat = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm").withZone(ZoneId.systemDefault())
 
@@ -66,9 +71,13 @@ class SourceFilesService(private val settingsService: SettingsService, private v
     fun browse(rootName: String, relPath: String): Listing {
         val root = root(rootName)
         val dir = resolve(root, relPath)
+        val begun = System.nanoTime()
         require(dir.isDirectory()) { "De map bestaat niet of is niet bereikbaar: $dir. Is de schijf gekoppeld?" }
         val done = processed.index()
+        val listBegun = System.nanoTime()
         val entries = runCatching { Files.list(dir).use { it.toList() } }.getOrElse { throw IllegalArgumentException("Kan de map niet lezen: $dir (${it.message})") }
+        val listMillis = Timings.since(listBegun)
+        val attributesBegun = System.nanoTime()
         val rel = dir.let { Path.of(root.path).toAbsolutePath().normalize().relativize(it).toString().replace('\\', '/').replace("//", "/") }.trim('/')
         val dirs = entries.filter { it.isDirectory() && !it.name.startsWith(".") }.sortedWith(compareBy(naturalOrder) { it.name })
             .map { SourceDir(it.name, if (rel.isEmpty()) it.name else "$rel/${it.name}") }
@@ -82,6 +91,10 @@ class SourceFilesService(private val settingsService: SettingsService, private v
                 )
             }
         val crumbs = rel.split('/').filter { it.isNotEmpty() }.runningFold(null as Crumb?) { acc, part -> Crumb(part, listOfNotNull(acc?.relPath, part).joinToString("/")) }.filterNotNull()
+        timings.add(
+            "Map met scans lezen (${root.name})", Timings.since(begun),
+            "$dir: ${dirs.size} mappen en ${files.size} bestanden; de lijst ophalen ${Timings.seconds(listMillis)}, soort, grootte en datum per bestand ${Timings.seconds(Timings.since(attributesBegun))}",
+        )
         return Listing(root, rel, crumbs, dirs, files)
     }
 
@@ -103,11 +116,20 @@ class SourceFilesService(private val settingsService: SettingsService, private v
     fun details(rootName: String, relPath: String): Map<String, String> {
         val dir = resolve(root(rootName), relPath)
         require(dir.isDirectory()) { "De map bestaat niet of is niet bereikbaar: $dir." }
+        val begun = System.nanoTime()
         val files = runCatching { Files.list(dir).use { s -> s.filter { it.isRegularFile() && it.extension.lowercase() in VIEWABLE }.toList() } }.getOrDefault(emptyList())
-        return files.associate { file ->
-            val key = "$file|${runCatching { Files.size(file) }.getOrDefault(0)}|${runCatching { Files.getLastModifiedTime(file).toMillis() }.getOrDefault(0)}"
-            file.name to details.computeIfAbsent(key) { describe(file) }
+        var opened = 0
+        var bytes = 0L
+        val result = files.associate { file ->
+            val size = runCatching { Files.size(file) }.getOrDefault(0)
+            val key = "$file|$size|${runCatching { Files.getLastModifiedTime(file).toMillis() }.getOrDefault(0)}"
+            file.name to details.computeIfAbsent(key) { opened++; bytes += size; describe(file) }
         }
+        timings.add(
+            "Pagina's en afmetingen lezen", Timings.since(begun),
+            "$dir: ${files.size} bestanden, waarvan $opened geopend (${Timings.megabytes(bytes)}); de rest was al bekend",
+        )
+        return result
     }
 
     private fun describe(file: Path): String = runCatching {
@@ -138,6 +160,8 @@ class SourceFilesService(private val settingsService: SettingsService, private v
         val copied = mutableListOf<String>()
         val skipped = mutableListOf<String>()
         val origins = readOrigins().toMutableMap()
+        val begun = System.nanoTime()
+        var bytes = 0L
         for (name in names) {
             require(name == Path.of(name).fileName.toString() && name.substringAfterLast('.', "").lowercase() in VIEWABLE) { "Dit is geen pdf of afbeelding in de map: $name" }
             val source = dir.resolve(name)
@@ -155,10 +179,16 @@ class SourceFilesService(private val settingsService: SettingsService, private v
                 check(Files.size(tmp) == Files.size(source)) { "Kopie van $name is niet even groot als het origineel." }
             }
             Files.move(tmp, dest)
+            bytes += runCatching { Files.size(dest) }.getOrDefault(0L)
             origins[destName] = Origin(root.name, dir.toString())
             copied += name
         }
         writeOrigins(origins)
+        val millis = Timings.since(begun)
+        timings.add(
+            "Gekozen bestanden kopiëren (${root.name})", millis,
+            "${copied.size} bestanden, ${Timings.megabytes(bytes)}${Timings.speed(bytes, millis).let { if (it.isEmpty()) "" else ", $it" }}, van $dir naar $target",
+        )
         log.info("{} bestanden uit {} gekopieerd naar {}", copied.size, dir, target)
         return CopyResult(copied, skipped)
     }

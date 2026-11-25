@@ -33,6 +33,7 @@ class FlowService(
     private val processed: ProcessedLog,
     private val runners: ExeRunnerFactory,
     private val mapper: ObjectMapper,
+    private val aborted: AbortedLog = AbortedLog(settingsService),
 ) : RunningFlows {
     private val log = LoggerFactory.getLogger(javaClass)
     private val flows = LinkedHashMap<String, FlowSession>()
@@ -42,7 +43,8 @@ class FlowService(
     private fun create(user: String, collection: String): FlowSession {
         val folders = WorkFolders(settingsService, user, collection)
         val runner = runners.create(Path.of(collection, WorkFolders.folderName(user)).toString())
-        return FlowSession(settingsService, runner, ftpService, itemEditService, SourceFilesService(settingsService, processed, folders), processed, folders, collection)
+        val timings = Timings(user, collection)
+        return FlowSession(settingsService, runner, ftpService, itemEditService, SourceFilesService(settingsService, processed, folders, timings), processed, folders, collection, aborted, timings)
     }
 
     /** De doorloop van de gebruiker die nu aan het woord is, in zijn collectie; een nieuwe als hij er nog geen heeft. */
@@ -63,7 +65,10 @@ class FlowService(
         flows.values.filter { it.claimed }.map { ActiveFlow(it.collection, it.owner, it.claimedSince ?: it.lastActivity, it.lastActivity, it.flowViewQuietly()) }
     }
 
-    /** Stopt de doorloop van [user] in [collection] (de beheerder): wat loopt wordt gestopt en de gebruiker moet opnieuw beginnen. */
+    /** De doorlopen die zijn afgebroken nadat images.exe was gestart, nieuwste eerst. */
+    fun aborted(): List<AbortedFlow> = aborted.all()
+
+    /** Stopt de doorloop van [user] in [collection] (de beheerder): wat loopt wordt gestopt, de werkmappen gaan leeg en de gebruiker moet opnieuw beginnen. */
     fun stop(user: String, collection: String): Boolean = synchronized(flows) { flows.remove(key(user, collection))?.also { it.release() } != null }
 
     private val lastSaved = java.util.IdentityHashMap<FlowSession, String>()
@@ -128,6 +133,8 @@ class FlowService(
     fun reset() = current().reset()
     fun summary(): List<SummaryLine> = current().summary()
     fun prepare(startNumber: String): String? = current().prepare(startNumber)
+    fun confirmNumbers(): String? = current().confirmNumbers()
+    fun timings(): Timings = current().timings
     fun confirmReview(type: StepType): String? = current().confirmReview(type)
     fun flowView(): FlowView = current().flowView()
     fun environment(): List<EnvCheck> = current().environment()

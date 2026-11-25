@@ -89,6 +89,10 @@ class FlowRun(
     @Volatile
     var gated: Boolean = false
 
+    /** Heeft de gebruiker het overzicht gezien van welk bestand welk nummer kreeg (fase Nummers)? Pas daarna gaat de flow door naar de programma's. */
+    @Volatile
+    var numbersConfirmed: Boolean = false
+
     /** De stappen waarvan de uitvoer is gecontroleerd. */
     val reviewed: MutableSet<StepType> = ConcurrentHashMap.newKeySet()
 
@@ -160,7 +164,7 @@ data class Leftover(val area: String, val label: String, val base: Path, val fil
  * Eén controle van de omgeving aan het begin van de flow: [ok] of niet. [label] zegt wat er aan de hand is, dus ook bij een fout ("... zijn niet bereikbaar");
  * bij niet ok staat in [detail] wat er mis is en wat Carla kan doen.
  */
-data class EnvCheck(val id: String, val label: String, val ok: Boolean, val detail: String = "")
+data class EnvCheck(val id: String, val label: String, val ok: Boolean, val detail: String = "", /** Hoe lang deze controle duurde. */ val millis: Long = 0)
 
 /**
  * Een bestand dat pdf2zcbs.exe of images.exe heeft gemaakt, om te controleren: wat het is, hoe groot en (bij een afbeelding) in welke afmeting.
@@ -174,9 +178,17 @@ data class PhaseView(val nr: Int, val title: String, val state: String, val note
 /**
  * De flow zoals Carla hem ziet: zes fasen (bestanden kiezen, nummers, pdf2zcbs, images.exe, upload, back-up). [current] is de
  * fase die aan de beurt is, of 7 als alles klaar is. [review] is gezet als de uitvoer van de huidige fase klaar is en Carla
- * hem moet controleren voordat ze verder kan.
+ * hem moet controleren voordat ze verder kan; in fase 3 (Nummers) is dat het overzicht van welk bestand welk nummer kreeg.
  */
 /** Eén regel van het overzicht aan het eind: wat er gemaakt is en waar het nu staat. */
 data class SummaryLine(val place: String, val kind: String, val count: Int, val files: String, val folder: String)
 
-data class FlowView(val phases: List<PhaseView>, val current: Int, val finished: Boolean, val review: Boolean, val run: FlowRunView?)
+data class FlowView(
+    val phases: List<PhaseView>,
+    val current: Int,
+    val finished: Boolean,
+    val review: Boolean,
+    val run: FlowRunView?,
+    /** images.exe is al eens gestart: de records kunnen in ZCBS staan en de afbeeldingen op de server. Opnieuw beginnen laat die staan. */
+    val imagesStarted: Boolean = false,
+)

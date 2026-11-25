@@ -34,6 +34,8 @@ class FlowSession(
     private val processed: ProcessedLog,
     private val input: WorkFolders,
     val collection: String,
+    private val aborted: AbortedLog = AbortedLog(settingsService),
+    val timings: Timings = Timings(input.user, collection),
 ) {
     /** Wie deze doorloop heeft: de ZCBS-naam, of leeg voor de technische pagina van de beheerder. */
     val owner: String get() = input.user
@@ -54,9 +56,9 @@ class FlowSession(
     /** Loopt er nu een programma of een stap (upload, back-up)? Dan overleeft deze doorloop een herstart van de app niet. */
     fun busy(): Boolean = exeRunner.isRunning() || run?.steps?.any { it.status == StepStatus.RUNNING } == true
 
-    /** Stopt wat er loopt en wist de stand: de collectie komt vrij. De bestanden op schijf blijven staan (de controle op resten wijst er de gebruiker op). */
+    /** De beheerder stopt deze doorloop: wat er loopt stopt, de stand is weg en de bestanden in de mappen van de gebruiker ook (zie [reset]). */
     fun release() {
-        runCatching { reset() }
+        runCatching { reset(byAdmin = true) }
     }
 
     /** De fase waar de doorloop nu is, zonder dat een fout de aanroeper raakt. */
@@ -136,16 +138,64 @@ class FlowSession(
         log.info("Doorloop gestart: {} bestanden vanaf {}", files.size, startNumber)
     }
 
+    /**
+     * Opnieuw beginnen: wat er loopt stopt, de stand is weg en alles in de mappen van de gebruiker wordt verwijderd (de gekozen bestanden, de
+     * kopieën met recordnummer en wat de programma's maakten). De originelen in de mappen met scans blijven staan. Zo hoeft niemand daarna te
+     * kiezen wat er met resten moet gebeuren. Was images.exe al gestart, dan kunnen de records al in ZCBS staan: dat komt in het log met
+     * afgebroken doorlopen ([AbortedLog]) voor de beheerder.
+     */
     @Synchronized
-    fun reset() {
+    fun reset(byAdmin: Boolean = false) {
         stopPrevious()
-        // Nog geen doorloop gestart: dan is er alleen een keuze gemaakt, en die gaat weg (de kopieën, niet de originelen).
-        if (run == null) sourceFiles.removeAllCopies()
+        val begun = System.nanoTime()
+        recordAbort(byAdmin)
+        val hadWork = claimed
         run = null
         filesConfirmed = false
         started = false
         inputAcceptedFor = null
         claimedSince = null
+        val removed = removeEverything()
+        timings.clear()
+        if (hadWork || removed > 0) timings.add("Opnieuw beginnen", Timings.since(begun), "$removed bestanden verwijderd uit de werkmappen")
+    }
+
+    /** Verwijdert alles wat een doorloop in de mappen van de gebruiker heeft gezet. @return hoeveel bestanden. */
+    private fun removeEverything(): Int = try {
+        val s = settings()
+        val items = leftoverFolders.find(s, runActive = false, inputAccepted = false)
+        if (items.isNotEmpty()) {
+            val outcome = leftoverFolders.clear(items, move = false, s)
+            if (!outcome.complete) log.warn("Opnieuw beginnen: {}", outcome.message)
+        }
+        input.invoer()?.resolve("herkomst.tsv")?.let { Files.deleteIfExists(it) }
+        items.sumOf { it.files.size }
+    } catch (e: Exception) {
+        // Lukt het niet (een bestand is nog in gebruik), dan wijst de controle op resten in fase 1 erop.
+        log.warn("Opnieuw beginnen: de werkmappen zijn niet helemaal leeg gemaakt: {}", e.message)
+        0
+    }
+
+    /**
+     * Is images.exe in deze doorloop al eens gestart? Dan kunnen de records in ZCBS staan en de afbeeldingen op de server. Een stap die door de
+     * controle vooraf is tegengehouden (een nummer was intussen bezet) is niet gestart: daar is niets aangemaakt.
+     */
+    private fun imagesStarted(current: FlowRun?): Boolean =
+        current?.steps?.firstOrNull { it.type == StepType.IMAGES }?.attempted == true
+
+    /** Een doorloop die stopt nadat images.exe is gestart en voordat de back-up klaar is, komt in het log met afgebroken doorlopen. */
+    private fun recordAbort(byAdmin: Boolean) {
+        val current = run ?: return
+        if (!imagesStarted(current) || current.steps.firstOrNull { it.type == StepType.CLEANUP }?.status == StepStatus.DONE) return
+        val numbers = current.files.first().number + (if (current.files.size > 1) " t/m " + current.files.last().number else "")
+        val steps = current.steps.filter { !it.type.perFile }.joinToString("; ") { "${it.type.label}: ${it.status.label.lowercase()}" }
+        val who = if (byAdmin) "beheerder" else "gebruiker"
+        runCatching { aborted.add(AbortedFlow(LocalDateTime.now(), owner, collection, numbers, current.files.size, steps, who)) }
+            .onFailure { log.warn("Het log met afgebroken doorlopen kon niet worden bijgewerkt: {}", it.message) }
+        log.warn(
+            "Doorloop van {} in {} is afgebroken door de {} nadat images.exe was gestart. De records {} kunnen al in ZCBS staan en de afbeeldingen op de server; controleer dat. Stand: {}",
+            owner.ifEmpty { "beheerder" }, collection, who, numbers, steps,
+        )
     }
 
 
@@ -161,10 +211,11 @@ class FlowSession(
         return FlowState(
             owner = owner, collection = collection, startNumber = current?.startNumber,
             files = files.map { StateFile(it.index, it.original.toString(), it.number, it.by, it.folder) },
-            steps = current?.steps.orEmpty().map { st -> StateStep(st.id, st.type.name, st.files.map { it.index }, st.status.name, st.message, st.uploaded.sorted()) },
+            steps = current?.steps.orEmpty().map { st -> StateStep(st.id, st.type.name, st.files.map { it.index }, st.status.name, st.message, st.uploaded.sorted(), st.attempted) },
             gated = current?.gated == true, reviewed = current?.reviewed.orEmpty().map { it.name }.sorted(),
             started = started, filesConfirmed = filesConfirmed, inputAcceptedFor = inputAcceptedFor,
             claimedSince = claimedSince?.toString(),
+            numbersConfirmed = current?.numbersConfirmed != false,
         )
     }
 
@@ -181,7 +232,7 @@ class FlowSession(
         val steps = state.steps.map { st ->
             Step(st.id, StepType.valueOf(st.type), st.fileIndexes.mapNotNull { i -> files.firstOrNull { it.index == i } }).also { step ->
                 step.status = StepStatus.valueOf(st.status)
-                step.attempted = step.status != StepStatus.PENDING
+                step.attempted = st.attempted || step.status != StepStatus.PENDING
                 step.message = st.message
                 step.uploaded += st.uploaded
                 if (step.status == StepStatus.RUNNING) {
@@ -192,6 +243,7 @@ class FlowSession(
         }
         run = FlowRun(startNumber, input.invoer()!!, input.werk()!!, files, steps).also { r ->
             r.gated = state.gated
+            r.numbersConfirmed = state.numbersConfirmed
             r.reviewed += state.reviewed.map { StepType.valueOf(it) }
         }
     }
@@ -236,11 +288,12 @@ class FlowSession(
      */
     @Synchronized
     fun prepare(startNumber: String): String? {
+        if (numbersPending(run)) return "De bestanden hebben hun nummers al. Bekijk het overzicht en ga verder, of kies Opnieuw beginnen."
         val chosen = filesInInputFolder()
         if (chosen.isEmpty()) return "Er staan geen bestanden in de invoermap."
         if (leftovers().isNotEmpty()) return LEFTOVERS_MESSAGE
         val start = startNumber.trim().toLongOrNull() ?: return "Geef een beginnummer van alleen cijfers op."
-        val free = itemEditService.freeNumbers()
+        val free = timings.measure("Vrije nummers ophalen uit ZCBS") { itemEditService.freeNumbers() }
             ?: return "ZCBS gaf de lijst met vrije nummers niet. Is je sessie verlopen, heb je geen recht om records aan te maken, of is ZCBS niet bereikbaar? Log opnieuw in."
         free.check(start, chosen.size)?.let { return it }
         return try {
@@ -257,6 +310,19 @@ class FlowSession(
         } catch (e: Exception) {
             e.message ?: e.javaClass.simpleName
         }
+    }
+
+    /** De bestanden hebben hun nummers, maar de gebruiker heeft het overzicht daarvan nog niet gezien. */
+    private fun numbersPending(current: FlowRun?): Boolean =
+        current != null && current.gated && !current.numbersConfirmed && current.steps.filter { it.type == StepType.RENAME }.all { it.finished }
+
+    /** De gebruiker heeft gezien welk bestand welk nummer kreeg; nu mogen de programma's. @return een melding of null. */
+    @Synchronized
+    fun confirmNumbers(): String? {
+        val current = run ?: return "Er zijn nog geen nummers gegeven."
+        if (current.steps.any { it.type == StepType.RENAME && !it.finished }) return "Nog niet alle bestanden hebben hun nummer gekregen."
+        current.numbersConfirmed = true
+        return null
     }
 
     /** Carla heeft de uitvoer van deze stap gecontroleerd; de volgende stap mag nu. @return een melding of null. */
@@ -282,6 +348,7 @@ class FlowSession(
             v == null && !started -> 1
             v == null && !filesConfirmed -> 2
             v == null -> 3
+            numbersPending(current) -> { review = true; 3 }
             nextType == null -> 8
             nextType == StepType.RENAME -> 3
             nextType == StepType.PDF2ZCBS -> 4
@@ -301,7 +368,7 @@ class FlowSession(
             val nr = i + 1
             PhaseView(nr, title, when { nr < phase -> "done"; nr == phase -> "now"; else -> "todo" }, notes[nr])
         }
-        return FlowView(phases, phase, phase == 8, review, v)
+        return FlowView(phases, phase, phase == 8, review, v, imagesStarted(current))
     }
 
     // ---- Fase 1: de omgeving controleren ----
@@ -316,31 +383,49 @@ class FlowSession(
         fun folder(path: String) = path.isNotBlank() && Files.isDirectory(Path.of(path))
         fun file(path: String) = path.isNotBlank() && Files.isRegularFile(Path.of(path))
         fun unset(path: String) = path.ifBlank { "(niet ingesteld)" }
-        fun check(id: String, ok: Boolean, okLabel: String, failLabel: String, detail: String = "", okDetail: String = "") =
-            if (ok) EnvCheck(id, okLabel, true, okDetail) else EnvCheck(id, failLabel, false, detail)
+        fun check(id: String, ok: Boolean, okLabel: String, failLabel: String, detail: String = "", okDetail: String = "", millis: Long = 0) =
+            if (ok) EnvCheck(id, okLabel, true, okDetail, millis) else EnvCheck(id, failLabel, false, detail, millis)
+        // Elke controle wordt apart gemeten: zo is te zien of ZCBS, een schijf of de ftp-server de tijd kost.
+        fun <T> timed(block: () -> T): Pair<T, Long> {
+            val t = System.nanoTime()
+            return block() to Timings.since(t)
+        }
+        val begun = System.nanoTime()
+        val (loggedIn, loginMs) = timed { itemEditService.loggedIn() }
+        val (numbersOk, numbersMs) = timed { itemEditService.freeNumbers() != null }
         val roots = s.sourceRoots()
-        val unreachable = roots.filter { !folder(it.path) }
-        val backups = listOf(s.backup100pctFolder(), s.backupPdfFolder()).filter { !folder(it) }
-        val exes = listOf(s.pdf2zcbsExe, s.imagesExe).filter { !file(it) }
+        val rootChecks = roots.map { root -> root to timed { folder(root.path) } }
+        val unreachable = rootChecks.filter { !it.second.first }.map { it.first }
+        val scansMs = rootChecks.sumOf { it.second.second }
+        val (backups, backupsMs) = timed { listOf(s.backup100pctFolder(), s.backupPdfFolder()).filter { !folder(it) } }
+        val (exes, exesMs) = timed { listOf(s.pdf2zcbsExe, s.imagesExe).filter { !file(it) } }
         val ftpSettled = s.ftpHost.isNotBlank() && s.ftpUser.isNotBlank() && s.ftpPassword.isNotEmpty()
-        val ftp = if (ftpSettled) ftpService.testConnection(5_000) else null
+        val (ftp, ftpMs) = timed { if (ftpSettled) ftpService.testConnection(5_000) else null }
         val ftpMissingDirs = ftp?.dirs?.filter { !it.exists }.orEmpty()
+        val (noLeftovers, leftoversMs) = timed { leftovers().isEmpty() }
+        fun t(ms: Long) = Timings.seconds(ms)
+        timings.add(
+            "Controleren (fase 1)", Timings.since(begun),
+            "ZCBS-login ${t(loginMs)}; vrije nummers uit ZCBS ${t(numbersMs)}; mappen met scans ${t(scansMs)}" +
+                (if (rootChecks.size > 1) " [" + rootChecks.joinToString { "${it.first.name} ${t(it.second.second)}" } + "]" else "") +
+                "; programma's ${t(exesMs)}; back-upmappen ${t(backupsMs)}; ftp-server ${t(ftpMs)}; werk van een eerdere keer ${t(leftoversMs)}",
+        )
         return listOf(
-            check("login", itemEditService.loggedIn(), "Ingelogd bij ZCBS als ${itemEditService.user}", "Niet ingelogd bij ZCBS", "Log eerst in via Start."),
-            check("numbers", itemEditService.freeNumbers() != null, "ZCBS geeft de vrije recordnummers", "De vrije recordnummers uit ZCBS zijn niet op te halen",
-                "Is je sessie verlopen, of heb je geen recht om records aan te maken? Log opnieuw in via Start."),
+            check("login", loggedIn, "Ingelogd bij ZCBS als ${itemEditService.user}", "Niet ingelogd bij ZCBS", "Log eerst in via Start.", millis = loginMs),
+            check("numbers", numbersOk, "ZCBS geeft de vrije recordnummers", "De vrije recordnummers uit ZCBS zijn niet op te halen",
+                "Is je sessie verlopen, of heb je geen recht om records aan te maken? Log opnieuw in via Start.", millis = numbersMs),
             check("scans", roots.isNotEmpty() && unreachable.isEmpty(), "De mappen met scans zijn bereikbaar", if (roots.isEmpty()) "Er zijn geen mappen met scans ingesteld" else "De mappen met scans zijn niet bereikbaar",
-                if (roots.isEmpty()) admin else "Niet bereikbaar: ${unreachable.joinToString { it.path }}. Is de schijf (K:) gekoppeld?", okDetail = roots.joinToString { it.name }),
-            check("exes", exes.isEmpty(), "pdf2zcbs.exe en images.exe zijn gevonden", "pdf2zcbs.exe of images.exe is niet gevonden", "Niet gevonden: ${exes.joinToString { unset(it) }}. $admin"),
+                if (roots.isEmpty()) admin else "Niet bereikbaar: ${unreachable.joinToString { it.path }}. Is de schijf (K:) gekoppeld?", okDetail = roots.joinToString { it.name }, millis = scansMs),
+            check("exes", exes.isEmpty(), "pdf2zcbs.exe en images.exe zijn gevonden", "pdf2zcbs.exe of images.exe is niet gevonden", "Niet gevonden: ${exes.joinToString { unset(it) }}. $admin", millis = exesMs),
             check("backup", backups.isEmpty(), "De back-upmappen zijn bereikbaar", "De back-upmappen zijn niet bereikbaar",
-                "Niet bereikbaar: ${backups.joinToString { unset(it) }}. Is de schijf (K:) gekoppeld? Anders stelt de beheerder dit in bij Instellingen."),
+                "Niet bereikbaar: ${backups.joinToString { unset(it) }}. Is de schijf (K:) gekoppeld? Anders stelt de beheerder dit in bij Instellingen.", millis = backupsMs),
             when {
                 !ftpSettled -> EnvCheck("ftp", "De ftp-gegevens voor de upload zijn niet ingesteld", false, "Host, gebruiker of wachtwoord ontbreekt. $admin")
                 ftp != null && !ftp.ok -> EnvCheck("ftp", "De ftp-server is niet bereikbaar", false, ftp.message)
                 ftpMissingDirs.isNotEmpty() -> EnvCheck("ftp", "Op de ftp-server ontbreken mappen", false, "Niet gevonden: ${ftpMissingDirs.joinToString { it.path }}. $admin")
                 else -> EnvCheck("ftp", "De ftp-server is bereikbaar en de mappen voor tekst en pdf bestaan", true, s.ftpHost)
-            },
-            check("leftovers", leftovers().isEmpty(), "Er staat geen werk van een eerdere keer", "Er staat nog werk van een eerdere keer", "Zie hieronder: verplaats of verwijder het."),
+            }.copy(millis = ftpMs),
+            check("leftovers", noLeftovers, "Er staat geen werk van een eerdere keer", "Er staat nog werk van een eerdere keer", "Zie hieronder: verplaats of verwijder het.", millis = leftoversMs),
         )
     }
 
@@ -355,7 +440,12 @@ class FlowSession(
     @Synchronized
     fun startFlow(): String? {
         if (run != null) return null
-        val problem = environment().firstOrNull { !it.ok } ?: run { input.ensureAll(); syncPrograms(); started = true; claim(); return null }
+        val problem = environment().firstOrNull { !it.ok } ?: run {
+            timings.measure("Programma's klaarzetten in de werkmap") { input.ensureAll(); syncPrograms() }
+            started = true
+            claim()
+            return null
+        }
         return "${problem.label}: ${problem.detail}".trim().trimEnd(':')
     }
 
@@ -409,6 +499,7 @@ class FlowSession(
             check(problems.isEmpty()) { problems.joinToString("\n") }
             if (step.type == StepType.IMAGES && !step.attempted) numbersTaken(step)?.let { error(it) }
             step.attempted = true
+            val begun = System.nanoTime()
             when (step.type) {
                 StepType.RENAME -> rename(current, step)
                 StepType.PDF2ZCBS -> runPdf2zcbs(current, step, settings, mode, auto)
@@ -416,9 +507,15 @@ class FlowSession(
                 StepType.UPLOAD -> upload(step, settings)
                 StepType.CLEANUP -> cleanup(current, step, settings)
             }
+            // Een programma loopt nog door; zijn tijd komt erbij als het klaar is (zie runExe).
+            if (!step.type.usesExe) {
+                val count = if (step.type.perFile) step.file.originalName + " wordt " + step.file.newName else "${step.activeFiles.size} bestanden"
+                timings.add(step.type.label, Timings.since(begun), "$count, ${step.status.label.lowercase()}")
+            }
         } catch (e: Exception) {
             step.status = StepStatus.FAILED
             step.message = e.message ?: e.javaClass.simpleName
+            timings.add(step.type.label, 0, "niet uitgevoerd: ${step.message.orEmpty().take(200)}")
             log.warn("Stap {} ({}) mislukt: {}", step.id, step.type, step.message)
         }
     }
@@ -542,6 +639,8 @@ class FlowSession(
     ) {
         val notes = mutableListOf<String>()
         var replaced = 0
+        val begun = System.nanoTime()
+        val bytes = copies.sumOf { (from, _) -> runCatching { Files.size(from) }.getOrDefault(0L) }
         copies.forEach { (from, to) ->
             Files.createDirectories(to.parent)
             // Bij opnieuw proberen staan de bestanden er vaak nog van de vorige poging: overschrijven.
@@ -550,12 +649,19 @@ class FlowSession(
             Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING)
             notes += "${if (existed) "overschreven" else "gekopieerd"}: $from -> $to"
         }
+        val copyMillis = Timings.since(begun)
+        val programBegun = System.nanoTime()
         step.status = StepStatus.RUNNING
         step.message = "${copies.size} bestanden klaargezet" + (if (replaced > 0) " ($replaced overschreven)" else "")
         val env = if (s.perlioUnbuffered) mapOf("PERLIO" to ":unix") else emptyMap()
         val label = "${step.type.label} – ${step.activeFiles.size} ${if (step.activeFiles.size == 1) "bestand" else "bestanden"} (${step.fileNames})"
         exeRunner.start(exe, exeDir, label, mode, env, notes, autoAnswers, knownQuestions, forcedAnswers) { code ->
             Current.runAs(input.user.ifEmpty { null }, collection) {
+            timings.add(
+                step.type.label, Timings.since(begun),
+                "${copies.size} bestanden klaarzetten ${Timings.seconds(copyMillis)} (${Timings.megabytes(bytes)}${Timings.speed(bytes, copyMillis).let { if (it.isEmpty()) "" else ", $it" }}); " +
+                    "het programma zelf ${Timings.seconds(Timings.since(programBegun))}, exitcode ${code ?: "onbekend"}",
+            )
             try {
                 val missing = if (code == 0) expected.filter { !it.second.present(allowEmpty = it.first == "tekst") } else emptyList()
                 val invalid = if (code == 0) expected.filter { it.first != "tekst" && it.first != "pdf" && it !in missing && imageSize(it.second).isEmpty() } else emptyList()
