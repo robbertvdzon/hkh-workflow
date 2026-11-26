@@ -30,6 +30,8 @@ object TestEnvironment {
         WireMockServer(WireMockConfiguration.options().dynamicPort()).also {
             it.start()
             it.stubFor(WireMock.post(WireMock.anyUrl()).willReturn(WireMock.ok()))
+            // Ook de standen van de doorlopen (PUT): zonder antwoord wacht de app een halve minuut voor hij weer iets meldt.
+            it.stubFor(WireMock.put(WireMock.urlPathMatching("/api/workflow-log/.*")).willReturn(WireMock.noContent()))
             it.stubFor(WireMock.get(WireMock.urlPathEqualTo("/repos/robbertvdzon/hkh-workflow/releases")).willReturn(WireMock.okJson(RELEASES)))
             Runtime.getRuntime().addShutdownHook(Thread { it.stop() })
         }
